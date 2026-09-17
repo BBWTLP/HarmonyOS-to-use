@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "harmony-mobile-runtime"
+version = "0.1.0.dev0"
+description = "Local HarmonyOS device runtime for general-purpose MCP agents"
+requires-python = ">=3.11"
+dependencies = [
+  "devhelmkit @ git+https://github.com/yabi-zzh/devhelmkit.git@05c9bc0f7f9ea763d61c8b4b5d1cfbb076626b00",
+  "mcp==2.2.0",
+  "pydantic>=2,<3",
+  "pillow==12.3.0",
+]
+
+[project.scripts]
+harmony-runtime = "harmony_runtime.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
