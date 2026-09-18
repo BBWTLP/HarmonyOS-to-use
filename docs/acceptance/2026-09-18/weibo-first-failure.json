@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-09-17T23:38:41.373607+00:00",
+  "scenario": "weibo_discovery_hot_technology_topic_return",
+  "requested_rounds": 10,
+  "status": "failed",
+  "steps": [
+    {
+      "step": "setup_back_to_discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "elapsed_ms": 3063
+    },
+    {
+      "step": "setup_home",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "elapsed_ms": 3031
+    },
+    {
+      "step": "discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "elapsed_ms": 2859
+    },
+    {
+      "step": "hot_list",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "elapsed_ms": 2843
+    },
+    {
+      "step": "technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "elapsed_ms": 3109
+    },
+    {
+      "step": "topic_results",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "elapsed_ms": 3907
+    }
+  ],
+  "rounds": [],
+  "scope": "same-app semantic navigation; not autonomous planning or release acceptance",
+  "failure_type": "ExceptionGroup",
+  "observation_latency": {
+    "count": 8,
+    "p50_ms": 1203,
+    "p95_ms": 1312,
+    "max_ms": 1312
+  },
+  "action_latency": {
+    "count": 6,
+    "p50_ms": 3031,
+    "p95_ms": 3907,
+    "max_ms": 3907
+  }
+}

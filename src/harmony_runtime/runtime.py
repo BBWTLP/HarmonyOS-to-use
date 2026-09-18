@@ -350,7 +350,10 @@ class Runtime:
             raise RuntimeFault("stale_observation", "Observe again before acting")
         before=old[1]
         current=self._observe(s)
-        if current["fingerprint"] != before["fingerprint"]:
+        # Untargeted navigation may tolerate numeric playback progress / clock
+        # text. All targeted actions still require the original exact snapshot.
+        key = "navigation_fingerprint" if req.action.kind in ("back", "home", "swipe") else "fingerprint"
+        if current.get(key, current["fingerprint"]) != before.get(key, before["fingerprint"]):
             raise RuntimeFault("stale_observation", "Page changed since the referenced observation")
         target=resolve(current,req.action.target) if req.action.target else None
         self._policy(req.action,target)

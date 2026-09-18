@@ -1,0 +1,488 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-09-17T23:41:13.071454+00:00",
+  "scenario": "weibo_discovery_hot_technology_topic_return",
+  "requested_rounds": 10,
+  "status": "failed",
+  "pre_dispatch_refreshes": 0,
+  "steps": [
+    {
+      "step": "setup_back_to_discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4484
+    },
+    {
+      "step": "setup_home",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4563
+    },
+    {
+      "step": "discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4234
+    },
+    {
+      "step": "hot_list",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4563
+    },
+    {
+      "step": "technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4484
+    },
+    {
+      "step": "topic_results",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 5344
+    },
+    {
+      "step": "return_technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4328
+    },
+    {
+      "step": "general_category",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4297
+    },
+    {
+      "step": "return_discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 3844
+    },
+    {
+      "step": "return_home",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4234
+    },
+    {
+      "step": "discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4125
+    },
+    {
+      "step": "hot_list",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 5656
+    },
+    {
+      "step": "technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4375
+    },
+    {
+      "step": "topic_results",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 5407
+    },
+    {
+      "step": "return_technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4484
+    },
+    {
+      "step": "general_category",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4234
+    },
+    {
+      "step": "return_discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4250
+    },
+    {
+      "step": "return_home",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4328
+    },
+    {
+      "step": "discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 3813
+    },
+    {
+      "step": "hot_list",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4172
+    },
+    {
+      "step": "technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4328
+    },
+    {
+      "step": "topic_results",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 5312
+    },
+    {
+      "step": "return_technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4469
+    },
+    {
+      "step": "general_category",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 3719
+    },
+    {
+      "step": "return_discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 3984
+    },
+    {
+      "step": "return_home",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4282
+    },
+    {
+      "step": "discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4265
+    },
+    {
+      "step": "hot_list",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4516
+    },
+    {
+      "step": "technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4484
+    },
+    {
+      "step": "topic_results",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 5406
+    },
+    {
+      "step": "return_technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4391
+    },
+    {
+      "step": "general_category",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4484
+    },
+    {
+      "step": "return_discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4297
+    },
+    {
+      "step": "return_home",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4375
+    },
+    {
+      "step": "discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4219
+    },
+    {
+      "step": "hot_list",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4547
+    },
+    {
+      "step": "technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4562
+    },
+    {
+      "step": "topic_results",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 5579
+    },
+    {
+      "step": "return_technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4593
+    },
+    {
+      "step": "general_category",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4547
+    },
+    {
+      "step": "return_discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4266
+    },
+    {
+      "step": "return_home",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4281
+    },
+    {
+      "step": "discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4109
+    },
+    {
+      "step": "hot_list",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4469
+    },
+    {
+      "step": "technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 5422
+    },
+    {
+      "step": "topic_results",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 5469
+    },
+    {
+      "step": "return_technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4484
+    },
+    {
+      "step": "general_category",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4422
+    },
+    {
+      "step": "return_discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4453
+    },
+    {
+      "step": "return_home",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4297
+    },
+    {
+      "step": "discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4266
+    },
+    {
+      "step": "hot_list",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4437
+    },
+    {
+      "step": "technology",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4422
+    },
+    {
+      "step": "topic_results",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": false,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 5422
+    }
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "passed": true,
+      "elapsed_ms": 35328
+    },
+    {
+      "round": 2,
+      "passed": true,
+      "elapsed_ms": 36859
+    },
+    {
+      "round": 3,
+      "passed": true,
+      "elapsed_ms": 34079
+    },
+    {
+      "round": 4,
+      "passed": true,
+      "elapsed_ms": 36218
+    },
+    {
+      "round": 5,
+      "passed": true,
+      "elapsed_ms": 36594
+    },
+    {
+      "round": 6,
+      "passed": true,
+      "elapsed_ms": 37125
+    }
+  ],
+  "scope": "same-app semantic navigation; not autonomous planning or release acceptance",
+  "failure_type": "ExceptionGroup",
+  "observation_latency": {
+    "count": 55,
+    "p50_ms": 1266,
+    "p95_ms": 1344,
+    "max_ms": 1359
+  },
+  "action_latency": {
+    "count": 54,
+    "p50_ms": 4422,
+    "p95_ms": 5469,
+    "max_ms": 5656
+  }
+}

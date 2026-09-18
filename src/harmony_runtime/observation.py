@@ -60,10 +60,36 @@ def catalog(tree, display):
     return entries
 
 
+def navigation_tree(tree):
+    """Normalize only clock/battery text and numeric slider progress for navigation.
+
+    Shape, geometry, enabled/focus state and all other attributes remain exact.
+    This projection is never used for target-dependent taps or text input, nor
+    for change/wait verification. It is not a general semantic page identity.
+    """
+    def visit(node, status_text=False):
+        result = dict(node)
+        attributes = dict(node.get("attributes", {}))
+        status_text = status_text or attributes.get("id") in (
+            "ClockStatusView", "BatteryComponent-batteryIcon_Text_batterySoc")
+        for field in ("text", "originalText"):
+            value = attributes.get(field)
+            progress = (attributes.get("type") == "Slider" and isinstance(value, str)
+                        and re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", value) is not None)
+            if field in attributes and (status_text or progress):
+                attributes[field] = "<volatile-navigation-text>"
+        result["attributes"] = attributes
+        if "children" in node:
+            result["children"] = [visit(child, status_text) for child in node["children"]]
+        return result
+    return visit(tree)
+
+
 def snapshot(tree, display):
     items = catalog(tree, display)
     fingerprint = hashlib.sha256(canonical([tree, display]).encode()).hexdigest()
-    return {"observation_id":uuid.uuid4().hex,"captured_at":time.time(), "display":{"width":display[0],"height":display[1],"rotation":display[2]},"fingerprint":fingerprint,"foreground_bundle":None,"catalog":items}
+    return {"observation_id":uuid.uuid4().hex,"captured_at":time.time(), "display":{"width":display[0],"height":display[1],"rotation":display[2]},"fingerprint":fingerprint,"foreground_bundle":None,"catalog":items,
+            "navigation_fingerprint": hashlib.sha256(canonical([navigation_tree(tree), display]).encode()).hexdigest()}
 
 
 def resolve(observation, target):

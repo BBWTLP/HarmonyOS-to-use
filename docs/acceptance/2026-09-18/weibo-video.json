@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-09-17T23:59:00.950804+00:00",
+  "runner_sha256": "a93e2a84581e5ba450eb64a26b308cbbbb3fd8658eb48dcbf259181fda6b74cd",
+  "scenario": "weibo_video_progress_and_swipe",
+  "requested_rounds": 10,
+  "status": "passed",
+  "playback_samples": [
+    {
+      "round": 1,
+      "same_clip": true,
+      "progress_advanced": true
+    },
+    {
+      "round": 2,
+      "same_clip": true,
+      "progress_advanced": true
+    },
+    {
+      "round": 3,
+      "same_clip": true,
+      "progress_advanced": true
+    },
+    {
+      "round": 4,
+      "same_clip": true,
+      "progress_advanced": true
+    },
+    {
+      "round": 5,
+      "same_clip": true,
+      "progress_advanced": true
+    },
+    {
+      "round": 6,
+      "same_clip": true,
+      "progress_advanced": true
+    },
+    {
+      "round": 7,
+      "same_clip": true,
+      "progress_advanced": true
+    },
+    {
+      "round": 8,
+      "same_clip": true,
+      "progress_advanced": true
+    },
+    {
+      "round": 9,
+      "same_clip": true,
+      "progress_advanced": true
+    },
+    {
+      "round": 10,
+      "same_clip": true,
+      "progress_advanced": true
+    }
+  ],
+  "pre_dispatch_refreshes": 0,
+  "steps": [
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4250
+    },
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4750
+    },
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4813
+    },
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4860
+    },
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4765
+    },
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4907
+    },
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4860
+    },
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4578
+    },
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4782
+    },
+    {
+      "step": "swipe_next_video",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 4907
+    }
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "passed": true,
+      "elapsed_ms": 6844
+    },
+    {
+      "round": 2,
+      "passed": true,
+      "elapsed_ms": 7672
+    },
+    {
+      "round": 3,
+      "passed": true,
+      "elapsed_ms": 7297
+    },
+    {
+      "round": 4,
+      "passed": true,
+      "elapsed_ms": 7719
+    },
+    {
+      "round": 5,
+      "passed": true,
+      "elapsed_ms": 7640
+    },
+    {
+      "round": 6,
+      "passed": true,
+      "elapsed_ms": 7813
+    },
+    {
+      "round": 7,
+      "passed": true,
+      "elapsed_ms": 7453
+    },
+    {
+      "round": 8,
+      "passed": true,
+      "elapsed_ms": 7453
+    },
+    {
+      "round": 9,
+      "passed": true,
+      "elapsed_ms": 7719
+    },
+    {
+      "round": 10,
+      "passed": true,
+      "elapsed_ms": 7750
+    }
+  ],
+  "scope": "same-app semantic navigation; not autonomous planning or release acceptance",
+  "finished_at": "2026-09-18T00:00:18.488623+00:00",
+  "observation_latency": {
+    "count": 31,
+    "p50_ms": 1141,
+    "p95_ms": 1219,
+    "max_ms": 1265
+  },
+  "action_latency": {
+    "count": 10,
+    "p50_ms": 4782,
+    "p95_ms": 4907,
+    "max_ms": 4907
+  }
+}
