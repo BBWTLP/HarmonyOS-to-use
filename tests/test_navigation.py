@@ -47,7 +47,18 @@ class NavigationTests(unittest.TestCase):
             self.assertNotEqual(baseline, snapshot(changed, (100, 100, 0))['navigation_fingerprint'])
         self.assertNotEqual(baseline, snapshot(tree(), (100, 100, 1))['navigation_fingerprint'])
 
-    def test_navigation_dispatches_once_but_targeted_tap_rejects_progress_change(self):
+    def test_numeric_progress_nodes_include_slider_and_progress(self):
+        value = tree()
+        value['children'][0]['attributes']['type'] = 'Progress'
+        projected = snapshot(value, (100, 100, 0))
+        changed = copy.deepcopy(value)
+        changed['children'][0]['attributes']['text'] = '2.000000'
+        changed['children'][0]['attributes']['originalText'] = '2.000000'
+        self.assertEqual(projected['navigation_fingerprint'], snapshot(changed, (100, 100, 0))['navigation_fingerprint'])
+        changed['children'][0]['attributes']['text'] = 'buffering'
+        self.assertNotEqual(projected['navigation_fingerprint'], snapshot(changed, (100, 100, 0))['navigation_fingerprint'])
+
+    def test_navigation_dispatches_once_and_targeted_tap_survives_known_progress_change(self):
         for action in ({'kind': 'swipe', 'direction': 'up'},
                        {'kind': 'tap', 'target': {'text': 'Open'}}):
             with self.subTest(action=action), tempfile.TemporaryDirectory() as tmp:
@@ -65,10 +76,61 @@ class NavigationTests(unittest.TestCase):
                         runtime.act('owner', req)
                         self.assertEqual(device.writes, 1)
                     else:
-                        with self.assertRaises(RuntimeFault) as error:
-                            runtime.act('owner', req)
-                        self.assertEqual(error.exception.code, 'stale_observation')
-                        self.assertEqual(device.writes, 0)
-                        self.assertEqual(runtime.journal.history(), [])
+                        result = runtime.act('owner', req)
+                        self.assertEqual(result['verification_status'], 'verified')
+                        self.assertEqual(device.writes, 1)
                 finally:
                     runtime.close()
+
+    def test_back_remains_available_during_feed_refresh(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            device = MovingVideo()
+            runtime = Runtime(tmp, factory=lambda _: device, discover=lambda: ['fake'])
+            try:
+                sid = runtime.session('owner', 'open')['session_id']
+                obs = runtime.observe('owner', sid)
+                device.progress = '2.000000'
+                result = runtime.act('owner', dict(session_id=sid, request_id='back', observation_id=obs['observation_id'],
+                                                   action={'kind': 'back'}, expected={'changed': True}))
+                self.assertEqual(result['verification_status'], 'verified')
+                self.assertEqual(device.writes, 1)
+            finally:
+                runtime.close()
+
+
+class StaleTargetTests(unittest.TestCase):
+    def test_changed_pages_block_all_navigation_before_dispatch(self):
+        for kind in ("back", "home", "swipe", "tap", "long_press"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:
+                device = MovingVideo()
+                runtime = Runtime(tmp, factory=lambda _: device, discover=lambda: ["fake"])
+                try:
+                    sid = runtime.session("owner", "open")["session_id"]
+                    obs = runtime.observe("owner", sid)
+                    device.title = "Different screen"
+                    action = {"kind": kind}
+                    if kind == "swipe": action["direction"] = "up"
+                    if kind in ("tap", "long_press"): action["target"] = {"text": "Open"}
+                    with self.assertRaises(RuntimeFault) as caught:
+                        runtime.act("owner", dict(session_id=sid, request_id="stale",
+                            observation_id=obs["observation_id"], action=action))
+                    self.assertEqual(caught.exception.code, "stale_observation")
+                    self.assertEqual(device.writes, 0)
+                finally: runtime.close()
+
+    def test_changed_progress_target_and_missing_projection_are_rejected(self):
+        for missing, target in ((False, "n0"), (True, "n2")):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as tmp:
+                device = MovingVideo()
+                runtime = Runtime(tmp, factory=lambda _: device, discover=lambda: ["fake"])
+                try:
+                    sid = runtime.session("owner", "open")["session_id"]
+                    obs = runtime.observe("owner", sid)
+                    if missing: obs.pop("navigation_fingerprint")
+                    device.progress = "2.000000"
+                    with self.assertRaises(RuntimeFault) as caught:
+                        runtime.act("owner", dict(session_id=sid, request_id="stale",
+                            observation_id=obs["observation_id"], action={"kind":"tap", "target":{"action_id":target}}))
+                    self.assertEqual(caught.exception.code, "stale_observation")
+                    self.assertEqual(device.writes, 0)
+                finally: runtime.close()

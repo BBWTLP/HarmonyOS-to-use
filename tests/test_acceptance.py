@@ -49,6 +49,9 @@ class AcceptanceTests(unittest.TestCase):
                 accept_weibo.main()
             runner.assert_not_called()
 
+    def test_progress_profile_accepts_harmony_progress_nodes(self):
+        self.assertEqual(accept_weibo.video_progress({"catalog": [{"type": "Progress", "text": "9.5"}]}), 9.5)
+
 
 if __name__ == "__main__":
     unittest.main()

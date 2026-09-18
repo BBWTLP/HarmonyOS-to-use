@@ -14,7 +14,11 @@ from .contracts import RuntimeFault
 from .device import HarmonyDevice
 
 _MAX_REPLY = 32 * 1024 * 1024
-_METHODS = frozenset(("tree", "display", "screen_state", "screenshot", "dispatch", "close"))
+_METHODS = frozenset((
+    "tree", "display", "screen_state", "screenshot",
+    "screen_on", "wake_up_display", "unlock",
+    "dispatch", "close",
+))
 
 
 def _device_main(connection, factory, serial):
@@ -166,6 +170,9 @@ class ProcessDevice:
     def tree(self): return self._call("tree")
     def display(self): return self._call("display")
     def screen_state(self): return self._call("screen_state")
+    def screen_on(self): return self._call("screen_on")
+    def wake_up_display(self): return self._call("wake_up_display")
+    def unlock(self): return self._call("unlock")
     def dispatch(self, action, target): return self._call("dispatch", action, target)
     def screenshot(self):
         from PIL import Image

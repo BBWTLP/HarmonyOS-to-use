@@ -44,7 +44,7 @@ MCP 客户端使用本仓库虚拟环境下 `harmony-runtime.exe` 的绝对路�
 
 已实现设备进程截止时间与中断隔离，故障测试覆盖初始化、读写和关闭卡住；终止电脑进程不能撤回手机已收到的操作。尚未完成全链路期限保证、持久化隔离、断连恢复、隐私保留与配额、可信人工批准、FULL 复杂场景真机验收、TEMPORAL 动态场景实测、OCR/视觉降级、历史回放、三客户端实测及长任务验收。危险目标目前采用临时拦截规则，不能视为完整安全策略。前台应用验证尚未实现。截图前后树一致只能证明采集期间没有检测到结构变化，不能证明动态画面完全一致，也不能证明锁屏截图可用。
 
-已实现每台设备 FIFO 排队，以及采集前后和执行前的显式屏幕状态检查。锁屏、熄屏或状态未知时拒绝生成可执行观察；需解锁后重新观察。该检查不代表已具备安全窗口或应用防截图检测，也不能消除最后一次状态读取与实际点击之间的系统状态变化。
+已实现每台设备 FIFO 排队，以及采集前后和执行前的显式屏幕状态检查。检测到熄屏或锁屏时，Runtime 会通过 DevHelmKit 的无凭据唤醒与解锁路径尝试恢复，并重新读取状态；只有确认 `screen_on=true` 且 `screen_locked=false` 才会继续读屏或执行动作。该自动恢复已在 HarmonyOS 6.1 真机上通过休眠→Runtime observe→AWAKE/unlocked 的真实设备路径验证。状态未知、驱动不支持或恢复未确认时仍会拒绝操作。该检查不代表已具备安全窗口或应用防截图检测，也不能消除最后一次状态读取与实际点击之间的系统状态变化。
 
 运行日志可能包含私人页面内容；状态目录只应保留在本机，禁止把截图、UI 原始数据、令牌或设备凭据提交仓库。
 
@@ -123,7 +123,7 @@ If an action completion cannot be saved because of a SQLite or OS storage error,
 
 在启动 `harmony-runtime serve` 后，运行 `harmony-runtime probe`；自定义数据目录时两个命令使用相同的 `--state-dir`。该命令连接已有 Runtime，经真实 stdio MCP 打开会话、读取树与截图并关闭会话。它不另启设备服务、不派发点击或输入，输出仅包含诊断元数据。
 
-`doctor` 成功仅证明依赖和设备发现；`probe` 的 `phone_observation_verified=true` 才表示本次树/截图一致的读屏成功。`phone_write_verified` 始终为 false，读屏通过不证明写操作、复杂任务或指定 Agent 客户端已经验收。手机锁屏会返回 `screen_locked`，请在真机解锁后重试。
+`doctor` 成功仅证明依赖和设备发现；`probe` 的 `phone_observation_verified=true` 才表示本次树/截图一致的读屏成功。`phone_write_verified` 始终为 false，读屏通过不证明写操作、复杂任务或指定 Agent 客户端已经验收。手机熄屏或锁屏时 Runtime 会先尝试无凭据恢复；只有恢复未确认时才返回 `screen_locked` 或 `screen_off`。由于桌面和动态页面可能在截图与图树采集之间变化，`probe` 仍可能返回 `not_ready`，这不等同于自动解锁失败。
 
 
 ## 微博真机跨页面验收
@@ -148,4 +148,4 @@ If an action completion cannot be saved because of a SQLite or OS storage error,
 
 Runtime 仅对 back/home/swipe 的过期检查忽略数值 Slider 进度及指定时钟、电量节点的文字变化；点击和输入仍要求完整页面指纹匹配，变化验证也仍使用完整指纹。
 
-2026-09-18 阶段结果及限制见 [真机验收记录](docs/acceptance/2026-09-18/README.md)。真机验收已按用户要求暂停；已通过的微博场景不代表完整项目验收完成。
+2026-09-18 阶段结果及限制见 [真机验收记录](docs/acceptance/2026-09-18/README.md)。同日已补充自动唤醒/无凭据解锁的真机 Runtime 验证，记录见 [自动恢复验收记录](docs/acceptance/2026-09-18/automatic-wake-unlock.md)。微博搜索输入、实际 Agent 客户端、长任务与最终发布门槛仍未完成。

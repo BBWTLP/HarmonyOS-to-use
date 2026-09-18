@@ -33,7 +33,7 @@ def catalog(tree, display):
         raise RuntimeFault("device_unavailable", "Display dimensions are invalid")
     entries = []
 
-    def walk(node, inherited_bundle="", inherited_enabled=True):
+    def walk(node, inherited_bundle="", inherited_enabled=True, parent_action_id=None):
         a = node.get("attributes", {})
         # An explicitly hidden ancestor hides its subtree. Container bounds
         # alone do not prove clipping, so only intersect with the screen here.
@@ -48,24 +48,35 @@ def catalog(tree, display):
             hit_bounds = [max(0, x1), max(0, y1), min(width, x2), min(height, y2)]
             if hit_bounds[2] > hit_bounds[0] and hit_bounds[3] > hit_bounds[1]:
                 if text or a.get("id") or a.get("clickable") in (True, "true") or "Input" in a.get("type", ""):
-                    entries.append({"action_id": f"n{len(entries)}", "text": text,
-                        "resource_id": a.get("id", ""), "type": a.get("type", ""),
+                    action_id = f"n{len(entries)}"
+                    clickable = a.get("clickable") in (True, "true")
+                    long_clickable = a.get("longClickable") in (True, "true")
+                    node_type = a.get("type", "")
+                    entries.append({"action_id": action_id, "text": text,
+                        "resource_id": a.get("id", ""), "type": node_type,
                         "bounds": bounds, "hit_bounds": hit_bounds, "enabled": enabled,
-                        "clickable": a.get("clickable") in (True, "true"),
+                        "clickable": clickable,
                         "focused": a.get("focused") in (True, "true"),
+                        "parent_action_id": parent_action_id,
+                        "target_fingerprint": hashlib.sha256(canonical(node).encode()).hexdigest(),
                         "checked": a.get("checked"), "selected": a.get("selected"), "bundle": bundle})
+                    # Only an actually actionable node becomes the parent for
+                    # descendants. Text/id-only entries must not leak across
+                    # siblings and masquerade as an ancestor of later nodes.
+                    if clickable or long_clickable or "Input" in node_type:
+                        parent_action_id = action_id
         for child in node.get("children", []):
-            walk(child, bundle, enabled)
+            walk(child, bundle, enabled, parent_action_id)
     walk(tree)
     return entries
 
 
 def navigation_tree(tree):
-    """Normalize only clock/battery text and numeric slider progress for navigation.
+    """Normalize only clock/battery text and numeric Slider/Progress values.
 
     Shape, geometry, enabled/focus state and all other attributes remain exact.
-    This projection is never used for target-dependent taps or text input, nor
-    for change/wait verification. It is not a general semantic page identity.
+    Targeted actions also require an unchanged target subtree. This projection
+    is never used for change/wait verification. It is not a general semantic page identity.
     """
     def visit(node, status_text=False):
         result = dict(node)
@@ -74,7 +85,7 @@ def navigation_tree(tree):
             "ClockStatusView", "BatteryComponent-batteryIcon_Text_batterySoc")
         for field in ("text", "originalText"):
             value = attributes.get(field)
-            progress = (attributes.get("type") == "Slider" and isinstance(value, str)
+            progress = (attributes.get("type") in ("Slider", "Progress") and isinstance(value, str)
                         and re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", value) is not None)
             if field in attributes and (status_text or progress):
                 attributes[field] = "<volatile-navigation-text>"

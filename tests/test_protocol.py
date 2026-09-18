@@ -64,6 +64,12 @@ class ProtocolTests(unittest.TestCase):
 
     def test_full_observation_images_through_stdio(self):
         from test_full_observation import ImageDevice
+        class DeepImageDevice(ImageDevice):
+            def tree(self):
+                node = super().tree()
+                for _ in range(140):
+                    node = {"attributes": {"type": "Column"}, "children": [node]}
+                return node
         async def probe(root):
             args=StdioServerParameters(command=sys.executable,args=["-m","harmony_runtime.cli","mcp","--state-dir",root],env={"PYTHONPATH":str(Path(__file__).resolve().parents[1]/"src")})
             async with stdio_client(args) as streams:
@@ -76,7 +82,8 @@ class ProtocolTests(unittest.TestCase):
                     data = result.structured_content
                     self.assertEqual(data["mode"], "FULL")
                     self.assertTrue(data["som"]["available"])
-                    self.assertIn("tree", data)
+                    self.assertEqual(data["tree"]["format"], "flat_tree_v1")
+                    self.assertEqual(len(data["tree"]["nodes"]), 141)
                     self.assertNotIn("image", data)
                     self.assertNotIn("annotated_image", data)
                     images = [item for item in result.content if item.type == "image"]
@@ -97,7 +104,7 @@ class ProtocolTests(unittest.TestCase):
                     await client.call_tool("mobile_session", {"operation":"close", "session_id":sid})
         with tempfile.TemporaryDirectory() as root:
             event=threading.Event(); servers=[]
-            device=ImageDevice("fake")
+            device=DeepImageDevice("fake")
             def ready(server): servers.append(server); event.set()
             thread=threading.Thread(target=serve,args=(root,),kwargs={"runtime_factory":lambda p:Runtime(p,factory=lambda _:device,discover=lambda:["fake"]),"ready":ready})
             thread.start()

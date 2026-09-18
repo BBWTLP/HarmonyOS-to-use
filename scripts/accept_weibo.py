@@ -47,8 +47,41 @@ def video_identity(obs):
 
 
 def video_progress(obs):
-    sliders = [n.get("text", "") for n in obs.get("catalog", []) if n.get("type") == "Slider"]
+    sliders = [n.get("text", "") for n in obs.get("catalog", []) if n.get("type") in ("Slider", "Progress")]
     return float(sliders[0]) if len(sliders) == 1 and re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", sliders[0]) else -1
+
+
+def semantic_action_id(obs, text):
+    """Resolve a visible label to its smallest clickable catalog ancestor."""
+    nodes = obs.get("catalog", [])
+    matches = [n for n in nodes if n.get("enabled") and n.get("text") == text]
+    if not matches:
+        raise AcceptanceFailure("label_not_observed")
+    candidates = []
+    for leaf in matches:
+        bounds = leaf.get("bounds") or []
+        if len(bounds) != 4:
+            continue
+        x1, y1, x2, y2 = bounds
+        for node in nodes:
+            nb = node.get("bounds") or []
+            if not (node.get("enabled") and node.get("clickable") and len(nb) == 4):
+                continue
+            nx1, ny1, nx2, ny2 = nb
+            if nx1 <= x1 and ny1 <= y1 and nx2 >= x2 and ny2 >= y2:
+                candidates.append((max(1, (nx2-nx1)*(ny2-ny1)), node.get("action_id")))
+    candidates = [(area, action_id) for area, action_id in candidates if action_id]
+    if not candidates:
+        raise AcceptanceFailure("clickable_label_parent_unavailable")
+    return min(candidates)[1]
+
+
+def focused_input_action_id(obs):
+    inputs = [n for n in obs.get("catalog", [])
+              if n.get("enabled") and n.get("focused") and "input" in n.get("type", "").lower()]
+    if len(inputs) != 1 or not inputs[0].get("action_id"):
+        raise AcceptanceFailure("focused_search_input_unavailable")
+    return inputs[0]["action_id"]
 
 
 def stats(values):
@@ -90,10 +123,11 @@ async def run(args, report):
                 refreshes = 0
                 for attempt in range(4):
                     obs = await observe()
+                    resolved_action = action(obs) if callable(action) else action
                     try:
                         result = await call("mobile_act", {"request": {
                             "session_id": sid, "request_id": str(uuid.uuid4()),
-                            "observation_id": obs["observation_id"], "action": action,
+                            "observation_id": obs["observation_id"], "action": resolved_action,
                             "expected": {"text": anchor} if anchor else {"changed": True}, "timeout_ms": 15000}})
                         break
                     except ToolFailure as error:
@@ -120,7 +154,17 @@ async def run(args, report):
                 report.pop("active_step", None)
                 return after
             def tap(text):
-                return {"kind": "tap", "target": {"text": text}}
+                return lambda obs: {"kind": "tap", "target": {"action_id": semantic_action_id(obs, text)}}
+            def input_text(value):
+                return lambda obs: {"kind": "input_text", "target": {"action_id": focused_input_action_id(obs)}, "text": value}
+            def search_bar(obs):
+                nodes = [n for n in obs.get("catalog", []) if n.get("enabled") and n.get("clickable")
+                         and n.get("type") == "Flex" and n.get("bounds", [0, 999, 0, 0])[1] < 300]
+                if len(nodes) != 1 or not nodes[0].get("action_id"):
+                    raise AcceptanceFailure("search_bar_unavailable")
+                return {"kind": "tap", "target": {"action_id": nodes[0]["action_id"]}}
+            def tap_label(text):
+                return lambda obs: {"kind": "tap", "target": {"action_id": semantic_action_id(obs, text)}}
             try:
                 obs = await observe()
                 if args.profile == "video":
@@ -143,6 +187,33 @@ async def run(args, report):
                                   ("短剧", "推荐"), check=lambda o: bool(video_identity(o)) and video_identity(o) != identity)
                         report["rounds"].append({"round": index+1, "passed": True, "elapsed_ms": round((time.monotonic()-start)*1000)})
                         print(json.dumps(report["rounds"][-1]), flush=True)
+                    report["status"] = "passed"
+                    return
+                if args.profile == "search":
+                    present = texts(obs)
+                    for _ in range(3):
+                        if {"首页", "发现", "消息", "我"}.issubset(present):
+                            break
+                        if "取消" in present or any(n.get("type") == "TextInput" for n in obs.get("catalog", [])):
+                            break
+                        obs = await act("search_setup_back", {"kind": "back"}, None, required=("首页", "发现"))
+                        present = texts(obs)
+                    if "取消" not in present and not any(n.get("type") == "TextInput" for n in obs.get("catalog", [])):
+                        obs = await act("open_search", search_bar, None, check=lambda o: any(n.get("type") == "TextInput" and n.get("focused") for n in o.get("catalog", [])))
+                    if not any(n.get("type") == "TextInput" and n.get("focused") for n in obs.get("catalog", [])):
+                        raise AcceptanceFailure("search_input_not_focused")
+                    query = "鸿蒙"
+                    suggestion = "鸿蒙智行"
+                    obs = await act("input_search_query", input_text(query), None,
+                                    check=lambda o: any(n.get("type") == "TextInput" and n.get("text") == query for n in o.get("catalog", [])))
+                    obs = await act("select_search_suggestion", tap_label(suggestion), suggestion,
+                                    required=("综合", "实时", "视频", "图片"),
+                                    check=lambda o: suggestion in texts(o))
+                    obs = await act("search_video_tab", tap_label("视频"), "视频", required=(suggestion,),
+                                    check=lambda o: any(n.get("resource_id") == "0" and n.get("type") == "Text" and len(n.get("text", "")) >= 8 for n in o.get("catalog", [])))
+                    obs = await act("search_realtime_tab", tap_label("实时"), "实时", required=(suggestion, "互动", "时间"),
+                                    check=lambda o: "按最新互动排序" in texts(o))
+                    report["rounds"].append({"round": 1, "passed": True, "elapsed_ms": 0})
                     report["status"] = "passed"
                     return
                 # Normalize only known Weibo screens, never navigate blindly.
@@ -189,7 +260,7 @@ async def run(args, report):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", choices=("hot", "video"), default="hot")
+    parser.add_argument("--profile", choices=("hot", "video", "search"), default="hot")
     parser.add_argument("--execute", action="store_true", help="Explicitly allow real navigation")
     parser.add_argument("--state-dir", type=Path, default=Path(".runtime/acceptance"))
     parser.add_argument("--rounds", type=int, default=10, choices=range(1, 31))
@@ -199,7 +270,9 @@ def main():
         parser.error("Real device navigation requires --execute")
     report = {"schema_version": 1, "started_at": datetime.now(timezone.utc).isoformat(),
               "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-              "scenario": "weibo_video_progress_and_swipe" if args.profile == "video" else "weibo_discovery_hot_technology_topic_return", "requested_rounds": args.rounds,
+              "scenario": ("weibo_video_progress_and_swipe" if args.profile == "video" else
+                           "weibo_search_input_and_result_tabs" if args.profile == "search" else
+                           "weibo_discovery_hot_technology_topic_return"), "requested_rounds": args.rounds,
               "status": "failed", "playback_samples": [], "pre_dispatch_refreshes": 0, "steps": [], "rounds": [], "capture_ms": [],
               "scope": "same-app semantic navigation; not autonomous planning or release acceptance"}
     try:

@@ -189,7 +189,32 @@ class Runtime:
         return self.devices[s.serial]
 
     def _ready_screen(self, s):
-        state = self._device(s).screen_state()
+        """Return a confirmed interactive screen, recovering a simple lock first.
+
+        The recovery path is deliberately credential-free: the device driver only
+        wakes the display and performs its platform unlock gesture. We always read
+        the screen state again before allowing hierarchy capture or a write.
+        """
+        device = self._device(s)
+        state = device.screen_state()
+        ready = state.get("screen_on") is True and state.get("screen_locked") is False
+        if ready:
+            return state
+
+        recoverable = state.get("screen_on") is False or state.get("screen_locked") is True
+        if recoverable and all(hasattr(device, name) for name in ("screen_on", "wake_up_display", "unlock")):
+            s.observations.clear()
+            # Keep the sequence explicit so each physical recovery step is visible
+            # to the audit trail and can be exercised by fake devices in tests.
+            device.screen_on()
+            device.wake_up_display()
+            device.unlock()
+            for _ in range(3):
+                state = device.screen_state()
+                if state.get("screen_on") is True and state.get("screen_locked") is False:
+                    return state
+                time.sleep(0.05)
+
         code = None
         if state.get("screen_locked") is True:
             code = "screen_locked"
@@ -199,7 +224,7 @@ class Runtime:
             code = "screen_state_unknown"
         if code:
             s.observations.clear()
-            raise RuntimeFault(code, "A confirmed awake, unlocked screen is required; unlock the phone and observe again")
+            raise RuntimeFault(code, "A confirmed awake, unlocked screen is required; automatic wake/unlock did not confirm readiness")
         return state
 
     def _observe(self, s, include_image=False, mode="FAST", cache=True):
@@ -265,7 +290,12 @@ class Runtime:
         with self._worker(owner, s, time.monotonic()+30, generation) as check:
             obs = self._observe(s,include_image,mode)
             check()
-            return {"status":"ok", **obs}
+            # Return the same observation object held by the session cache.
+            # Local callers can therefore not accidentally act on a public
+            # response whose page identity differs from the cached handle;
+            # remote MCP callers still receive a serialized copy.
+            obs["status"] = "ok"
+            return obs
 
     def _temporal(self, owner, session_id):
         """Bounded historical samples; never grant an action handle to past UI."""
@@ -350,12 +380,24 @@ class Runtime:
             raise RuntimeFault("stale_observation", "Observe again before acting")
         before=old[1]
         current=self._observe(s)
-        # Untargeted navigation may tolerate numeric playback progress / clock
-        # text. All targeted actions still require the original exact snapshot.
-        key = "navigation_fingerprint" if req.action.kind in ("back", "home", "swipe") else "fingerprint"
-        if current.get(key, current["fingerprint"]) != before.get(key, before["fingerprint"]):
-            raise RuntimeFault("stale_observation", "Page changed since the referenced observation")
-        target=resolve(current,req.action.target) if req.action.target else None
+        # Only known volatile text may move between observation and dispatch.
+        # Even back/home must remain bound to the observed page. A targeted
+        # action additionally requires its entire target subtree to be unchanged.
+        target = None
+        if req.action.target is not None and not before.get("navigation_fingerprint"):
+            raise RuntimeFault("stale_observation", "Observation lacks a page identity")
+        if current["fingerprint"] != before["fingerprint"]:
+            projection = before.get("navigation_fingerprint")
+            same_page = bool(projection) and projection == current.get("navigation_fingerprint")
+            allowed = req.action.kind in ("back", "home", "swipe", "tap", "long_press", "input_text")
+            if not same_page or not allowed:
+                raise RuntimeFault("stale_observation", "Page changed since the referenced observation")
+            if req.action.target is not None:
+                target = resolve(current, req.action.target)
+                previous_target = resolve(before, req.action.target)
+                if (not previous_target.get("target_fingerprint") or previous_target != target):
+                    raise RuntimeFault("stale_observation", "Target changed since the referenced observation")
+        target = target or (resolve(current, req.action.target) if req.action.target else None)
         self._policy(req.action,target)
         self._ready_screen(s)
         check()

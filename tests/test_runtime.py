@@ -220,6 +220,40 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "screen_locked")
         self.assertEqual(self.runtime.sessions[self.sid].observations, {})
 
+
+    def test_observe_automatically_wakes_and_unlocks_when_driver_supports_it(self):
+        class AutoUnlockDevice(FakeDevice):
+            def __init__(self, serial):
+                super().__init__(serial)
+                self.state = {"screen_on": False, "screen_locked": True}
+                self.recovery = []
+
+            def screen_state(self):
+                return dict(self.state)
+
+            def screen_on(self):
+                self.recovery.append("screen_on")
+                self.state["screen_on"] = True
+
+            def wake_up_display(self):
+                self.recovery.append("wake_up_display")
+                self.state["screen_on"] = True
+
+            def unlock(self):
+                self.recovery.append("unlock")
+                self.state["screen_locked"] = False
+
+        device = AutoUnlockDevice("fake")
+        runtime = Runtime(self.tmp.name + "-auto-unlock", factory=lambda serial: device, discover=lambda: ["fake"])
+        try:
+            sid = runtime.session("a", "open")["session_id"]
+            observation = runtime.observe("a", sid)
+            self.assertEqual(observation["status"], "ok")
+            self.assertEqual(observation["screen_state"], {"screen_on": True, "screen_locked": False})
+            self.assertEqual(device.recovery, ["screen_on", "wake_up_display", "unlock"])
+        finally:
+            runtime.close()
+
     def test_unknown_screen_blocks_write_without_journaling_dispatch(self):
         req = self.request()
         self.device.screen_state = lambda: {"screen_on": True, "screen_locked": None}

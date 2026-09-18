@@ -7,6 +7,20 @@ from mcp.server import MCPServer
 from .service import Client
 from .contracts import ActRequest, BurstRequest, Expected, WaitCondition, RuntimeFault
 
+def flat_tree(tree):
+    """Lossless tree topology with bounded JSON nesting for MCP serializers."""
+    nodes = []
+    pending = [(tree, None)]
+    while pending:
+        node, parent = pending.pop()
+        node_id = f"t{len(nodes)}"
+        nodes.append({"node_id": node_id, "parent_id": parent,
+                      "data": {k: v for k, v in node.items() if k != "children"},
+                      "has_children_field": "children" in node})
+        pending.extend((child, node_id) for child in reversed(node.get("children", [])))
+    return {"format": "flat_tree_v1", "root_id": "t0", "nodes": nodes}
+
+
 def build(root=None):
     server = MCPServer(name="harmony-mobile", version="0.1.0.dev0")
     client = Client(root)
@@ -26,6 +40,8 @@ def build(root=None):
         if isinstance(result, CallToolResult):
             return result
         result = dict(result)
+        if "tree" in result:
+            result["tree"] = flat_tree(result["tree"])
         image = result.pop("image", None)
         annotated = result.pop("annotated_image", None)
         frame_images = []
@@ -52,7 +68,7 @@ def build(root=None):
         return package(await call("session", operation=operation, session_id=session_id, device_id=device_id, request_id=request_id))
     @server.tool()
     async def mobile_observe(session_id: str, include_image: bool = False, mode: Literal["FAST", "FULL", "TEMPORAL"] = "FAST") -> CallToolResult:
-        """Observe current UI. FULL includes the tree, original screenshot and numbered tree targets when consistent. FAST optionally includes a screenshot. TEMPORAL samples up to five historical frames within 3000ms; frames cannot be used as action handles and do not arm a live watch. Unverified captures cannot be used for actions. OCR and visual-only grounding are not yet available."""
+        """Observe current UI. FULL includes a flat_tree_v1 tree (ordered nodes with parent_id and original data), original screenshot and numbered tree targets when consistent. FAST optionally includes a screenshot. TEMPORAL samples up to five historical frames within 3000ms; frames cannot be used as action handles and do not arm a live watch. Unverified captures cannot be used for actions. OCR and visual-only grounding are not yet available."""
         result = await call("observe", session_id=session_id, include_image=include_image, mode=mode)
         return package(result)
     @server.tool()

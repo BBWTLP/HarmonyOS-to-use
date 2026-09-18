@@ -45,6 +45,17 @@ class HarmonyDevice:
         locked = self.driver.shell("hidumper -s ScreenlockService -a -all")
         return parse_screen_state(power, locked)
 
+    def screen_on(self):
+        self.driver.screen_on()
+
+    def wake_up_display(self):
+        # Keep the semantic wake-up operation explicit for auditability.
+        self.driver.wake_up_display()
+
+    def unlock(self):
+        # This uses the driver's no-credential swipe/enter path.
+        self.driver.unlock()
+
     def tree(self):
         result = self.driver.dump_hierarchy()
         if not isinstance(result, dict) or not result:
