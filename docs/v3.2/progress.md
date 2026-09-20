@@ -267,8 +267,17 @@ ALLOW_DEVICE_TEST = YES
           drift_metadata；surface_kind 无 App 证据时返回 unknown
           accept_m0_primitives.py：valid_attempts 与 setup_* 分离、
           evaluate_gate()、schema_version=2、setup 失败上限
-测试      643（618 + 25）
-newrc     ef2731a6c1052781922d5386e9535ef3d678a86a
+测试      644（618 + 26）
+newrc     19ee190503ccdedd284e31f1e3fb3b0867a13f1e
+
+真机 smoke 验证（同一 RC）：
+  M0 专项 back/input ×3   status=ok，valid=6 success=6（b4049f5 时为 back 0/3、input 1/3）
+  全量 M0 smoke ×3        status=ok，valid=21 success=21，7 原语全部 3/3，
+                          setup_stale_refusals=2，unresolved_actions=0
+  说明：这是 smoke，不是正式 M0（正式需每原语 100 个有效样本且 ≥99%）
+
+注：本轮曾先冻结候选 ef2731a，第一次真机专项暴露 setup 统计未接入 per-primitive
+记录的报告缺陷，修复后重新冻结为 19ee190。
 ```
 
 安全侧：stale Guard / TTL / journal / unknown-write 语义全部未改。

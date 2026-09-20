@@ -261,8 +261,8 @@ fresh clone  Python 3.13.14 与 3.11.16 各 Ran 643 tests，OK（pip check clean
 
 ```text
 branch           feat/runtime-foundation
-NEW RC SHA       ef2731a6c1052781922d5386e9535ef3d678a86a
-test count       643（0 failed / 0 error / 0 skip）
+NEW RC SHA       19ee190503ccdedd284e31f1e3fb3b0867a13f1e
+test count       644（0 failed / 0 error / 0 skip）
 Python           3.11.16 与 3.13.14，均在 fresh clone 上全绿
 date/time        2026-09-20（Asia/Shanghai）
 ```
@@ -271,6 +271,26 @@ date/time        2026-09-20（Asia/Shanghai）
 → **M0 专项 back/input ×3** → 全量 M0 ×3 → 通过后才 25 / 100。
 `back`/`input` 的 setup 若因上述自增 ID 目标而长期不足，正确结论是
 `M0 = NOT_READY / insufficient_valid_samples`，不是把 setup 排除后宣称通过。
+
+## 10.7 真机 smoke 验证（同一 RC）
+
+冻结前后各跑了一次真机 smoke（详细报告见
+`docs/acceptance/2026-09-20/rc-19ee190-m0-harness-fix-verification.md`）：
+
+```text
+M0 专项 back/input ×3   status=ok，valid=6 success=6，setup_stale_refusals=3
+                        对比 b4049f5：back 0/3 → 3/3，input 1/3 → 3/3
+全量 M0 smoke ×3        status=ok，valid=21 success=21，7 原语全部 3/3
+                        setup_attempts=10，stale_refusals=2，setup_failures=0
+                        unresolved_actions=0，recovery_required=false
+```
+
+这是 smoke，不是正式 M0（正式要求每原语 100 个有效样本且 rate ≥ 0.99）。
+结论：harness 修复在真机上有效，可以进入 M0 25 / 100 放大阶段。
+
+注：本轮先冻结过候选 `ef2731a`，第一次真机专项立即暴露了「setup 统计未接入
+per-primitive 记录」的报告缺陷（setup_attempts 恒为 0），修复后重新冻结为
+`19ee190`；候选 SHA 未交付、未 push、没有被任何正式证据引用。
 
 ## 9. 剩余风险
 

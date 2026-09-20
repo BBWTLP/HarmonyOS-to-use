@@ -7,10 +7,10 @@
 ```text
 repository   https://github.com/BBWTLP/HarmonyOS-to-use
 branch       feat/runtime-foundation
-RC SHA       ef2731a6c1052781922d5386e9535ef3d678a86a
+RC SHA       19ee190503ccdedd284e31f1e3fb3b0867a13f1e
 Python       3.11+（本轮已在 3.11.16 与 3.13.14 上验证）
 OS           Windows（脚本为 PowerShell）
-test count   643 offline（0 failed / 0 error / 0 skip）
+test count   644 offline（0 failed / 0 error / 0 skip）
 gate         Pre-Device Gate 第三轮全绿（见 pre-device-gate.md 第 10 节）
 lock          requirements.lock（sha256 18a991d5…a126055）
 ```
