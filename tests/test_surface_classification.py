@@ -76,12 +76,17 @@ class WeiboEvidenceTests(unittest.TestCase):
 
 
 class SurfaceKindTests(unittest.TestCase):
-    def test_a_desktop_with_a_clickable_flex_is_unknown_not_discover(self):
-        self.assertEqual(surface_kind(launcher_observation()), "unknown")
+    def test_a_desktop_with_a_clickable_flex_is_foreign_not_discover(self):
+        """RC4-A.1: no Weibo evidence means FOREIGN, a state of its own.
+
+        It used to be "unknown", which conflated "this is not our app" with
+        "this is our app but the page shape is unrecognised".
+        """
+        self.assertEqual(surface_kind(launcher_observation()), "foreign")
 
     def test_an_unidentified_surface_is_unknown(self):
         self.assertEqual(surface_kind({"foreground_bundle": None, "catalog": []}),
-                         "unknown")
+                         "foreign")
 
     def test_weibo_home_is_tabs(self):
         self.assertEqual(surface_kind(observation(weibo_home())), "tabs")

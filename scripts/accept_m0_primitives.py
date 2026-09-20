@@ -25,10 +25,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from agent_harness import (AgentHarness, HarnessError, SetupBudget, SetupStats,
-                           SetupUnavailable, WEIBO, editor_input, find_node,
+from agent_harness import (AgentHarness, HarnessError, SURFACE_DISCOVER, SURFACE_EDITOR,
+                           SURFACE_FOREIGN, SURFACE_SEARCH, SURFACE_TABS,
+                           SURFACE_UNKNOWN, SetupBudget, SetupStats, SetupUnavailable,
+                           WEIBO, classify_surface, editor_input, find_node,
                            find_search_bar, focused_input, has_weibo_evidence,
-                           setup_act, surface_kind)
+                           search_editor_evidence, setup_act, surface_kind, top_band_inputs)
 
 #: Ordered cheap-first so partial evidence is still useful if a run is stopped.
 PRIMITIVES = ("launch", "tree", "screenshot", "swipe", "tap", "back", "input")
@@ -47,6 +49,48 @@ SETTLE_SECONDS = 0.5
 #: after this many failed setups a primitive is reported with
 #: `insufficient_valid_samples` instead of hammering the device.
 MAX_SETUP_FAILURES = 5
+
+#: Allowed transitions per surface state, per target. A transition that is not
+#: listed is "stuck": the machine fails instead of repeating the same action.
+SEARCH_EDITOR_FSM = {
+    SURFACE_FOREIGN: ("launch_weibo",),
+    SURFACE_UNKNOWN: ("back_to_known", "open_discover"),
+    SURFACE_TABS: ("open_discover",),
+    SURFACE_DISCOVER: ("open_search",),
+    SURFACE_SEARCH: ("focus_editor",),
+    SURFACE_EDITOR: (),
+}
+
+TABS_FSM = {
+    SURFACE_FOREIGN: ("launch_weibo",),
+    SURFACE_UNKNOWN: ("back_to_known", "open_home"),
+    SURFACE_DISCOVER: ("open_home", "back_to_known"),
+    SURFACE_SEARCH: ("back_to_known", "open_home"),
+    SURFACE_EDITOR: ("back_to_known",),
+    SURFACE_TABS: (),
+}
+
+#: Where each transition is expected to land; used for the trace's
+#: `unexpected_transition` flag (a change of state that is not useful progress).
+TRANSITION_TARGETS = {
+    "launch_weibo": (SURFACE_TABS, SURFACE_DISCOVER, SURFACE_SEARCH, SURFACE_EDITOR),
+    "back_to_known": (SURFACE_TABS, SURFACE_DISCOVER, SURFACE_SEARCH, SURFACE_EDITOR),
+    "open_discover": (SURFACE_DISCOVER, SURFACE_SEARCH, SURFACE_EDITOR, SURFACE_TABS),
+    "open_home": (SURFACE_TABS, SURFACE_DISCOVER),
+    "open_search": (SURFACE_SEARCH, SURFACE_EDITOR, SURFACE_DISCOVER, SURFACE_TABS),
+    "focus_editor": (SURFACE_EDITOR, SURFACE_SEARCH, SURFACE_TABS),
+}
+
+#: How many re-observations a single transition may wait for the surface to
+#: change. Observations are the only clock we have (each costs ~3-4.5 s), so the
+#: wait is condition-based with a deadline rather than a fixed sleep.
+SETTLE_OBSERVATIONS = 2
+SETTLE_DEADLINE_MS = 9_000
+
+#: Setup failures that retrying or waiting cannot fix.
+HARD_SETUP_FAILURES = ("setup_app_not_stable", "setup_state_loop",
+                       "setup_budget_exhausted", "setup_stale_budget_exhausted",
+                       "weibo_launch_unverified", "setup_unknown_transition")
 
 
 def percentile(values: list[float], fraction: float) -> float:
@@ -108,12 +152,23 @@ class PrimitiveRunner:
         return SetupUnavailable(code, message)
 
     async def ensure_weibo(self) -> dict:
-        """Bind to Weibo using independent app evidence before any steering."""
+        """Bind to Weibo, and wait for a *stable known* surface after a launch.
+
+        A verified launch is not a stable app: the page keeps settling for a
+        moment afterwards, and treating that window as "the FSM failed" used to
+        masquerade as a search-editor failure.
+        """
         observation = await self.harness.observe(mode="FAST")
-        if has_weibo_evidence(observation) and observation.get("actionable"):
+        state = classify_surface(observation)
+        if has_weibo_evidence(observation) and observation.get("actionable") \
+                and state != SURFACE_UNKNOWN:
             return observation
         if not has_weibo_evidence(observation):
-            self.note("foreign or unidentified surface: launching Weibo before measuring")
+            self.note("foreign surface: launching Weibo before measuring")
+        return await self._launch_and_settle()
+
+    async def _launch_and_settle(self) -> dict:
+        """Launch Weibo, then wait for evidence **and** a known surface."""
         result = await self._setup_step(
             selector="launch_weibo",
             locate=lambda obs: {"launch": WEIBO},
@@ -121,81 +176,213 @@ class PrimitiveRunner:
             expected={"bundle": WEIBO}, timeout_ms=15000)
         if result.get("verification_status") != "verified":
             raise self._setup_fail("weibo_launch_unverified", str(result.get("status")))
-        observation = await self.harness.observe(mode="FAST")
-        if not has_weibo_evidence(observation):
-            raise self._setup_fail(
-                "weibo_evidence_missing",
-                "Weibo was launched but the observation carries no Weibo evidence")
-        return observation
+        deadline = time.monotonic() + SETTLE_DEADLINE_MS / 1000
+        for _ in range(3):
+            observation = await self.harness.observe(mode="FAST")
+            if has_weibo_evidence(observation) and classify_surface(observation) \
+                    != SURFACE_UNKNOWN:
+                return observation
+            if time.monotonic() >= deadline:
+                break
+        raise self._setup_fail(
+            "setup_app_not_stable",
+            "Weibo launched but no stable known surface appeared within the deadline")
+
+    async def _settle_surface(self, state_before: str):
+        """Bounded, condition-based wait for the surface to change.
+
+        Observations are the only clock available (each costs ~3-4.5 s), so this
+        waits for "surface != state_before" with a deadline instead of sleeping a
+        fixed amount.
+        """
+        deadline = time.monotonic() + SETTLE_DEADLINE_MS / 1000
+        observation = None
+        for _ in range(SETTLE_OBSERVATIONS):
+            observation = await self.harness.observe(mode="FAST")
+            if classify_surface(observation) != state_before:
+                return observation, classify_surface(observation), True
+            if time.monotonic() >= deadline:
+                break
+        state = classify_surface(observation) if observation else SURFACE_UNKNOWN
+        return observation, state, False
+
+    async def _execute_transition(self, transition: str) -> tuple[str, str | None, bool]:
+        """Perform exactly one transition. Returns (status, error_code, stale?)."""
+        stale_before = self.setup.stale_refusals
+        try:
+            if transition == "launch_weibo":
+                await self._launch_and_settle()
+            elif transition == "back_to_known":
+                await self._setup_step(selector="back_to_known",
+                                       locate=lambda obs: {"back": True},
+                                       action_for=lambda node: {"kind": "back"})
+            elif transition == "open_discover":
+                await self._setup_step(
+                    selector="open_discover",
+                    locate=lambda obs: find_node(obs, text=DISCOVER_TAB),
+                    action_for=lambda node: {"kind": "tap", "target": {"text": DISCOVER_TAB}})
+            elif transition == "open_home":
+                await self._setup_step(
+                    selector="open_home",
+                    locate=lambda obs: find_node(obs, text=TAB_A),
+                    action_for=lambda node: {"kind": "tap", "target": {"text": TAB_A}})
+            elif transition == "open_search":
+                await self._setup_step(
+                    selector="open_search", locate=find_search_bar,
+                    action_for=lambda node: {"kind": "tap",
+                                             "target": {"action_id": node["action_id"]}})
+            elif transition == "focus_editor":
+                await self._setup_step(
+                    selector="focus_editor",
+                    locate=lambda obs: (top_band_inputs(obs) or [None])[0],
+                    action_for=lambda node: {"kind": "tap",
+                                             "target": {"action_id": node["action_id"]}})
+            else:
+                raise SetupUnavailable("setup_unknown_transition", transition)
+        except SetupUnavailable as error:
+            return "refused", error.code, self.setup.stale_refusals > stale_before
+        except HarnessError as error:
+            return "error", error.code, self.setup.stale_refusals > stale_before
+        return "ok", None, self.setup.stale_refusals > stale_before
+
+    def _transition_possible(self, transition: str, observation: dict) -> bool:
+        """Is the locator for this transition present in this observation?"""
+        if transition in ("launch_weibo", "back_to_known"):
+            return True
+        if transition == "open_discover":
+            return find_node(observation, text=DISCOVER_TAB) is not None
+        if transition == "open_home":
+            return find_node(observation, text=TAB_A) is not None
+        if transition == "open_search":
+            return find_search_bar(observation) is not None
+        if transition == "focus_editor":
+            return bool(top_band_inputs(observation))
+        return False
+
+    def _choose_transition(self, allowed: tuple[str, ...], state: str,
+                           observation: dict) -> str | None:
+        """Deterministic choice; None means the locator target is absent."""
+        preferred = {
+            SURFACE_FOREIGN: ("launch_weibo",),
+            SURFACE_UNKNOWN: ("back_to_known", "open_discover"),
+            SURFACE_TABS: ("open_discover",),
+            SURFACE_DISCOVER: ("open_search",),
+            SURFACE_SEARCH: ("focus_editor",),
+            SURFACE_EDITOR: ("back_to_known",),
+        }.get(state, allowed)
+        for transition in preferred:
+            if transition in allowed and self._transition_possible(transition, observation):
+                return transition
+        return None
+
+    async def _drive(self, target: str, transitions: dict) -> dict:
+        """Bounded state machine that drives the app to `target`.
+
+        An action that verifies but leaves the surface unchanged is recorded as
+        `no_progress` and bounded; the machine never repeats the same action in a
+        loop, and it never "fixes" a stuck state by raising `max_actions`.
+        """
+        started = time.monotonic()
+        deadline = started + self.setup_budget.max_elapsed_ms / 1000
+        session = {"steps": 0, "transitions": {}, "no_progress": 0, "outcome": "failed",
+                   "actions_start": self.setup.attempts,
+                   "stale_start": self.setup.stale_refusals}
+        repeats: dict[str, int] = {}
+        last_state: str | None = None
+        no_progress = 0
+
+        def finish(outcome: str, code: str | None = None) -> None:
+            session.update(outcome=outcome,
+                           failure_code=code,
+                           actions=self.setup.attempts - session["actions_start"],
+                           stale_refusals=self.setup.stale_refusals - session["stale_start"],
+                           elapsed_ms=round((time.monotonic() - started) * 1000, 3))
+            self.setup.sessions.append(dict(session))
+            self.setup_actions = self.setup.attempts
+
+        while True:
+            if self.setup.attempts >= self.setup_budget.max_actions:
+                finish("failed", "setup_budget_exhausted")
+                raise self._setup_fail("setup_budget_exhausted",
+                                       "setup action budget exhausted")
+            if time.monotonic() >= deadline:
+                finish("failed", "setup_budget_exhausted")
+                raise self._setup_fail("setup_budget_exhausted", "setup time budget exhausted")
+            observation = await self.harness.observe(mode="FAST")
+            state = classify_surface(observation)
+            if state == target:
+                finish("ok")
+                return observation
+            if state != last_state:
+                # A *new* arrival. Consecutive repeats of the same state are the
+                # no-progress case below, not a loop.
+                repeats[state] = repeats.get(state, 0) + 1
+                if repeats[state] > self.setup_budget.max_same_state_repeats:
+                    finish("failed", "setup_state_loop")
+                    raise self._setup_fail("setup_state_loop",
+                                           f"surface {state} revisited too often")
+                last_state = state
+            allowed = transitions.get(state, ())
+            transition = self._choose_transition(allowed, state, observation)
+            if transition is None:
+                finish("failed", "setup_locator_missing")
+                raise self._setup_fail("setup_locator_missing",
+                                       f"{state}: no locator target for {allowed}")
+            session["steps"] += 1
+            entry = {"step": session["steps"],
+                     "elapsed_ms": round((time.monotonic() - started) * 1000, 1),
+                     "surface_before": state,
+                     "evidence_before": search_editor_evidence(observation),
+                     "transition": transition,
+                     "target_found": True}
+            act_status, error_code, stale = await self._execute_transition(transition)
+            entry.update({"act_status": act_status, "act_error_code": error_code,
+                          "stale_refusal": stale})
+            self.setup.transition_counts[transition] = \
+                self.setup.transition_counts.get(transition, 0) + 1
+            session["transitions"][transition] = session["transitions"].get(transition, 0) + 1
+            observation, state_after, changed = await self._settle_surface(state)
+            entry.update({"surface_after": state_after,
+                          "evidence_after": search_editor_evidence(observation)
+                          if observation else {},
+                          "state_changed": changed,
+                          "progress": bool(changed),
+                          "unexpected_transition": bool(
+                              changed and state_after in transitions
+                              and state_after not in self._expected_targets(transition))})
+            self.setup.trace.append(entry)
+            if state_after == target:
+                finish("ok")
+                return observation
+            if act_status == "refused" and error_code in HARD_SETUP_FAILURES:
+                # Waiting or retrying cannot fix these: stop immediately instead
+                # of burning the rest of the budget.
+                finish("failed", error_code)
+                raise self._setup_fail(error_code,
+                                       f"{transition} failed: {error_code}")
+            if changed:
+                no_progress = 0
+                continue
+            no_progress += 1
+            session["no_progress"] += 1
+            self.setup.no_progress += 1
+            if no_progress > self.setup_budget.max_no_progress:
+                finish("failed", "setup_no_progress")
+                raise self._setup_fail(
+                    "setup_no_progress",
+                    f"{transition} verified but surface stayed {state}")
+
+    @staticmethod
+    def _expected_targets(transition: str) -> tuple[str, ...]:
+        return TRANSITION_TARGETS.get(transition, ())
 
     async def ensure_tabs_page(self) -> dict:
         """Home or Messages, i.e. a page showing the bottom navigation."""
-        deadline = time.monotonic() + self.setup_budget.max_elapsed_ms / 1000
-        while (self.setup.attempts < self.setup_budget.max_actions
-               and time.monotonic() < deadline):
-            observation = await self.ensure_weibo()
-            kind = surface_kind(observation)
-            if kind == "tabs":
-                return observation
-            if kind == "search_editor":
-                await self._setup_step(selector="back_from_search_editor",
-                                       locate=lambda obs: {"back": True},
-                                       action_for=lambda node: {"kind": "back"})
-                continue
-            if kind == "discover" or kind == "unknown":
-                # Known Weibo surface, wrong page: return to the home tab.
-                await self._setup_step(
-                    selector="tap_home_tab",
-                    locate=lambda obs: find_node(obs, text=TAB_A),
-                    action_for=lambda node: {"kind": "tap", "target": {"text": TAB_A}})
-                continue
-        raise SetupUnavailable("tabs_unavailable",
-                               "Weibo main tabs were not reached within the setup budget")
+        return await self._drive(SURFACE_TABS, TABS_FSM)
 
     async def ensure_search_editor(self) -> dict:
-        """Weibo's search editor, reached through the Discover search entry.
-
-        Every step is a bounded setup step. A failure here means the
-        *precondition* could not be established: no primitive was measured.
-        """
-        deadline = time.monotonic() + self.setup_budget.max_elapsed_ms / 1000
-        while (self.setup.attempts < self.setup_budget.max_actions
-               and time.monotonic() < deadline):
-            observation = await self.ensure_weibo()
-            field = editor_input(observation)
-            if field is not None and field.get("focused"):
-                return observation
-            if field is not None:
-                await self._setup_step(
-                    selector="focus_search_editor_field",
-                    locate=editor_input,
-                    action_for=lambda node: {"kind": "tap",
-                                             "target": {"action_id": node["action_id"]}})
-                continue
-            kind = surface_kind(observation)
-            if kind == "discover":
-                if find_search_bar(observation) is None:
-                    raise self._setup_fail(
-                        "search_entry_missing",
-                        "Discover page exposes no unique search entry")
-                await self._setup_step(
-                    selector="open_search_editor",
-                    locate=find_search_bar,
-                    action_for=lambda node: {"kind": "tap",
-                                             "target": {"action_id": node["action_id"]}})
-                continue
-            if kind == "tabs":
-                await self._setup_step(
-                    selector="tap_discover_tab",
-                    locate=lambda obs: find_node(obs, text=DISCOVER_TAB),
-                    action_for=lambda node: {"kind": "tap",
-                                             "target": {"text": DISCOVER_TAB}})
-                continue
-            await self._setup_step(selector="back_to_known_page",
-                                   locate=lambda obs: {"back": True},
-                                   action_for=lambda node: {"kind": "back"})
-        raise SetupUnavailable("search_editor_unavailable",
-                               "Search editor could not be reached within the setup budget")
+        """Weibo's search editor, driven by an explicit bounded state machine."""
+        return await self._drive(SURFACE_EDITOR, SEARCH_EDITOR_FSM)
 
     # -- primitives ---------------------------------------------------------
     async def _launch(self, index: int) -> float:
@@ -454,6 +641,9 @@ class PrimitiveRunner:
                                       for item in summary.values()),
                 "setup_stale_refusals": sum(item["setup"]["stale_refusals"]
                                             for item in summary.values()),
+                "setup_no_progress": sum(item["setup"]["no_progress"]
+                                         for item in summary.values()),
+                "setup_transition_counts": self._merge_transitions(summary),
             },
             "threshold": {"key_primitives_success_rate": 0.99,
                           "required_valid_attempts": self.per_primitive},
@@ -463,6 +653,14 @@ class PrimitiveRunner:
             "notes": self.notes,
             "privacy": "metadata only: no UI text, screenshots, or input values",
         }
+
+    @staticmethod
+    def _merge_transitions(summary: dict) -> dict[str, int]:
+        merged: dict[str, int] = {}
+        for item in summary.values():
+            for name, count in (item.get("setup") or {}).get("transition_counts", {}).items():
+                merged[name] = merged.get(name, 0) + int(count)
+        return merged
 
 
 def evaluate_gate(report: dict, requested: tuple[str, ...]) -> dict:

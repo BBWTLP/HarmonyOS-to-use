@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import math
 import os
 import sys
 import time
@@ -54,11 +55,19 @@ class SetupBudget:
     max_actions: int = 10
     max_elapsed_ms: float = 90_000.0
     max_stale_refusals: int = 6
+    #: Transition-aware bounds. Raising `max_actions` is explicitly *not* the
+    #: fix for a state machine that does not converge: an action that verifies
+    #: but changes nothing, or returning to a state we already left, is bounded
+    #: here instead.
+    max_no_progress: int = 3
+    max_same_state_repeats: int = 2
 
     def as_dict(self) -> dict[str, Any]:
         return {"max_actions": self.max_actions,
                 "max_elapsed_ms": self.max_elapsed_ms,
-                "max_stale_refusals": self.max_stale_refusals}
+                "max_stale_refusals": self.max_stale_refusals,
+                "max_no_progress": self.max_no_progress,
+                "max_same_state_repeats": self.max_same_state_repeats}
 
 
 @dataclass
@@ -74,6 +83,13 @@ class SetupStats:
     failure_codes: list[str] = field(default_factory=list)
     latency_ms: list[float] = field(default_factory=list)
     drift: list[dict[str, Any]] = field(default_factory=list)
+    #: Sanitized per-transition records of the setup state machine.
+    trace: list[dict[str, Any]] = field(default_factory=list)
+    #: One record per setup session (for P50/P95 of actions and elapsed time).
+    sessions: list[dict[str, Any]] = field(default_factory=list)
+    no_progress: int = 0
+    transition_counts: dict[str, int] = field(default_factory=dict)
+    failure_kind: str | None = None
 
     def as_dict(self, budget: SetupBudget) -> dict[str, Any]:
         return {"attempts": self.attempts, "success": self.success,
@@ -81,8 +97,27 @@ class SetupStats:
                 "elapsed_ms": round(self.elapsed_ms, 3),
                 "failure_codes": sorted(set(self.failure_codes)),
                 "failure_code": self.failure_code,
+                "failure_kind": self.failure_kind,
+                "no_progress": self.no_progress,
+                "transition_counts": dict(self.transition_counts),
+                "sessions": self.sessions[-8:],
+                "trace": self.trace[-12:],
                 "target_drift": self.drift[:12],
+                "actions_p50": _percentile([s.get("actions", 0) for s in self.sessions], 0.5),
+                "actions_p95": _percentile([s.get("actions", 0) for s in self.sessions], 0.95),
+                "elapsed_p50_ms": _percentile([s.get("elapsed_ms", 0.0)
+                                               for s in self.sessions], 0.5),
+                "elapsed_p95_ms": _percentile([s.get("elapsed_ms", 0.0)
+                                               for s in self.sessions], 0.95),
                 "budget": budget.as_dict()}
+
+
+def _percentile(values: list[float], fraction: float) -> float:
+    ordered = sorted(float(value) for value in values)
+    if not ordered:
+        return 0.0
+    index = min(len(ordered) - 1, max(0, int(math.ceil(fraction * len(ordered))) - 1))
+    return round(ordered[index], 3)
 
 
 def _structured(result) -> dict[str, Any]:
@@ -564,22 +599,75 @@ def has_weibo_evidence(observation: dict[str, Any]) -> bool:
     return any(item.get("bundle") == WEIBO for item in observation.get("catalog") or [])
 
 
-def surface_kind(observation: dict[str, Any]) -> str:
-    """Coarse page class used to steer navigation without app-private hooks.
+#: Explicit surface states for the setup state machine (RC4-A.1).
+SURFACE_FOREIGN = "foreign"
+SURFACE_TABS = "tabs"
+SURFACE_DISCOVER = "discover"
+SURFACE_SEARCH = "search_surface"
+SURFACE_EDITOR = "search_editor"
+SURFACE_UNKNOWN = "unknown"
+SURFACE_STATES = (SURFACE_FOREIGN, SURFACE_TABS, SURFACE_DISCOVER, SURFACE_SEARCH,
+                  SURFACE_EDITOR, SURFACE_UNKNOWN)
 
-    Returns ``unknown`` unless the observation carries Weibo evidence, so a
-    foreign or unidentified surface can never be steered as a Weibo page.
+BOTTOM_TABS = ("首页", "发现", "消息", "我")
+TOP_BAND_MAX_TOP = 400
+SEARCH_BAR_MAX_TOP = 300
+
+
+def top_band_inputs(observation: dict[str, Any]) -> list[dict[str, Any]]:
+    return [item for item in observation.get("catalog") or []
+            if "input" in str(item.get("type", "")).lower()
+            and (item.get("bounds") or [0, 9999, 0, 0])[1] < TOP_BAND_MAX_TOP]
+
+
+def search_editor_evidence(observation: dict[str, Any]) -> dict[str, Any]:
+    """Several independent signals for "the search editor is up".
+
+    Deliberately multi-source: the acceptance device reports an auto-increment
+    ``accessibilityId`` on this page and its subtree hash moves constantly, so
+    no single volatile field may decide whether the editor was reached.
+    """
+    catalog = observation.get("catalog") or []
+    inputs = top_band_inputs(observation)
+    return {
+        "app": has_weibo_evidence(observation),
+        "field_present": bool(inputs),
+        "single_field": len(inputs) == 1,
+        "field_focused": any(item.get("focused") for item in inputs),
+        "scroll_container": any(item.get("type") in ("List", "Grid", "Scroll")
+                                for item in catalog),
+        "search_role": any("search" in str(item.get("type", "")).lower()
+                           or "search" in str(item.get("resource_id", "")).lower()
+                           for item in catalog),
+    }
+
+
+def classify_surface(observation: dict[str, Any]) -> str:
+    """One of the explicit surface states, from several evidence sources.
+
+    Order matters: an editor is not a discover page even though both live under
+    Weibo, and the discover page still shows the bottom navigation - so the
+    discover check must run before the tabs check.
     """
     if not has_weibo_evidence(observation):
-        return "unknown"
-    if editor_input(observation) is not None:
-        return "search_editor"
+        return SURFACE_FOREIGN
+    evidence = search_editor_evidence(observation)
+    if evidence["single_field"] and (evidence["scroll_container"]
+                                     or evidence["field_focused"]):
+        return SURFACE_EDITOR
     if find_search_bar(observation) is not None:
-        return "discover"
-    for label in ("首页", "发现", "消息", "我"):
-        if find_node(observation, text=label) is not None:
-            return "tabs"
-    return "unknown"
+        return SURFACE_DISCOVER
+    if sum(1 for label in BOTTOM_TABS
+           if find_node(observation, text=label) is not None) >= 2:
+        return SURFACE_TABS
+    if evidence["field_present"] or evidence["search_role"]:
+        return SURFACE_SEARCH
+    return SURFACE_UNKNOWN
+
+
+def surface_kind(observation: dict[str, Any]) -> str:
+    """Backwards-compatible alias for `classify_surface`."""
+    return classify_surface(observation)
 
 
 def require_weibo(observation: dict[str, Any]) -> None:
