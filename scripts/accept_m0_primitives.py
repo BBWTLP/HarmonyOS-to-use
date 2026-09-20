@@ -82,13 +82,15 @@ TRANSITION_TARGETS = {
 }
 
 #: One explicit recovery transition per (state, session) when a transition
-#: verifies but the surface does not move - `no_progress` is bounded by this
-#: rather than by a larger `max_actions`.
+#: verifies but the surface does not move. Preferences are ordered and the first
+#: *possible* one is used: recovery must not leave the app, because `back` from
+#: Weibo's discover page lands on the launcher (observed: FOREIGN right after a
+#: recovery, which then costs a relaunch and the rest of the budget).
 RECOVERY_TRANSITIONS = {
-    SURFACE_DISCOVER: "back_to_known",
-    SURFACE_SEARCH: "back_to_known",
-    SURFACE_TABS: "open_discover",
-    SURFACE_UNKNOWN: "back_to_known",
+    SURFACE_DISCOVER: ("open_home", "back_to_known"),
+    SURFACE_SEARCH: ("back_to_known",),
+    SURFACE_TABS: ("open_discover",),
+    SURFACE_UNKNOWN: ("back_to_known",),
 }
 
 #: How many re-observations a single transition may wait for the surface to
@@ -382,11 +384,14 @@ class PrimitiveRunner:
             session["no_progress"] += 1
             self.setup.no_progress += 1
             if no_progress > self.setup_budget.max_no_progress:
-                recovery = RECOVERY_TRANSITIONS.get(state)
-                if recovery is not None and recovery not in recovery_used:
+                recovery = None
+                if state not in recovery_used:
+                    recovery = next((name for name in RECOVERY_TRANSITIONS.get(state, ())
+                                     if self._transition_possible(name, observation)), None)
+                if recovery is not None:
                     # One declared recovery transition per state and session,
                     # instead of repeating the same action again.
-                    recovery_used.add(recovery)
+                    recovery_used.add(state)
                     session["steps"] += 1
                     entry = {"step": session["steps"],
                              "elapsed_ms": round((time.monotonic() - started) * 1000, 1),
