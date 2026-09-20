@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, Iterable
 
 from .candidates import CandidateSet
-from .decision.providers.decider import MAX_STATE_TOKENS, estimate_tokens
+from .decision.tokens import MAX_STATE_TOKENS, estimate_tokens
 from .contracts import Predicate
 
 #: Facts carried into every decision, in priority order.

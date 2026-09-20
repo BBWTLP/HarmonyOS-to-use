@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from ..tokens import MAX_QUESTIONS, MAX_QUESTION_TOKENS, MAX_STATE_TOKENS, estimate_tokens
 from .base import ProviderCapabilities, ProviderResult, ProviderUnavailable
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8765"
@@ -22,22 +23,16 @@ DEFAULT_REVISION = "7789eb65d5cf519737608e218fa88819bddea0af"
 DEFAULT_TOKEN_FILE = Path("services/decider/.runtime/api-token")
 
 MAX_BODY_BYTES = 65536
-MAX_STATE_TOKENS = 1024
-MAX_QUESTION_TOKENS = 1536
-MAX_QUESTIONS = 4
+
+#: Re-exported for callers that already import the budgets from this module.
+__all__ = ["CircuitBreaker", "DeciderError", "DeciderProvider", "DEFAULT_BASE_URL",
+           "DEFAULT_REVISION", "DEFAULT_TOKEN_FILE", "MAX_BODY_BYTES", "MAX_QUESTIONS",
+           "MAX_QUESTION_TOKENS", "MAX_STATE_TOKENS", "estimate_tokens", "fetch_health",
+           "run_health"]
 
 
 class DeciderError(ProviderUnavailable):
     pass
-
-
-def estimate_tokens(text: str) -> int:
-    """Conservative token estimate: CJK counts ~1 token, other text ~1 per 4 chars."""
-    if not text:
-        return 0
-    cjk = sum(1 for ch in text if "\u3000" <= ch <= "\u9fff" or "\uff00" <= ch <= "\uffef")
-    other = len(text) - cjk
-    return cjk + max(0, other // 3)
 
 
 class CircuitBreaker:
@@ -98,6 +93,15 @@ class DeciderProvider:
             max_questions=MAX_QUESTIONS,
             requires_calibration=True,
         )
+
+    def health_snapshot(self) -> dict[str, Any]:
+        """Local, synchronous health: never performs HTTP and never calls a model."""
+        return {"provider": "decider",
+                "revision": self.revision,
+                "health": "circuit_open" if self.breaker.is_open else "ok",
+                "circuit_open": self.breaker.is_open,
+                "consecutive_failures": self.breaker.failures,
+                "last_failure_code": self.breaker.last_code}
 
     def token(self) -> str:
         if self._token is None:
@@ -194,16 +198,24 @@ class DeciderProvider:
         )
 
     async def _post(self, payload: dict[str, Any]):
+        token = self.token()
         if self._transport is not None:
-            result = self._transport(payload, self.token(), self.timeout_seconds)
-            if hasattr(result, "__await__"):
-                result = await result
+            try:
+                result = self._transport(payload, token, self.timeout_seconds)
+                if hasattr(result, "__await__"):
+                    result = await result
+            except Exception as error:
+                # An injected transport fails like the HTTP path does, so the
+                # failure taxonomy stays the same whichever seam is used.
+                self.breaker.record_failure("transport_error")
+                raise DeciderError("transport_error",
+                                   "Decider transport is unreachable") from error
             return result
         try:
             import httpx2 as httpx
         except ModuleNotFoundError:  # pragma: no cover - fallback for other envs
             import httpx
-        headers = {"Authorization": f"Bearer {self.token()}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             try:
                 response = await client.post(f"{self.base_url}/v1/systemone", json=payload, headers=headers)

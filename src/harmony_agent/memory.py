@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
-from .decision.providers.decider import estimate_tokens
+from .decision.tokens import estimate_tokens
 
 DEFAULT_WINDOW_TOKENS = 3000
 

@@ -14,8 +14,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-from .decision.providers.decider import DeciderProvider, estimate_tokens
+from .decision.providers.base import DecisionProvider
 from .decision.router import evaluate_propositions
+from .decision.tokens import MAX_STATE_TOKENS, estimate_tokens
 
 NONE_LABEL = "none"
 
@@ -109,7 +110,7 @@ def build_choice_question(sample: StateSample) -> dict[str, Any]:
             "criteria": criteria}
 
 
-async def evaluate_with_decider(samples: list[StateSample], provider: DeciderProvider,
+async def evaluate_with_decider(samples: list[StateSample], provider: DecisionProvider,
                                 *, max_samples: int | None = None) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for sample in samples[:max_samples] if max_samples else samples:
@@ -121,7 +122,7 @@ async def evaluate_with_decider(samples: list[StateSample], provider: DeciderPro
                               "criteria": {"true": "状态中的事实支持该命题",
                                            "false": "状态中没有事实支持该命题"}}
         state_text = sample.state_text
-        if estimate_tokens(state_text) > 1024:
+        if estimate_tokens(state_text) > MAX_STATE_TOKENS:
             state_text = state_text[:3072]
         row: dict[str, Any] = {"state_id": sample.state_id, "split": sample.split,
                                "label": sample.label, "tags": sample.tags}

@@ -216,9 +216,25 @@ Runtime 的导航页面指纹仅归一化指定时钟/电量文字、数值 Slid
 ```powershell
 $env:HARMONY_HDC='F:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe'
 $env:HARMONY_AGENT_TOOLS='1'          # 注册 mobile_run_task / task_* / mobile_decide
-$env:HARMONY_AGENT_PROFILE='local_shadow'   # rules_only | local_off | local_shadow | local_canary
+$env:HARMONY_AGENT_PROFILE='local_off'      # rules_only | local_off | local_shadow | local_canary
 $env:HARMONY_AGENT_CALIBRATION='decider-cal-2026-09-20'   # 仅 canary 需要
 .\.venv\Scripts\python.exe -m harmony_runtime.cli serve --state-dir .runtime/agent-state
+```
+
+v3.2 起 `local_off` 是开发默认值：该模式下不 import、不构造、不健康检查任何模型
+提供方，Agent 层只走确定性规则。需要收集影子对照时才切到 `local_shadow`。
+可选提供方（Decider）不可用时，Runtime 与 v1 六工具不受影响；Agent 工具本身在
+宿主构造失败时也会降级为“只提供六工具”，并在 stderr 记录一行原因。需要“宁可失败
+也不静默降级”的部署可设置 `HARMONY_AGENT_REQUIRED=1`。
+
+可选提供方的运维开关（仅 `local_shadow` / `local_canary` 使用）：
+
+```text
+HARMONY_AGENT_FAST_PROVIDER      0/off 表示不构造提供方（默认 auto）
+HARMONY_DECIDER_URL              Decider 服务地址，默认 http://127.0.0.1:8765
+HARMONY_DECIDER_REVISION         固定 revision，默认仓库内钉住值
+HARMONY_DECIDER_TOKEN_FILE       token 文件路径，默认仓库相对路径
+HARMONY_AGENT_PROVIDER_TIMEOUT   单次调用超时秒数，默认 15
 ```
 
 解码器服务与真机验收脚本：
@@ -245,3 +261,19 @@ Set-Location ..\..
 [v3.1 交付现状、剩余开发计划与验收计划](docs/v3.1-progress-and-plan.md)，
 逐任务状态见 [任务状态台账](docs/agent-status.md)，证据索引见
 [2026-09-20 验收目录](docs/acceptance/2026-09-20/README.md)。
+
+v3.2 的离线收敛进度见 [v3.2 进度台账](docs/v3.2/progress.md)、
+[离线基线](docs/v3.2/baseline-offline.md) 与
+[真机待办](docs/v3.2/blocked-device.md)。当前环境没有可用真机，因此所有设备结论
+保持 `blocked_device`，离线证据只标记 `verified_offline`。
+
+v3.2 离线阶段的具体结论：
+
+```text
+观察授权语义      docs/v3.2/observation-cache-semantics.md
+视觉目标权威      docs/v3.2/adr-visual-target-authority.md
+OCR / VLM 适配器  docs/v3.2/visual-providers.md
+风险词表统一      docs/v3.2/risk-taxonomy.md
+离线加固与故障矩阵 docs/v3.2/offline-hardening.md
+M2 30 任务规格    docs/v3.2/m2-benchmark-spec.md（evals/tasks/m2-30.json）
+```

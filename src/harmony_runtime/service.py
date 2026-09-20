@@ -3,6 +3,7 @@ import json
 import os
 import secrets
 import socket
+import sys
 import threading
 from http.client import HTTPException
 from urllib.error import URLError
@@ -51,6 +52,23 @@ def private_directory(root):
     else:
         root.chmod(0o700)
 
+
+def build_host(host_factory, runtime, root):
+    """Build the optional agent host without risking the direct runtime.
+
+    Returns ``(host, error_code)``. A missing host from the factory means the
+    agent tools are simply not enabled, which is not an error. A raising factory
+    means the agent layer is unavailable: the runtime keeps serving v1, unless
+    ``HARMONY_AGENT_REQUIRED`` asks for a fail-fast deployment.
+    """
+    try:
+        return host_factory(runtime, root), None
+    except Exception as error:
+        if os.environ.get("HARMONY_AGENT_REQUIRED") in ("1", "true", "yes"):
+            raise
+        return None, type(error).__name__
+
+
 def serve(root=None, runtime_factory=Runtime, ready=None, request_read_timeout=5, host_factory=None):
     if request_read_timeout <= 0:
         raise ValueError("Request read timeout must be positive")
@@ -59,10 +77,15 @@ def serve(root=None, runtime_factory=Runtime, ready=None, request_read_timeout=5
     with Singleton(root):
         runtime = runtime_factory(root)
         if host_factory is None:
-            from harmony_agent.host import host_from_env
-            host = host_from_env(runtime, root, Path(__file__).resolve().parents[2])
-        else:
-            host = host_factory(runtime, root)
+            def host_factory(runtime, root):
+                from harmony_agent.host import host_from_env
+                return host_from_env(runtime, root, Path(__file__).resolve().parents[2])
+        # The optional agent layer must never be able to take down the direct
+        # runtime: a failed host build degrades to the six v1 tools.
+        host, host_error = build_host(host_factory, runtime, root)
+        if host_error:
+            print(f"harmony-runtime: agent layer unavailable ({host_error});"
+                  " serving the six v1 tools only", file=sys.stderr)
         token = secrets.token_urlsafe(32)
         owners = set()
         guard = threading.Lock()

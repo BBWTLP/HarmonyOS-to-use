@@ -1,6 +1,7 @@
 """Decision router: rules baseline, Decider shadow, calibration-gated execution."""
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -8,12 +9,9 @@ from typing import Any
 from ..candidates import CONTROL_ROUTES, CandidateSet
 from ..contracts import DecisionResult
 from ..state_builder import build_questions, build_state, predicate_propositions
-from .providers.base import ProviderUnavailable
-from .providers.decider import DeciderProvider
+from .factory import PROFILES
+from .providers.base import DecisionProvider, ProviderUnavailable
 from .providers.rules import RulesProvider
-
-#: model_profile values understood by the router.
-PROFILES = ("rules_only", "local_off", "local_shadow", "local_canary")
 
 
 @dataclass
@@ -29,7 +27,8 @@ class Router:
     """Rules decide; the fast provider may only advise unless calibrated."""
 
     def __init__(self, *, rules: RulesProvider | None = None,
-                 decider: DeciderProvider | None = None,
+                 fast_provider: DecisionProvider | None = None,
+                 decider: DecisionProvider | None = None,
                  profile: str = "local_shadow",
                  calibration_version: str | None = None,
                  confidence_threshold: float = 0.0,
@@ -38,20 +37,28 @@ class Router:
         if profile not in PROFILES:
             raise ValueError(f"unknown model profile {profile!r}")
         self.rules = rules or RulesProvider()
-        self.decider = decider
+        # `decider=` is the pre-v3.2 keyword. Both names now mean the same
+        # optional protocol-typed provider, never a concrete adapter.
+        self.fast_provider = fast_provider if fast_provider is not None else decider
         self.profile = profile
         self.calibration_version = calibration_version
         self.confidence_threshold = confidence_threshold
         self.certainty_threshold = certainty_threshold
         self.noul_threshold = noul_threshold
 
+    @property
+    def decider(self) -> DecisionProvider | None:
+        """Deprecated alias for :attr:`fast_provider`."""
+        return self.fast_provider
+
     def fast_path_enabled(self) -> bool:
-        return self.profile in ("local_shadow", "local_canary") and self.decider is not None
+        return (self.profile in ("local_shadow", "local_canary")
+                and self.fast_provider is not None)
 
     def may_execute(self) -> bool:
         """Only a calibrated canary profile may route a model answer to execute."""
         return (self.profile == "local_canary"
-                and self.decider is not None
+                and self.fast_provider is not None
                 and bool(self.calibration_version))
 
     async def decide(self, *, task_id: str, subgoal_id: str, scope_id: str,
@@ -63,7 +70,7 @@ class Router:
         started = time.perf_counter()
         base = await self._rules_decision(task_id, subgoal_id, observation, candidate_set,
                                           controller_epoch, started)
-        if self.profile in ("rules_only", "local_off") or self.decider is None:
+        if self.profile in ("rules_only", "local_off") or self.fast_provider is None:
             base.reason_code = f"profile_{self.profile}"
             return RouterOutcome(decision=base)
 
@@ -84,11 +91,25 @@ class Router:
                    "profile": self.profile}
         epoch = controller_epoch
         try:
-            result = await self.decider.evaluate(context, questions,
-                                                 remaining_model_calls=remaining_model_calls)
+            result = await self.fast_provider.evaluate(
+                context, questions, remaining_model_calls=remaining_model_calls)
         except ProviderUnavailable as error:
             base.reason_code = f"fallback_{error.code}"
             return RouterOutcome(decision=base, fallback_reason=error.code,
+                                 provider_available=False)
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            # A crashing provider must degrade to the deterministic baseline,
+            # never propagate into the runtime or repeat an action.
+            code = f"provider_error:{type(error).__name__}"
+            base.reason_code = "fallback_provider_error"
+            return RouterOutcome(decision=base, fallback_reason=code,
+                                 provider_available=False)
+        if not _is_provider_result(result):
+            # A malformed provider result is a provider failure, not a decision.
+            base.reason_code = "fallback_malformed_result"
+            return RouterOutcome(decision=base, fallback_reason="malformed_result",
                                  provider_available=False)
 
         # The epoch is re-read by the caller immediately before dispatch; a
@@ -183,3 +204,18 @@ def evaluate_propositions(noul: dict[str, float], threshold: float = 0.5) -> dic
         else:
             verdicts[key] = "unknown"
     return verdicts
+
+
+def _is_provider_result(result: Any) -> bool:
+    """True only for the documented ``ProviderResult`` shape.
+
+    A provider is optional infrastructure: an answer that does not carry a
+    registered answer map, a revision or a structured response is treated as a
+    provider failure so the deterministic baseline decides instead.
+    """
+    answer = getattr(result, "answer", None)
+    scores = getattr(result, "native_scores", None)
+    revision = getattr(result, "model_revision", None)
+    return (isinstance(answer, dict) and isinstance(scores, dict)
+            and isinstance(scores.get("answers"), dict)
+            and isinstance(revision, str) and bool(revision))

@@ -149,7 +149,10 @@ class AgentTaskTests(unittest.TestCase):
                                   elapsed_ms=2.0)
 
         provider.evaluate = evaluate
-        self.host.decider = provider
+        # v3.2: the injected provider is the generic fast provider slot; the
+        # `decider` name is only a deprecated read-only alias.
+        self.host.fast_provider = provider
+        self.assertIs(self.host.decider, provider)
         payload = task_payload(
             "m1-shadow",
             [{"id": "editor", "type": "element_present", "target_key": "搜索"}])

@@ -15,8 +15,9 @@ from .artifacts import ArtifactStore, Retention
 from .candidates import CandidateRegistry
 from .checker import ReadOnlyChecker
 from .contracts import Predicate, TaskSubmit
-from .decision.providers.decider import DEFAULT_TOKEN_FILE, CircuitBreaker, DeciderProvider
-from .decision.router import PROFILES, Router
+from .decision.factory import PROFILES, ProviderConfig, config_from_env, resolve_fast_provider
+from .decision.providers.base import DecisionProvider, provider_health
+from .decision.router import Router
 from .grounding import GroundingIntent
 from .memory import Memory
 from .planner import plan_from_task
@@ -24,23 +25,30 @@ from .supervisor import (RuntimeFacade, TaskError, TaskRun, TaskStore, TaskSuper
                          safety_code)
 
 
+#: The development default: rules only, no Decider construction, no model call.
+DEFAULT_PROFILE = "local_off"
+
+
 class AgentHost:
-    def __init__(self, runtime, root: str | Path, *, profile: str = "local_shadow",
+    def __init__(self, runtime, root: str | Path, *, profile: str = DEFAULT_PROFILE,
                  calibration_version: str | None = None,
-                 decider: DeciderProvider | None = None,
+                 fast_provider: DecisionProvider | None = None,
+                 decider: DecisionProvider | None = None,
                  confidence_threshold: float = 0.0,
                  certainty_threshold: float = 0.0,
                  ocr=None, matcher=None, retention: Retention | None = None,
-                 repo_root: str | Path | None = None):
+                 repo_root: str | Path | None = None,
+                 provider_config: ProviderConfig | None = None):
         self.runtime = runtime
         self.root = Path(root)
-        self.profile = profile if profile in PROFILES else "local_shadow"
+        self.profile = profile if profile in PROFILES else DEFAULT_PROFILE
         self.calibration_version = calibration_version
         self.confidence_threshold = confidence_threshold
         self.certainty_threshold = certainty_threshold
         self.repo_root = Path(repo_root) if repo_root else Path.cwd()
-        token_file = self.repo_root / DEFAULT_TOKEN_FILE
-        self.decider = decider or DeciderProvider(token_file=token_file)
+        self.fast_provider, self.provider_name, self.provider_status, self.provider_reason = \
+            self._resolve_provider(fast_provider if fast_provider is not None else decider,
+                                   provider_config)
         self.ocr = ocr
         self.matcher = matcher
         self.store = TaskStore(self.root / "agent-tasks.sqlite3")
@@ -50,9 +58,31 @@ class AgentHost:
         self.checker = ReadOnlyChecker()
         self.started_at = time.time()
 
+    def _resolve_provider(self, explicit: DecisionProvider | None,
+                          provider_config: ProviderConfig | None):
+        """An injected provider wins; otherwise the factory decides, lazily.
+
+        A rules-only profile never reaches the import, so a broken or missing
+        Decider package cannot affect it.
+        """
+        if explicit is not None:
+            return explicit, _provider_label(explicit), "injected", None
+        config = provider_config or config_from_env(self.profile, self.repo_root)
+        build = resolve_fast_provider(self.profile, config)
+        return build.provider, build.provider_name, build.status, build.reason
+
+    @property
+    def decider(self) -> DecisionProvider | None:
+        """Deprecated read-only alias for :attr:`fast_provider`.
+
+        Kept so pre-v3.2 diagnostics and harnesses keep reading a value. Assign
+        ``fast_provider`` instead: a Decider was never the only provider.
+        """
+        return self.fast_provider
+
     # -- router ------------------------------------------------------------
     def _router(self) -> Router:
-        return Router(decider=self.decider, profile=self.profile,
+        return Router(fast_provider=self.fast_provider, profile=self.profile,
                       calibration_version=self.calibration_version,
                       confidence_threshold=self.confidence_threshold,
                       certainty_threshold=self.certainty_threshold)
@@ -182,10 +212,19 @@ class AgentHost:
         return self.artifacts.redacted_export(task_id)
 
     def diagnostics(self, owner: str) -> dict[str, Any]:
+        report = provider_health(self.fast_provider)
         return {"profile": self.profile,
                 "calibration_version": self.calibration_version,
-                "decider_revision": getattr(self.decider, "revision", None),
-                "circuit_open": bool(getattr(getattr(self.decider, "breaker", None), "is_open", False)),
+                # Generic provider view: no concrete adapter internals leak here.
+                "provider_name": self.provider_name,
+                "provider_available": self.fast_provider is not None,
+                "provider_status": self.provider_status,
+                "provider_reason": self.provider_reason,
+                "provider_revision": report.get("revision"),
+                "provider_health": report.get("health"),
+                "circuit_open": bool(report.get("circuit_open")),
+                # Pre-v3.2 key kept so existing diagnostics readers keep working.
+                "decider_revision": report.get("revision"),
                 "inflight_tasks": self.store.inflight(),
                 "artifact_quota": self.artifacts.quota(),
                 "uptime_seconds": round(time.time() - self.started_at, 3)}
@@ -201,7 +240,7 @@ def host_from_env(runtime, root: str | Path, repo_root: str | Path) -> AgentHost
     import os
     if os.environ.get("HARMONY_AGENT_TOOLS") not in ("1", "true", "yes"):
         return None
-    profile = os.environ.get("HARMONY_AGENT_PROFILE", "local_shadow")
+    profile = os.environ.get("HARMONY_AGENT_PROFILE", DEFAULT_PROFILE)
     return AgentHost(runtime, root, profile=profile,
                      calibration_version=os.environ.get("HARMONY_AGENT_CALIBRATION") or None,
                      confidence_threshold=float(os.environ.get("HARMONY_AGENT_MIN_CONFIDENCE", "0")),
@@ -213,6 +252,11 @@ def _placeholder_predicate(observation: dict[str, Any]) -> Predicate:
     """Advisory decisions need a postcondition slot; use the current foreground."""
     return Predicate(id="advisory", type="foreground_is",
                      value=str(observation.get("foreground_bundle") or "unknown"))
+
+
+def _provider_label(provider: DecisionProvider) -> str:
+    """Name a provider through its public surface only."""
+    return str(provider_health(provider).get("provider") or type(provider).__name__)
 
 
 def _shadow_answer(shadow, field: str):

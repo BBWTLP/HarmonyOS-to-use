@@ -8,11 +8,15 @@
 
 **总览与后续排期见 [v3.1 交付现状、剩余开发计划与验收计划](v3.1-progress-and-plan.md)。**
 
+**v3.2 台账见 [v3.2 进度台账](v3.2/progress.md)、[离线基线](v3.2/baseline-offline.md)、
+[真机待办](v3.2/blocked-device.md)。** 本表记录 v3.1 任务编号，v3.2 的
+Phase 0/1/2 已在该台账中标记为 `verified_offline`。
+
 | 任务 | 状态 | 证据 / 说明 |
 |---|---|---|
 | A01 工作树与验收证据索引 | verified | `scripts/evidence_manifest.py`、`docs/acceptance/2026-09-20/baseline-manifest.json`；按文件哈希冻结含未提交变更的工作树 |
 | A02 v1 兼容与 v2 契约定义 | verified | `src/harmony_agent/contracts.py`、`docs/agent-layer.md`；`tests/test_agent_contracts.py` 与 `test_agent_planner.McpToolVisibilityTests` 证明 v1 六工具不变、v2 契约可校验 |
-| A03 可复现测试入口 | verified | `scripts/reproduce.py`；`python -m unittest discover -s tests` 336 项通过 |
+| A03 可复现测试入口 | verified | `scripts/reproduce.py`；`python -m unittest discover -s tests` 于 2026-09-20 实测 **562** 项通过（v3.2 离线阶段开始前为 346 项）；数量随代码变化，以 `.runtime/tests-current.json` 为准 |
 | B01 首个真实 Agent 客户端接入 | implemented | `scripts/agent_harness.py`（真实 MCP stdio 客户端）、`scripts/check_agent_link.py`；真实调用记录见 `docs/acceptance/2026-09-20/agent-client.json`（生成命令见同目录 README） |
 | B02 十个低风险任务与独立判定器 | implemented | `evals/tasks/m1-weibo.json`（10 任务，含中文输入、同名/缺树、返回、应用内跳转）、`scripts/accept_m1_weibo.py` 的程序化判定器 |
 | B03 M1 三十次自主任务验收 | implemented（待单批复跑） | 修复后 batch2 + batch2b 覆盖 30 个 (任务,运行) 组合且 **30/30 成功**、无错误完成声明；因中途一次 worker 隔离分两批完成，单批连续 30 次仍建议复跑 |
