@@ -108,12 +108,15 @@ pip check   clean
 
 ```text
 branch           feat/runtime-foundation
-RC SHA           <提交后填写>
+RC SHA           80e28988c98e4f8cb75c3f4d976d637eaa31c22a
 test count       607（0 failed / 0 error / 0 skip）
 dependency lock  18a991d559cde14ec9d7d2e06dffd4d9140c4ac949ccf7e61b7719e62a126055
 Python           3.11.9
 date/time        2026-09-20（Asia/Shanghai）
 ```
+
+RC 之后的提交只允许是文档（例如把本 SHA 写进交接单）。如出现新的代码提交，
+必须重新执行本 Gate 并给出新的 RC SHA。
 
 ## 9. 剩余风险
 

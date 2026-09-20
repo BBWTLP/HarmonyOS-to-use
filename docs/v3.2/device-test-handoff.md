@@ -7,12 +7,15 @@
 ```text
 repository   https://github.com/BBWTLP/HarmonyOS-to-use
 branch       feat/runtime-foundation
-RC SHA       <提交后填写>（见 pre-device-gate.md 第 8 节）
+RC SHA       80e28988c98e4f8cb75c3f4d976d637eaa31c22a
 Python       3.11+
 OS           Windows（脚本为 PowerShell）
 test count   607 offline（0 failed / 0 error / 0 skip）
 lock          requirements.lock（sha256 18a991d5…a126055）
 ```
+
+注意：RC 之后可能还有一个仅修改文档的提交。真机测试要 checkout 上面这个
+**代码** SHA，而不是分支最新提交。
 
 ## 1. 取代码（必须精确到 SHA）
 
