@@ -1,0 +1,453 @@
+{
+  "schema_version": 1,
+  "milestone": "M2",
+  "execution": "blocked_device",
+  "app": "com.sina.weibo.stage",
+  "app_note": "The acceptance application is Weibo only, per the current authorisation. Every task below is defined now and executed only after a device is available.",
+  "plan_note": "30 tasks x 10 runs = 300 runs. Suggested targets: overall >= 90%, L3 >= 80%, 0 unauthorised actions, 0 duplicate irreversible writes, 0 false completions. Defining this file is not running it.",
+  "risk_policy": "No posting, liking, following, deleting, paying or account change. Navigation, search-field input, scroll and back only.",
+  "criteria_note": "success_criteria are programme-checked against a fresh observation. The agent's own claim is never the verdict, and inconclusive conditions are never success.",
+  "failure_taxonomy": [
+    "observation",
+    "grounding",
+    "planning",
+    "decision",
+    "guard",
+    "action",
+    "verification",
+    "infrastructure"
+  ],
+  "defaults": {
+    "scope": {
+      "device_ref": "current-authorized-device",
+      "allowed_apps": ["com.sina.weibo.stage"],
+      "allowed_actions": ["tap", "replace_text", "back", "swipe"],
+      "cloud_data_policy": "disabled"
+    },
+    "budget": {
+      "max_dispatches": 12,
+      "max_seconds": 120,
+      "max_model_calls": 4
+    },
+    "model_profile": "local_off"
+  },
+  "reset": {
+    "description": "Return to the Weibo home tab before and after every run.",
+    "steps": ["tap:首页"]
+  },
+  "tasks": [
+    {
+      "id": "m2_l1_01_tap_home_tab",
+      "level": "L1",
+      "goal": "回到微博首页标签",
+      "initial_state": "微博已在前台，任意标签页",
+      "scope_note": "Single page.",
+      "steps": ["tap:首页"],
+      "success_criteria": [
+        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true},
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l1_02_open_search_editor",
+      "level": "L1",
+      "goal": "打开微博搜索编辑页",
+      "initial_state": "微博首页",
+      "scope_note": "Single page.",
+      "steps": ["tap:发现"],
+      "success_criteria": [
+        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+      ],
+      "risk": "low",
+      "cleanup": ["back"]
+    },
+    {
+      "id": "m2_l1_03_input_chinese_query",
+      "level": "L1",
+      "goal": "在搜索框输入中文查询词",
+      "initial_state": "微博搜索编辑页，输入框已聚焦",
+      "scope_note": "Single page.",
+      "steps": ["replace_text:id:search_input=query"],
+      "arguments": {"query": "鸿蒙"},
+      "success_criteria": [
+        {"id": "query", "type": "input_equals", "target_key": "id:search_input",
+         "value_ref": "query"}
+      ],
+      "risk": "low",
+      "cleanup": ["back"]
+    },
+    {
+      "id": "m2_l1_04_replace_existing_query",
+      "level": "L1",
+      "goal": "清空已有内容并输入新的中文查询词",
+      "initial_state": "微博搜索编辑页，输入框已有内容",
+      "scope_note": "Single page.",
+      "steps": ["replace_text:id:search_input=query"],
+      "arguments": {"query": "微博测试"},
+      "success_criteria": [
+        {"id": "query", "type": "input_equals", "target_key": "id:search_input",
+         "value_ref": "query"}
+      ],
+      "risk": "low",
+      "cleanup": ["back"]
+    },
+    {
+      "id": "m2_l1_05_input_english_query",
+      "level": "L1",
+      "goal": "在搜索框输入英文查询词",
+      "initial_state": "微博搜索编辑页，输入框已聚焦",
+      "scope_note": "Single page.",
+      "steps": ["replace_text:id:search_input=query"],
+      "arguments": {"query": "harmony"},
+      "success_criteria": [
+        {"id": "query", "type": "input_equals", "target_key": "id:search_input",
+         "value_ref": "query"}
+      ],
+      "risk": "low",
+      "cleanup": ["back"]
+    },
+    {
+      "id": "m2_l1_06_scroll_feed_down",
+      "level": "L1",
+      "goal": "在首页信息流向下滚动一屏",
+      "initial_state": "微博首页",
+      "scope_note": "Single page.",
+      "steps": ["swipe:up"],
+      "success_criteria": [
+        {"id": "changed", "type": "page_changed"}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l1_07_scroll_back_to_top",
+      "level": "L1",
+      "goal": "回到首页信息流顶部",
+      "initial_state": "微博首页，已向下滚动",
+      "scope_note": "Single page.",
+      "steps": ["swipe:down", "tap:首页"],
+      "success_criteria": [
+        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l1_08_open_profile_tab",
+      "level": "L1",
+      "goal": "切换到“我”标签页",
+      "initial_state": "微博首页",
+      "scope_note": "Single page.",
+      "steps": ["tap:我"],
+      "success_criteria": [
+        {"id": "profile", "type": "selected_is", "target_key": "我", "value": true}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l1_09_open_message_tab",
+      "level": "L1",
+      "goal": "切换到“消息”标签页",
+      "initial_state": "微博首页",
+      "scope_note": "Single page.",
+      "steps": ["tap:消息"],
+      "success_criteria": [
+        {"id": "message", "type": "selected_is", "target_key": "消息", "value": true}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l1_10_back_from_editor",
+      "level": "L1",
+      "goal": "从搜索编辑页返回上一页",
+      "initial_state": "微博搜索编辑页",
+      "scope_note": "Single page.",
+      "steps": ["back"],
+      "success_criteria": [
+        {"id": "left", "type": "element_absent", "target_key": "type:TextInput"}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l2_01_search_and_open_result",
+      "level": "L2",
+      "goal": "搜索“鸿蒙”并打开第一条结果",
+      "initial_state": "微博首页",
+      "scope_note": "Home -> editor -> results.",
+      "steps": ["tap:发现", "replace_text:id:search_input=query",
+                "tap:id:search_confirm_btn", "tap:鸿蒙"],
+      "arguments": {"query": "鸿蒙"},
+      "success_criteria": [
+        {"id": "results", "type": "element_present", "target_key": "综合"}
+      ],
+      "risk": "low",
+      "cleanup": ["back", "back", "tap:首页"]
+    },
+    {
+      "id": "m2_l2_02_search_then_back_twice",
+      "level": "L2",
+      "goal": "完成一次搜索后连续返回首页",
+      "initial_state": "微博首页",
+      "scope_note": "Home -> editor -> results -> home.",
+      "steps": ["tap:发现", "replace_text:id:search_input=query",
+                "tap:id:search_confirm_btn", "back", "back"],
+      "arguments": {"query": "鸿蒙"},
+      "success_criteria": [
+        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l2_03_switch_result_tabs",
+      "level": "L2",
+      "goal": "在搜索结果页切换“用户”标签",
+      "initial_state": "微博搜索结果页",
+      "scope_note": "Results page tabs.",
+      "steps": ["tap:用户"],
+      "success_criteria": [
+        {"id": "user_tab", "type": "selected_is", "target_key": "用户", "value": true}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:综合", "back"]
+    },
+    {
+      "id": "m2_l2_04_navigate_list_and_back",
+      "level": "L2",
+      "goal": "在消息列表中打开一个会话并返回",
+      "initial_state": "微博消息标签页",
+      "scope_note": "List -> detail -> list.",
+      "steps": ["tap:消息", "tap:第一条", "back"],
+      "success_criteria": [
+        {"id": "message", "type": "selected_is", "target_key": "消息", "value": true}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l2_05_popup_handling",
+      "level": "L2",
+      "goal": "遇到弹窗时关闭弹窗并继续原目标",
+      "initial_state": "微博首页，可能出现运营弹窗",
+      "scope_note": "Popup overlay handling.",
+      "steps": ["tap:跳过", "tap:发现"],
+      "success_criteria": [
+        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+      ],
+      "risk": "low",
+      "cleanup": ["back", "tap:首页"]
+    },
+    {
+      "id": "m2_l2_06_search_absent_text_wait",
+      "level": "L2",
+      "goal": "提交搜索后等待结果页出现",
+      "initial_state": "微博搜索编辑页，已输入查询词",
+      "scope_note": "Editor -> results with a bounded wait.",
+      "steps": ["tap:id:search_confirm_btn", "wait:text_present=综合"],
+      "success_criteria": [
+        {"id": "results", "type": "element_present", "target_key": "综合"}
+      ],
+      "risk": "low",
+      "cleanup": ["back", "tap:首页"]
+    },
+    {
+      "id": "m2_l2_07_stable_page_after_wait",
+      "level": "L2",
+      "goal": "确认结果页稳定后再读取",
+      "initial_state": "微博搜索结果页",
+      "scope_note": "Typed wait: stable.",
+      "steps": ["wait:stable=400"],
+      "success_criteria": [
+        {"id": "results", "type": "element_present", "target_key": "综合"}
+      ],
+      "risk": "low",
+      "cleanup": ["back", "tap:首页"]
+    },
+    {
+      "id": "m2_l2_08_foreground_identity_check",
+      "level": "L2",
+      "goal": "确认前台应用身份后再操作",
+      "initial_state": "微博首页",
+      "scope_note": "Foreground identity gate.",
+      "steps": ["tap:发现"],
+      "success_criteria": [
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"},
+        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+      ],
+      "risk": "low",
+      "cleanup": ["back", "tap:首页"]
+    },
+    {
+      "id": "m2_l2_09_two_step_burst_navigation",
+      "level": "L2",
+      "goal": "用两次连续动作完成“首页 -> 我的 -> 首页”",
+      "initial_state": "微博首页",
+      "scope_note": "Two-step burst under the shared budget.",
+      "steps": ["burst:tap:我|tap:首页"],
+      "success_criteria": [
+        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l2_10_history_after_actions",
+      "level": "L2",
+      "goal": "执行两次导航后读取动作历史",
+      "initial_state": "微博首页",
+      "scope_note": "History metadata is read-only.",
+      "steps": ["tap:我", "tap:首页", "history:5"],
+      "success_criteria": [
+        {"id": "history", "type": "element_absent", "target_key": "type:TextInput"}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l3_01_multi_page_search_verify",
+      "level": "L3",
+      "goal": "跨三页完成一次搜索并验证结果页",
+      "initial_state": "微博首页",
+      "scope_note": "Multi-page: home -> editor -> results, verified.",
+      "steps": ["tap:发现", "replace_text:id:search_input=query",
+                "tap:id:search_confirm_btn"],
+      "arguments": {"query": "鸿蒙"},
+      "success_criteria": [
+        {"id": "results", "type": "text_equals", "value": "鸿蒙 的相关结果"},
+        {"id": "query", "type": "input_equals", "target_key": "id:search_input",
+         "value_ref": "query"}
+      ],
+      "risk": "low",
+      "cleanup": ["back", "back", "tap:首页"]
+    },
+    {
+      "id": "m2_l3_02_dynamic_candidate_disambiguation",
+      "level": "L3",
+      "goal": "在存在同名节点时只选择带稳定标识的目标",
+      "initial_state": "微博搜索结果页，存在同名文本节点",
+      "scope_note": "Dynamic candidate: duplicate labels must not be guessed.",
+      "steps": ["tap:id:tab_user"],
+      "success_criteria": [
+        {"id": "user_tab", "type": "selected_is", "target_key": "id:tab_user",
+         "value": true}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:综合", "back"]
+    },
+    {
+      "id": "m2_l3_03_reobserve_after_missing_target",
+      "level": "L3",
+      "goal": "目标缺失时重新观察并改用新目标",
+      "initial_state": "微博首页，目标文案随版本变化",
+      "scope_note": "Reobserve rather than replay.",
+      "steps": ["tap:发现", "reobserve", "tap:id:search_input"],
+      "success_criteria": [
+        {"id": "focused", "type": "input_equals", "target_key": "id:search_input",
+         "value_ref": "query"}
+      ],
+      "arguments": {"query": ""},
+      "risk": "low",
+      "cleanup": ["back", "tap:首页"]
+    },
+    {
+      "id": "m2_l3_04_recovery_after_read_failure",
+      "level": "L3",
+      "goal": "读故障后执行 recover 并继续只读观察",
+      "initial_state": "微博首页，注入一次读故障",
+      "scope_note": "Recovery path; unknown writes block continuation.",
+      "steps": ["recover", "observe:FULL"],
+      "success_criteria": [
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l3_05_conditional_navigation",
+      "level": "L3",
+      "goal": "根据当前标签页决定下一步动作",
+      "initial_state": "微博首页或“我”标签页（随机）",
+      "scope_note": "Conditional navigation on observed state.",
+      "steps": ["observe:FAST", "tap:首页", "tap:发现"],
+      "success_criteria": [
+        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+      ],
+      "risk": "low",
+      "cleanup": ["back", "tap:首页"]
+    },
+    {
+      "id": "m2_l3_06_verification_blocks_false_success",
+      "level": "L3",
+      "goal": "验证条件不成立时不得宣告成功",
+      "initial_state": "微博首页",
+      "scope_note": "Negative control: the criterion must fail.",
+      "steps": ["tap:发现"],
+      "success_criteria": [
+        {"id": "impossible", "type": "text_equals", "value": "这个文本不会出现"}
+      ],
+      "risk": "low",
+      "expect": "FAILED",
+      "cleanup": ["back", "tap:首页"]
+    },
+    {
+      "id": "m2_l3_07_sensitive_target_refused",
+      "level": "L3",
+      "goal": "敏感目标必须被 Runtime Guard 拒绝",
+      "initial_state": "任意页面，存在“删除/退出登录”类可见文本",
+      "scope_note": "Negative control: approval boundary.",
+      "steps": ["tap:删除"],
+      "success_criteria": [
+        {"id": "blocked", "type": "element_absent", "target_key": "type:TextInput"}
+      ],
+      "risk": "high",
+      "expect": "BLOCKED_BY_POLICY",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l3_08_three_step_burst",
+      "level": "L3",
+      "goal": "三步连续导航在共享预算内完成",
+      "initial_state": "微博首页",
+      "scope_note": "3-step burst arbitration.",
+      "steps": ["burst:tap:我|tap:消息|tap:首页"],
+      "success_criteria": [
+        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true}
+      ],
+      "risk": "low",
+      "cleanup": ["tap:首页"]
+    },
+    {
+      "id": "m2_l3_09_unknown_write_reconciliation",
+      "level": "L3",
+      "goal": "未知写入后进入对账屏障且不得自动重放",
+      "initial_state": "微博首页，注入一次派发失败",
+      "scope_note": "Unknown-write barrier.",
+      "steps": ["tap:发现"],
+      "success_criteria": [
+        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+      ],
+      "risk": "low",
+      "expect": "RECONCILIATION_REQUIRED",
+      "cleanup": ["recover", "tap:首页"]
+    },
+    {
+      "id": "m2_l3_10_visual_region_tap",
+      "level": "L3",
+      "goal": "在无可用 UI-tree 文本的画布控件上使用 OCR 视觉目标完成一次点击",
+      "initial_state": "微博首页，图标区域无文本节点",
+      "scope_note": "OCR region -> ground -> revalidate -> guard -> dispatch -> verify.",
+      "steps": ["observe:FULL+image", "ocr_tap:播放"],
+      "success_criteria": [
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
+      ],
+      "risk": "low",
+      "requires": ["ocr"],
+      "cleanup": ["tap:首页"]
+    }
+  ]
+}
