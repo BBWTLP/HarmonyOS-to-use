@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-09-19T07:35:08.799365+00:00",
+  "service_pid": 33084,
+  "old_processes_exited_before_start": true,
+  "journal_actions_unchanged": true,
+  "journal_action_count": 250,
+  "recovery_required": false,
+  "catalog_has_new_fields": {
+    "text_observed": true,
+    "hint": true,
+    "description": true,
+    "accessibility_id": true,
+    "host_window_id": true,
+    "hierarchy": true
+  },
+  "source_sha256": {
+    "src/harmony_runtime/runtime.py": "022843b449d6b184386b0f6a1b0724285e3ddfc90ad286cc3c52d0242b62e015",
+    "src/harmony_runtime/observation.py": "a63618d67d239fad17a71e62228d736cf4fac86e8434105a800742f795034d8d",
+    "src/harmony_runtime/device.py": "ddd260885304bdba051af1323214016a4b5dddb590d944c2ff37ec6e7b462981"
+  },
+  "startup_attempts": [
+    {
+      "entrypoint": "harmony_runtime",
+      "status": "failed_before_service_start",
+      "reason": "package_has_no_main"
+    },
+    {
+      "entrypoint": "harmony_runtime.cli",
+      "status": "started"
+    }
+  ],
+  "scope": "Local quiescent stop/start; same journal. Source hashes are local provenance, not service attestation."
+}

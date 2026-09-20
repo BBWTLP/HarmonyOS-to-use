@@ -11,8 +11,9 @@ from .device import HarmonyDevice
 from .device_queue import DeviceQueue
 from .device_worker import ProcessDevice
 from .journal import Journal
-from .observation import canonical, matches, resolve, snapshot
+from .observation import canonical, matches, resolve, snapshot, input_value_matches
 from .visual import encode_image, mark_targets
+from .timing import Timings
 
 
 @dataclass
@@ -33,6 +34,7 @@ class Runtime:
         self.root = Path(state_dir)
         self.root.mkdir(parents=True, exist_ok=True)
         self.journal = Journal(self.root / "journal.sqlite3")
+        self.supports_foreground = getattr(factory, "supports_foreground", False) is True
         self.factory = ProcessDevice if factory is HarmonyDevice else factory
         self.discover = discover or HarmonyDevice.discover
         self.lease_seconds = lease_seconds
@@ -57,14 +59,18 @@ class Runtime:
             raise RuntimeFault("invalid_arguments", "request_id is only supported for action_status or burst_status")
         if operation == "recover":
             return self.recover(owner, session_id)
+        # Device discovery shells out to HDC and may be slow or blocked. It must
+        # never run while holding the runtime lock, or one stuck discovery would
+        # stall every other client's calls.
+        if operation == "open" and (not device_id or device_id == "auto"):
+            devices = self.discover()
+            if len(devices) != 1:
+                raise RuntimeFault("device_selection_required",
+                                   f"Select exactly one device from: {devices}")
+            device_id = devices[0]
         with self.guard:
             if self.stopped: raise RuntimeFault("runtime_stopped", "Runtime is shutting down")
             if operation == "open":
-                if not device_id or device_id == "auto":
-                    devices = self.discover()
-                    if len(devices) != 1:
-                        raise RuntimeFault("device_selection_required", f"Select exactly one device from: {devices}")
-                    device_id = devices[0]
                 for s in self.sessions.values():
                     if s.serial == device_id and (s.expires > time.monotonic() or s.id in self.active):
                         if s.closed: raise RuntimeFault("device_busy", "Closing session still has an in-flight operation")
@@ -101,9 +107,33 @@ class Runtime:
             s = self._session(owner, session_id, allow_paused=True)
             return self.journal.device_history(s.serial, limit, before)
 
+    def cached_observation(self, owner, session_id, observation_id):
+        """Return a live cached observation handle, or None when it is gone.
+
+        Handles are only ever created by observe(); this accessor exists for the
+        service-side agent layer, which must reuse the same authority the guard
+        will check at dispatch time.
+        """
+        with self.guard:
+            s = self._session(owner, session_id)
+            entry = s.observations.get(observation_id)
+            if entry is None or time.monotonic() - entry[0] > 15:
+                return None
+            return entry[1]
+
     def _session_result(self, s):
         unresolved = self.journal.unresolved(s.serial)
-        return {"status":"paused" if s.paused.is_set() else "open", "session_id":s.id, "device_id":s.serial, "lease_remaining_seconds":max(0,round(s.expires-time.monotonic())), "recovery_required":bool(unresolved), "unresolved_actions":unresolved, "incidents":self.journal.incidents(s.serial), "capabilities":{"tree":True,"screenshot":True,"full":True,"som":True,"burst":True,"foreground_bundle":False,"ocr":False,"webview":False,"temporal":True,"temporal_watch":True,"pro":False}}
+        device_state = self._device_state(s.serial)
+        return {"status":"paused" if s.paused.is_set() else "open", "session_id":s.id, "device_id":s.serial, "controller_epoch":s.generation, "device_state":device_state, "worker_quarantined":device_state == "quarantined", "lease_remaining_seconds":max(0,round(s.expires-time.monotonic())), "recovery_required":bool(unresolved), "unresolved_actions":unresolved, "incidents":self.journal.incidents(s.serial), "capabilities":{"tree":True,"screenshot":True,"full":True,"som":True,"burst":True,"foreground_bundle":self.supports_foreground,"ocr":False,"webview":False,"temporal":True,"temporal_watch":True,"grounded_target":True,"pro":False}}
+
+    def _device_state(self, serial):
+        """Expose worker quarantine so a client can recover instead of retrying.
+
+        A quarantined worker is a *transport* state, not an unresolved write, so
+        it is reported separately from `recovery_required`.
+        """
+        device = self.devices.get(serial)
+        return "quarantined" if getattr(device, "quarantined", False) else "ready"
 
     def _session(self, owner, session_id, allow_paused=False):
         with self.guard:
@@ -122,21 +152,22 @@ class Runtime:
                 raise RuntimeFault("cancelled", "Request was cancelled by a session transition")
 
     @contextmanager
-    def _worker(self, owner, s, deadline, generation=None):
+    def _worker(self, owner, s, deadline, generation=None, timing=None):
         if generation is None:
             with self.guard:
                 self._session(owner, s.id)
                 generation = s.generation
         check = lambda: self._check_generation(owner, s, generation)
         lock = self.device_locks[s.serial]
+        timing = timing if timing is not None else Timings()
         remaining = deadline - time.monotonic()
-        if remaining <= 0 or not lock.acquire(timeout=remaining, check=check):
+        if remaining <= 0 or not timing.call("queue", lock.acquire, timeout=remaining, check=check):
             raise RuntimeFault("timeout", "Budget expired in device queue; no action dispatched")
         try:
             with self.guard:
                 check()
                 self.active[s.id] = True
-            device = self._device(s)
+            device = timing.call("worker_setup", self._device, s)
             scope = device.budget(deadline, check) if isinstance(device, ProcessDevice) else nullcontext()
             try:
                 with scope:
@@ -230,24 +261,30 @@ class Runtime:
     def _observe(self, s, include_image=False, mode="FAST", cache=True):
         include_image = include_image or mode == "FULL"
         start = time.monotonic()
+        timing = Timings()
         with self.guard:
             generation = s.generation
         d = self._device(s)
-        self._ready_screen(s)
-        tree = d.tree()
-        obs = snapshot(tree,d.display())
+        timing.call("screen_ready_before", self._ready_screen, s)
+        foreground = timing.call("foreground_before", d.foreground) if self.supports_foreground else None
+        tree = timing.call("tree", d.tree)
+        display = timing.call("display", d.display)
+        obs = timing.call("snapshot", snapshot, tree, display, foreground)
+        obs["controller_epoch"] = generation
         obs["tree_captured_at"] = obs["captured_at"]
         obs["image_captured_at"] = None
         if include_image:
-            image = d.screenshot()
+            image = timing.call("screenshot", d.screenshot)
             obs["image_captured_at"] = time.time()
-            obs["image"] = encode_image(image)
+            obs["image"] = timing.call("encode_image", encode_image, image)
             obs["image_dimensions_match"] = image.size == (obs["display"]["width"], obs["display"]["height"])
             obs["image_tree_skew_ms"]=round((obs["image_captured_at"]-obs["tree_captured_at"])*1000)
             # A short time gap is not evidence that the page stayed unchanged.
             # Bracket the image with hierarchy/display reads; expose uncertainty
             # and never retain an unstable capture as an actionable observation.
-            after = snapshot(d.tree(), d.display())
+            after_tree = timing.call("tree_after", d.tree)
+            after_display = timing.call("display_after", d.display)
+            after = timing.call("snapshot_after", snapshot, after_tree, after_display, foreground)
             obs["image_tree_consistent"] = (
                 obs["fingerprint"] == after["fingerprint"]
                 and 0 <= obs["image_tree_skew_ms"] <= 1000
@@ -256,7 +293,17 @@ class Runtime:
             obs["capture_consistency"] = (
                 "tree_bracket_matched" if obs["image_tree_consistent"] else "unverified"
             )
-        obs["screen_state"] = self._ready_screen(s)
+        final_foreground = timing.call("foreground_after", d.foreground) if self.supports_foreground else None
+        obs["foreground_consistent"] = (
+            foreground == final_foreground
+            and (foreground is None or foreground.get("status") != "unstable")
+        )
+        if not obs["foreground_consistent"]:
+            obs["foreground_bundle"] = None
+            if include_image:
+                obs["image_tree_consistent"] = False
+                obs["capture_consistency"] = "foreground_changed"
+        obs["screen_state"] = timing.call("screen_ready_after", self._ready_screen, s)
         obs["mode"] = mode
         if mode == "FULL":
             obs["tree"] = tree
@@ -264,14 +311,15 @@ class Runtime:
             obs["som"] = {"available": False, "target_count": 0,
                           "reason": "capture_unverified"}
             if obs["image_tree_consistent"]:
-                marked, labels = mark_targets(image, obs["catalog"])
-                obs["annotated_image"] = encode_image(marked)
+                marked, labels = timing.call("annotation", mark_targets, image, obs["catalog"])
+                obs["annotated_image"] = timing.call("encode_annotation", encode_image, marked)
                 obs["som"] = {"available": True, "target_count": len(labels),
                               "observation_id": obs["observation_id"],
                               "labels": labels, "source": "ui_tree"}
+        obs["timing"] = timing.milliseconds()
         obs["capture_ms"]=round((time.monotonic()-start)*1000)
         obs["max_age_ms"]=15000
-        obs["actionable"] = not include_image or obs["image_tree_consistent"]
+        obs["actionable"] = obs["foreground_consistent"] and (not include_image or obs["image_tree_consistent"])
         with self.guard:
             self._check_generation(s.owner, s, generation)
             if cache and obs["actionable"]:
@@ -287,13 +335,17 @@ class Runtime:
         with self.guard:
             s=self._session(owner,session_id)
             generation=s.generation
-        with self._worker(owner, s, time.monotonic()+30, generation) as check:
+        started = time.monotonic()
+        request_timing = Timings()
+        with self._worker(owner, s, started+30, generation, request_timing) as check:
             obs = self._observe(s,include_image,mode)
             check()
             # Return the same observation object held by the session cache.
             # Local callers can therefore not accidentally act on a public
             # response whose page identity differs from the cached handle;
             # remote MCP callers still receive a serialized copy.
+            obs["timing"].update(request_timing.milliseconds())
+            obs["timing"]["request_ms"] = round((time.monotonic()-started)*1000, 3)
             obs["status"] = "ok"
             return obs
 
@@ -349,12 +401,12 @@ class Runtime:
     def _policy(action,target):
         # Initial conservative deny rules; this is not the complete M3 safety gate.
         danger=("支付","付款","转账","购买","下单","删除","卸载","清空","发送","提交","允许","授权","密码","验证码","pay","purchase","delete","send","submit","password","permission")
-        label = " ".join(str(target.get(k,"")) for k in ("text","resource_id","type")) .lower() if target else ""
-        if action.kind in ("tap","long_press","input_text") and any(x in label for x in danger):
+        label = " ".join(str(target.get(k,"")) for k in ("text","hint","description","resource_id","type")) .lower() if target else ""
+        if action.kind in ("tap","long_press","input_text","replace_text") and any(x in label for x in danger):
             raise RuntimeFault("approval_required", "Sensitive target blocked. Trusted approval flow is not implemented in this build.")
-        if action.kind == "input_text" and not target.get("focused"):
+        if action.kind in ("input_text", "replace_text") and not target.get("focused"):
             raise RuntimeFault("focus_required", "Tap the field and observe its focus before input")
-        if action.kind == "input_text" and not any(x in target["type"].lower() for x in ("input","textfield","textarea")):
+        if action.kind in ("input_text", "replace_text") and not any(x in target["type"].lower() for x in ("input","textfield","textarea")):
             raise RuntimeFault("unsupported_capability", "Input requires an explicit text-field target")
 
     def act(self, owner, arguments):
@@ -365,11 +417,13 @@ class Runtime:
             generation=s.generation
         started=time.monotonic()
         deadline=started+req.timeout_ms/1000
-        with self._worker(owner, s, deadline, generation) as check:
-            return self._act_locked(s, req, digest, started, deadline, check)
+        timing = Timings()
+        with self._worker(owner, s, deadline, generation, timing) as check:
+            return self._act_locked(s, req, digest, started, deadline, check, timing)
 
-    def _act_locked(self, s, req, digest, started, deadline, check):
+    def _act_locked(self, s, req, digest, started, deadline, check, timing=None):
         """Single dispatch path; caller owns the FIFO slot and the device budget."""
+        timing = timing if timing is not None else Timings()
         check()
         cached=self.journal.lookup(req.request_id,digest)
         if cached is not None: return {**cached,"deduplicated":True}
@@ -379,7 +433,11 @@ class Runtime:
         if old is None or time.monotonic()-old[0]>15:
             raise RuntimeFault("stale_observation", "Observe again before acting")
         before=old[1]
-        current=self._observe(s)
+        current=timing.call("preflight_observe", self._observe, s)
+        if not current["actionable"]:
+            raise RuntimeFault("stale_observation", "Foreground changed during capture; observe again")
+        if current.get("blocking_dialog") and req.action.kind not in ("back", "home", "launch"):
+            raise RuntimeFault("authentication_required", "System authentication blocks interaction; user action is required")
         # Only known volatile text may move between observation and dispatch.
         # Even back/home must remain bound to the observed page. A targeted
         # action additionally requires its entire target subtree to be unchanged.
@@ -389,7 +447,7 @@ class Runtime:
         if current["fingerprint"] != before["fingerprint"]:
             projection = before.get("navigation_fingerprint")
             same_page = bool(projection) and projection == current.get("navigation_fingerprint")
-            allowed = req.action.kind in ("back", "home", "swipe", "tap", "long_press", "input_text")
+            allowed = req.action.kind in ("back", "home", "swipe", "tap", "long_press", "input_text", "replace_text", "launch")
             if not same_page or not allowed:
                 raise RuntimeFault("stale_observation", "Page changed since the referenced observation")
             if req.action.target is not None:
@@ -399,23 +457,28 @@ class Runtime:
                     raise RuntimeFault("stale_observation", "Target changed since the referenced observation")
         target = target or (resolve(current, req.action.target) if req.action.target else None)
         self._policy(req.action,target)
-        self._ready_screen(s)
+        timing.call("screen_guard", self._ready_screen, s)
         check()
         if time.monotonic()>=deadline: raise RuntimeFault("timeout", "Budget expired before dispatch")
         with self.guard:
             check()
             # Durable dispatch is the cancellation boundary. After it, a write
             # may be in flight and must be reconciled, never blindly replayed.
-            self.journal.begin(req.request_id,digest,s.serial, expected=req.expected.model_dump() if req.expected else None, before_fingerprint=before["fingerprint"])
+            # A generic text/bundle condition cannot reconcile a particular input.
+            recovery_expected = req.expected.model_dump() if req.expected and req.action.kind != "replace_text" else None
+            timing.call("journal_begin", self.journal.begin, req.request_id,digest,s.serial, expected=recovery_expected, before_fingerprint=before["fingerprint"])
         result={"status":"ok","execution_status":"not_dispatched","verification_status":"inconclusive","before_observation_id":req.observation_id,"after_observation_id":None,"timing":{},"evidence_refs":[],"incident_id":None}
         try:
-            self._device(s).dispatch(req.action,target)
+            timing.call("dispatch", self._device(s).dispatch, req.action,target)
             result["execution_status"]="executed"
             s.observations.clear()
         except Exception:
             result.update(status="execution_unknown",execution_status="unknown",incident_id=uuid.uuid4().hex)
             s.observations.clear()
+            result["timing"] = timing.milliseconds()
+            result["timing"]["total_ms"] = round((time.monotonic()-started)*1000, 3)
             return self._finish_action(req.request_id, result)
+        verification_started = time.monotonic()
         try:
             while True:
                 check()
@@ -423,9 +486,13 @@ class Runtime:
                 check()
                 result["after_observation_id"]=after["observation_id"]
                 result["observation"]=after
-                if req.expected and matches(after,req.expected,before["fingerprint"]):
+                if after.get("blocking_dialog"):
+                    result.update(status="authentication_required", incident_id=uuid.uuid4().hex)
+                    break
+                input_ok = req.action.kind != "replace_text" or input_value_matches(after["catalog"], target, req.action.text)
+                if input_ok and (matches(after,req.expected,before["fingerprint"]) if req.expected else req.action.kind == "replace_text"):
                     result["verification_status"]="verified";break
-                if req.expected is None: break
+                if req.expected is None and req.action.kind != "replace_text": break
                 if time.monotonic()>=deadline:
                     result.update(status="timeout",verification_status="inconclusive",incident_id=uuid.uuid4().hex);break
                 s.paused.wait(min(.15,max(0,deadline-time.monotonic())))
@@ -433,7 +500,9 @@ class Runtime:
             result.update(status=e.code,incident_id=uuid.uuid4().hex)
         except Exception:
             result.update(status="device_unavailable",incident_id=uuid.uuid4().hex)
-        result["timing"]["total_ms"]=round((time.monotonic()-started)*1000)
+        result["timing"] = timing.milliseconds()
+        result["timing"]["verification_ms"] = round((time.monotonic()-verification_started)*1000, 3)
+        result["timing"]["total_ms"]=round((time.monotonic()-started)*1000, 3)
         return self._finish_action(req.request_id, result)
 
     def _finish_action(self, request_id, result):
@@ -538,9 +607,8 @@ class Runtime:
             return False
         return True
 
-    @staticmethod
-    def _require_verifiable(expected):
-        if expected is not None and expected.bundle is not None:
+    def _require_verifiable(self, expected):
+        if expected is not None and expected.bundle is not None and not self.supports_foreground:
             raise RuntimeFault("unsupported_capability", "Foreground application identity is not yet verified on this device adapter; bundle postconditions cannot be evaluated. Use observable page evidence instead.")
 
     def wait(self,owner,session_id,expected=None,timeout_ms=5000,poll_ms=200,condition=None):
@@ -553,19 +621,23 @@ class Runtime:
         self._require_verifiable(legacy)
         if legacy and legacy.changed:
             raise RuntimeFault("invalid_arguments", "Use a change condition with a baseline observation_id")
-        if condition and condition.type == "app_changed":
+        if condition and condition.type == "app_changed" and not self.supports_foreground:
             raise RuntimeFault("unsupported_capability", "Foreground application identity is not verified on this adapter")
         deadline=time.monotonic()+timeout_ms/1000
         with self.guard:
             s=self._session(owner,session_id)
             generation=s.generation
         baseline = None
+        baseline_bundle = None
         if condition and condition.observation_id:
             with self.guard:
                 old = s.observations.get(condition.observation_id)
                 if old is None or time.monotonic() - old[0] > 15:
                     raise RuntimeFault("stale_observation", "Wait requires a fresh baseline from this session")
                 baseline = old[1]["fingerprint"]
+                baseline_bundle = old[1].get("foreground_bundle")
+                if condition.type == "app_changed" and not baseline_bundle:
+                    raise RuntimeFault("foreground_unknown", "App change requires a verified baseline application")
         stable_fingerprint = None
         stable_since = None
         samples = 0
@@ -584,6 +656,9 @@ class Runtime:
                 return {"status":"timeout", "observation":obs}
             if time.monotonic() >= deadline:
                 return {"status":"timeout", "observation":obs}
+            if obs.get("blocking_dialog"):
+                return {"status": "authentication_required", "observation": obs,
+                        "evidence": {"source": "system_authentication_ui"}}
             samples += 1
             matched = matches(obs, legacy) if legacy else False
             evidence = {"source": "ui_tree", "samples": samples}
@@ -591,6 +666,9 @@ class Runtime:
                 kind = condition.type
                 if kind in ("change", "fingerprint_changed"):
                     matched = obs["fingerprint"] != baseline
+                elif kind == "app_changed":
+                    matched = bool(obs.get("foreground_bundle")) and obs["foreground_bundle"] != baseline_bundle
+                    evidence["source"] = "system_foreground"
                 elif kind in ("text_present", "text_absent"):
                     present = any(item["text"] == condition.value for item in obs["catalog"])
                     matched = present if kind == "text_present" else not present
@@ -606,7 +684,7 @@ class Runtime:
                     matched = samples >= 2 and elapsed >= condition.stable_ms
                     evidence.update(sampled_unchanged_ms=round(elapsed), continuous_stability_proven=False,
                                     pixel_stability_proven=False)
-            if matched:
+            if matched and obs.get("actionable", False):
                 return {"status":"matched", "observation":obs, "evidence":evidence}
             s.paused.wait(min(poll_ms/1000,max(0,deadline-time.monotonic())))
 

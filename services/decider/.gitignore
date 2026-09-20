@@ -1,0 +1,8 @@
+.venv/
+.cache/
+.tmp/
+.runtime/
+models/
+vendor/
+__pycache__/
+.env

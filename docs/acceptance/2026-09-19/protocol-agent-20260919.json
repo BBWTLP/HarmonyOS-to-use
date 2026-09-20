@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "scope": "device_agent_protocol_execution",
+  "started_at": "2026-09-19T12:57:57.870106+08:00",
+  "phone_operation_verified": false,
+  "acceptance_verified": false,
+  "side_effects": [
+    "may_deploy_or_reuse_the_pinned_local_agent_asset",
+    "may_start_the_device_uitest_daemon",
+    "creates_and_cleans_an_hdc_port_forward",
+    "issues_one_read_only_driver_find_components_rpc"
+  ],
+  "device_count": 1,
+  "predicted": {
+    "abi": "arm64-v8a",
+    "protocol": 2
+  },
+  "actual": {
+    "protocol": 2,
+    "transport": "localabstract:uitest_socket",
+    "session_id_echo": true,
+    "port_forward_established": true,
+    "transport_status": "ok",
+    "rpc_probe": {
+      "top_level_keys": [
+        "pts",
+        "result"
+      ],
+      "top_level_key_count": 2,
+      "status_fields_present": [
+        "result"
+      ],
+      "result_type": "NoneType",
+      "status": "ok",
+      "api": "Driver.findComponents",
+      "phase": "query",
+      "selector_builder": "ok"
+    }
+  },
+  "agent_asset": {
+    "status": "ok",
+    "abi": "arm64-v8a",
+    "predicted_protocol": 2,
+    "name": "agent_v2.so",
+    "sha256": "0fee80fcc748ed6a76978771bc196d8e1c96a8e7025d238b720bf83731ab2403",
+    "scope": "selected_local_packaged_asset_only; device_loaded_hash_not_independently_attested"
+  },
+  "finished_at": "2026-09-19T12:57:58.811990+08:00",
+  "duration_ms": 937.0
+}

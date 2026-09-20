@@ -10,10 +10,23 @@ class Target(Contract):
     action_id: str | None = None
     text: str | None = None
     resource_id: str | None = None
+    # v2 grounded-target handle: issued by the CandidateRegistry, never by a model.
+    target_ref: str | None = Field(default=None, pattern=r"^gt_[0-9a-f]{16,64}$")
+    observation_id: str | None = None
+    local_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
     @model_validator(mode="after")
     def one_selector(self):
-        if sum(v is not None for v in (self.action_id, self.text, self.resource_id)) != 1:
+        legacy = (self.action_id, self.text, self.resource_id)
+        if self.target_ref is not None:
+            if any(value is not None for value in legacy):
+                raise ValueError("Provide either a v1 selector or a v2 target_ref, not both")
+            if self.local_fingerprint is None:
+                raise ValueError("target_ref requires the grounded local_fingerprint")
+            return self
+        if self.local_fingerprint is not None:
+            raise ValueError("local_fingerprint is only valid together with target_ref")
+        if sum(v is not None for v in legacy) != 1:
             raise ValueError("Provide exactly one target selector")
         return self
 
@@ -50,13 +63,15 @@ class WaitCondition(Contract):
             raise ValueError("Change conditions require a baseline observation_id")
         if self.target and self.target.action_id is not None:
             raise ValueError("Wait target must use text or resource_id")
+        if self.target and self.target.target_ref is not None:
+            raise ValueError("Wait target must use text or resource_id")
         if self.type != "stable" and "stable_ms" in self.model_fields_set and self.stable_ms != 300:
             raise ValueError("stable_ms applies only to stable")
         return self
 
 
 class Action(Contract):
-    kind: Literal["tap", "long_press", "swipe", "input_text", "back", "home", "launch"]
+    kind: Literal["tap", "long_press", "swipe", "input_text", "replace_text", "back", "home", "launch"]
     target: Target | None = None
     text: str | None = Field(default=None, max_length=4096)
     bundle: str | None = Field(default=None, pattern=r"^[a-zA-Z][a-zA-Z0-9_.]+$")
@@ -64,12 +79,12 @@ class Action(Contract):
 
     @model_validator(mode="after")
     def valid_arguments(self):
-        required = {"tap": "target", "long_press": "target", "input_text": "target", "launch": "bundle", "swipe": "direction"}
+        required = {"tap": "target", "long_press": "target", "input_text": "target", "replace_text": "target", "launch": "bundle", "swipe": "direction"}
         if self.kind in required and getattr(self, required[self.kind]) is None:
             raise ValueError(f"{self.kind} requires {required[self.kind]}")
-        if self.kind == "input_text" and self.text is None:
-            raise ValueError("input_text requires text")
-        allowed = {"tap": {"target"}, "long_press": {"target"}, "input_text": {"target", "text"}, "launch": {"bundle"}, "swipe": {"direction"}, "home": set(), "back": set()}[self.kind]
+        if self.kind in ("input_text", "replace_text") and self.text is None:
+            raise ValueError(f"{self.kind} requires text")
+        allowed = {"tap": {"target"}, "long_press": {"target"}, "input_text": {"target", "text"}, "replace_text": {"target", "text"}, "launch": {"bundle"}, "swipe": {"direction"}, "home": set(), "back": set()}[self.kind]
         for k in ("target", "text", "bundle", "direction"):
             if getattr(self, k) is not None and k not in allowed:
                 raise ValueError(f"Unexpected argument {k} for {self.kind}")
@@ -95,6 +110,8 @@ class BurstStep(Contract):
         if self.watch_timeout_ms and self.action.target is None:
             raise ValueError("Watch requires a semantic action target")
         if self.action.target and self.action.target.action_id is not None:
+            raise ValueError("Burst targets must use text or resource_id and are resolved anew for each step")
+        if self.action.target and self.action.target.target_ref is not None:
             raise ValueError("Burst targets must use text or resource_id and are resolved anew for each step")
         return self
 

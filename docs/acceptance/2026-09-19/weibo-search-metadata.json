@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "transport": "stdio",
+  "started_at": "2026-09-18T21:10:19.500798+00:00",
+  "runner_sha256": "4fe9b1420b5b0d76f9e0be63f02e59a8693714d99c5560c6880c53ea0506fb47",
+  "scenario": "weibo_search_input_and_result_tabs",
+  "requested_rounds": 1,
+  "status": "failed",
+  "playback_samples": [],
+  "pre_dispatch_refreshes": 3,
+  "steps": [
+    {
+      "step": "launch_weibo",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "foreground_matches": true,
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 6797
+    },
+    {
+      "step": "search_setup_discovery",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "foreground_matches": true,
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 6953
+    }
+  ],
+  "rounds": [],
+  "scope": "same-app semantic navigation; not autonomous planning or release acceptance",
+  "active_step": "open_search",
+  "tool_failure": {
+    "tool": "mobile_act",
+    "code": "stale_observation"
+  },
+  "failure_type": "ExceptionGroup",
+  "failure_code": "mcp_tool_error:mobile_act",
+  "finished_at": "2026-09-18T21:10:52.248191+00:00",
+  "observation_latency": {
+    "count": 6,
+    "p50_ms": 2187,
+    "p95_ms": 2312,
+    "max_ms": 2312
+  },
+  "action_latency": {
+    "count": 2,
+    "p50_ms": 6797,
+    "p95_ms": 6953,
+    "max_ms": 6953
+  }
+}

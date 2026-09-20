@@ -60,7 +60,8 @@ class NavigationTests(unittest.TestCase):
 
     def test_navigation_dispatches_once_and_targeted_tap_survives_known_progress_change(self):
         for action in ({'kind': 'swipe', 'direction': 'up'},
-                       {'kind': 'tap', 'target': {'text': 'Open'}}):
+                       {'kind': 'tap', 'target': {'text': 'Open'}},
+                       {'kind': 'launch', 'bundle': 'com.example.app'}):
             with self.subTest(action=action), tempfile.TemporaryDirectory() as tmp:
                 device = MovingVideo()
                 runtime = Runtime(tmp, factory=lambda _: device, discover=lambda: ['fake'])
@@ -100,7 +101,7 @@ class NavigationTests(unittest.TestCase):
 
 class StaleTargetTests(unittest.TestCase):
     def test_changed_pages_block_all_navigation_before_dispatch(self):
-        for kind in ("back", "home", "swipe", "tap", "long_press"):
+        for kind in ("back", "home", "swipe", "tap", "long_press", "replace_text", "launch"):
             with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:
                 device = MovingVideo()
                 runtime = Runtime(tmp, factory=lambda _: device, discover=lambda: ["fake"])
@@ -110,7 +111,9 @@ class StaleTargetTests(unittest.TestCase):
                     device.title = "Different screen"
                     action = {"kind": kind}
                     if kind == "swipe": action["direction"] = "up"
-                    if kind in ("tap", "long_press"): action["target"] = {"text": "Open"}
+                    if kind == "launch": action["bundle"] = "com.example.app"
+                    if kind in ("tap", "long_press", "replace_text"): action["target"] = {"text": "Open"}
+                    if kind == "replace_text": action["text"] = "replacement"
                     with self.assertRaises(RuntimeFault) as caught:
                         runtime.act("owner", dict(session_id=sid, request_id="stale",
                             observation_id=obs["observation_id"], action=action))

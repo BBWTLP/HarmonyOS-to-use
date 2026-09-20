@@ -1,0 +1,25 @@
+{
+  "tested_at": "2026-09-18T21:08:08.244853+00:00",
+  "runner_sha256": "604e3513c47facd8415dc76ba0214cb92b097d5509367a2277fe2c1172b1df29",
+  "transport": "authenticated_resident_service",
+  "requested_rounds": 1,
+  "status": "failed",
+  "steps": [
+    {
+      "round": 1,
+      "app": "xiaohongshu",
+      "status": "authentication_required",
+      "blocking_code": "authentication_required",
+      "execution_status": "executed",
+      "verification_status": "inconclusive",
+      "foreground_matches": false,
+      "foreground_consistent": true,
+      "actionable": true,
+      "catalog_count": 68,
+      "elapsed_ms": 7093,
+      "pre_dispatch_refreshes": 0,
+      "passed": false
+    }
+  ],
+  "error_code": "authentication_required"
+}

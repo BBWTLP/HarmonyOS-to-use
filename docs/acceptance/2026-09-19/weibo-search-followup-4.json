@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "transport": "service",
+  "started_at": "2026-09-19T06:04:39.252183+00:00",
+  "runner_sha256": "bf614aa772178eb8bea9558dd31379027d0990e5bc63dd9c4cac69af8856be89",
+  "scenario": "weibo_search_input_and_result_tabs",
+  "requested_rounds": 1,
+  "status": "failed",
+  "playback_samples": [],
+  "pre_dispatch_refreshes": 0,
+  "steps": [
+    {
+      "step": "launch_weibo",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "foreground_matches": true,
+      "validation_error": null,
+      "semantic_pass": true,
+      "pre_dispatch_refreshes": 0,
+      "elapsed_ms": 7281
+    }
+  ],
+  "rounds": [],
+  "scope": "same-app semantic navigation; not autonomous planning or release acceptance",
+  "active_step": "input_search_query",
+  "tool_failure": {
+    "tool": "mobile_act",
+    "code": "invalid_arguments"
+  },
+  "failure_type": "ToolFailure",
+  "failure_code": "mcp_tool_error:mobile_act",
+  "finished_at": "2026-09-19T06:04:49.064386+00:00",
+  "observation_latency": {
+    "count": 2,
+    "p50_ms": 2296,
+    "p95_ms": 2422,
+    "max_ms": 2422
+  },
+  "action_latency": {
+    "count": 1,
+    "p50_ms": 7281,
+    "p95_ms": 7281,
+    "max_ms": 7281
+  }
+}

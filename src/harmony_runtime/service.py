@@ -51,13 +51,18 @@ def private_directory(root):
     else:
         root.chmod(0o700)
 
-def serve(root=None, runtime_factory=Runtime, ready=None, request_read_timeout=5):
+def serve(root=None, runtime_factory=Runtime, ready=None, request_read_timeout=5, host_factory=None):
     if request_read_timeout <= 0:
         raise ValueError("Request read timeout must be positive")
     root = Path(root or default_state())
     private_directory(root)
     with Singleton(root):
         runtime = runtime_factory(root)
+        if host_factory is None:
+            from harmony_agent.host import host_from_env
+            host = host_from_env(runtime, root, Path(__file__).resolve().parents[2])
+        else:
+            host = host_factory(runtime, root)
         token = secrets.token_urlsafe(32)
         owners = set()
         guard = threading.Lock()
@@ -106,6 +111,19 @@ def serve(root=None, runtime_factory=Runtime, ready=None, request_read_timeout=5
                         with guard: valid = owner in owners
                         if not valid: raise RuntimeFault("client_invalid", "Reconnect frontend")
                         methods = {"session": runtime.session, "observe": runtime.observe, "act": runtime.act, "burst": runtime.burst, "wait": runtime.wait, "history": runtime.history}
+                        if host is not None:
+                            methods.update({
+                                "agent_run_task": host.run_task,
+                                "agent_task_status": host.task_status,
+                                "agent_task_control": host.task_control,
+                                "agent_task_events": host.task_events,
+                                "agent_task_result": host.task_result,
+                                "agent_decide": host.decide,
+                                "agent_artifacts_index": host.artifacts_index,
+                                "agent_artifacts_sweep": host.artifacts_sweep,
+                                "agent_artifacts_export": host.artifacts_export,
+                                "agent_diagnostics": host.diagnostics,
+                            })
                         if op not in methods: raise RuntimeFault("invalid_arguments", "Unknown method")
                         result = methods[op](owner, **args)
                     response = {"result": result}
@@ -137,6 +155,8 @@ def serve(root=None, runtime_factory=Runtime, ready=None, request_read_timeout=5
             # Cancel active work before server_close joins request threads.
             # Workers must still be able to persist uncertain write outcomes.
             try:
+                if host is not None:
+                    host.close()
                 runtime.close()
             finally:
                 try:

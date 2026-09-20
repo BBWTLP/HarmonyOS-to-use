@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "transport": "stdio",
+  "scope": "MCP client integration smoke; not autonomous planning or M1",
+  "actions_issued": false,
+  "tool_discovery": true,
+  "structured_result": true,
+  "images_decoded": 1,
+  "cancellation_observed": true,
+  "session_paused_after_cancel": true,
+  "status_query_not_found": true,
+  "status": "ok"
+}

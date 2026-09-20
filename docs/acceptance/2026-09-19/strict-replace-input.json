@@ -1,0 +1,32 @@
+{
+  "scenario": "strict_replace_same_focused_field",
+  "steps": [
+    {
+      "expected_text": "鸿蒙",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "status": "ok",
+      "raw_value_observed": true,
+      "raw_text": "鸿蒙",
+      "semantic_verified": true
+    },
+    {
+      "expected_text": "鸿蒙",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "status": "ok",
+      "raw_value_observed": true,
+      "raw_text": "鸿蒙",
+      "semantic_verified": true
+    },
+    {
+      "expected_text": "",
+      "execution_status": "executed",
+      "verification_status": "verified",
+      "status": "ok",
+      "raw_value_observed": true,
+      "raw_text": "",
+      "semantic_verified": true
+    }
+  ]
+}

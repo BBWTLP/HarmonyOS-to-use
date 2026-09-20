@@ -27,6 +27,22 @@ class RuntimeTests(unittest.TestCase):
     def request(self):
         obs=self.runtime.observe("a",self.sid)
         return dict(session_id=self.sid,request_id="r1",observation_id=obs["observation_id"],action={"kind":"tap","target":{"action_id":"n0"}})
+
+    def test_replace_requires_exact_target_value_even_when_expected_text_exists(self):
+        self.device.tree = lambda: {"attributes": {"type": "TextInput", "text": self.device.text, "focused": True, "id": "query", "bounds": "[0,0][100,100]"}, "children": [{"attributes": {"text": "new", "bounds": "[0,0][10,10]"}}]}
+        req = self.request()
+        req.update(action={"kind": "replace_text", "target": {"action_id": "n0"}, "text": "new"}, expected={"text": "new"}, timeout_ms=100)
+        result = self.runtime.act("a", req)
+        self.assertEqual(result["execution_status"], "executed")
+        self.assertNotEqual(result["verification_status"], "verified")
+        self.assertEqual(self.runtime.journal.reconcile_verified("fake", self.runtime.observe("a", self.sid)), [])
+        self.assertEqual(self.runtime.journal.incidents("fake")[0]["status"], "open")
+
+    def test_replace_exact_value_without_expected_is_verified(self):
+        self.device.tree = lambda: {"attributes": {"type": "TextInput", "text": self.device.text, "focused": True, "id": "query", "bounds": "[0,0][100,100]"}}
+        req = self.request()
+        req["action"] = {"kind": "replace_text", "target": {"action_id": "n0"}, "text": "After"}
+        self.assertEqual(self.runtime.act("a", req)["verification_status"], "verified")
     def test_bundle_verification_rejected_before_dispatch(self):
         request = self.request()
         request['action'] = {'kind': 'launch', 'bundle': 'com.example.app'}
@@ -80,10 +96,12 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.device.writes,0)
     def test_input_requires_observed_focus(self):
         from harmony_runtime.contracts import Action
-        action=Action(kind="input_text",target={"action_id":"n0"},text="test")
-        with self.assertRaises(RuntimeFault) as ctx:
-            self.runtime._policy(action,{"type":"TextInput","focused":False})
-        self.assertEqual(ctx.exception.code,"focus_required")
+        for kind in ("input_text", "replace_text"):
+            with self.subTest(kind=kind):
+                action=Action(kind=kind,target={"action_id":"n0"},text="test")
+                with self.assertRaises(RuntimeFault) as ctx:
+                    self.runtime._policy(action,{"type":"TextInput","focused":False})
+                self.assertEqual(ctx.exception.code,"focus_required")
     def test_bundle_in_catalog_does_not_prove_foreground(self):
         from harmony_runtime.observation import matches
         from harmony_runtime.contracts import Expected

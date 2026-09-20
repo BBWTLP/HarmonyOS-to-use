@@ -1,0 +1,444 @@
+{
+  "schema_version": 1,
+  "transport": "stdio_mcp",
+  "mode": "FAST",
+  "include_image": false,
+  "requested_samples": 3,
+  "attempted_samples": 3,
+  "successful_samples": 3,
+  "failed_samples": 0,
+  "unattempted_samples": 0,
+  "status": "ok",
+  "error_counts": {},
+  "percentile_method": "nearest_rank",
+  "thermal_state": "uncontrolled",
+  "service_startup_included": false,
+  "session_setup_included": false,
+  "application_actions_issued": false,
+  "screen_recovery_possible": true,
+  "metrics": {
+    "all_attempts": {
+      "client": {
+        "count": 3,
+        "p50_ms": 2532.0,
+        "p95_ms": 4031.0,
+        "min_ms": 2515.0,
+        "max_ms": 4031.0
+      },
+      "capture": {
+        "count": 3,
+        "p50_ms": 2516,
+        "p95_ms": 3985,
+        "min_ms": 2515,
+        "max_ms": 3985
+      },
+      "phases": {
+        "display_ms": {
+          "count": 3,
+          "p50_ms": 344.0,
+          "p95_ms": 359.0,
+          "min_ms": 328.0,
+          "max_ms": 359.0
+        },
+        "foreground_after_ms": {
+          "count": 3,
+          "p50_ms": 500.0,
+          "p95_ms": 500.0,
+          "min_ms": 422.0,
+          "max_ms": 500.0
+        },
+        "foreground_before_ms": {
+          "count": 3,
+          "p50_ms": 485.0,
+          "p95_ms": 516.0,
+          "min_ms": 406.0,
+          "max_ms": 516.0
+        },
+        "queue_ms": {
+          "count": 3,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 3,
+          "p50_ms": 2516.0,
+          "p95_ms": 3985.0,
+          "min_ms": 2515.0,
+          "max_ms": 3985.0
+        },
+        "screen_ready_after_ms": {
+          "count": 3,
+          "p50_ms": 359.0,
+          "p95_ms": 375.0,
+          "min_ms": 313.0,
+          "max_ms": 375.0
+        },
+        "screen_ready_before_ms": {
+          "count": 3,
+          "p50_ms": 344.0,
+          "p95_ms": 1516.0,
+          "min_ms": 312.0,
+          "max_ms": 1516.0
+        },
+        "snapshot_ms": {
+          "count": 3,
+          "p50_ms": 16.0,
+          "p95_ms": 31.0,
+          "min_ms": 15.0,
+          "max_ms": 31.0
+        },
+        "tree_ms": {
+          "count": 3,
+          "p50_ms": 453.0,
+          "p95_ms": 969.0,
+          "min_ms": 453.0,
+          "max_ms": 969.0
+        },
+        "worker_setup_ms": {
+          "count": 3,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    },
+    "successful": {
+      "client": {
+        "count": 3,
+        "p50_ms": 2532.0,
+        "p95_ms": 4031.0,
+        "min_ms": 2515.0,
+        "max_ms": 4031.0
+      },
+      "capture": {
+        "count": 3,
+        "p50_ms": 2516,
+        "p95_ms": 3985,
+        "min_ms": 2515,
+        "max_ms": 3985
+      },
+      "phases": {
+        "display_ms": {
+          "count": 3,
+          "p50_ms": 344.0,
+          "p95_ms": 359.0,
+          "min_ms": 328.0,
+          "max_ms": 359.0
+        },
+        "foreground_after_ms": {
+          "count": 3,
+          "p50_ms": 500.0,
+          "p95_ms": 500.0,
+          "min_ms": 422.0,
+          "max_ms": 500.0
+        },
+        "foreground_before_ms": {
+          "count": 3,
+          "p50_ms": 485.0,
+          "p95_ms": 516.0,
+          "min_ms": 406.0,
+          "max_ms": 516.0
+        },
+        "queue_ms": {
+          "count": 3,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 3,
+          "p50_ms": 2516.0,
+          "p95_ms": 3985.0,
+          "min_ms": 2515.0,
+          "max_ms": 3985.0
+        },
+        "screen_ready_after_ms": {
+          "count": 3,
+          "p50_ms": 359.0,
+          "p95_ms": 375.0,
+          "min_ms": 313.0,
+          "max_ms": 375.0
+        },
+        "screen_ready_before_ms": {
+          "count": 3,
+          "p50_ms": 344.0,
+          "p95_ms": 1516.0,
+          "min_ms": 312.0,
+          "max_ms": 1516.0
+        },
+        "snapshot_ms": {
+          "count": 3,
+          "p50_ms": 16.0,
+          "p95_ms": 31.0,
+          "min_ms": 15.0,
+          "max_ms": 31.0
+        },
+        "tree_ms": {
+          "count": 3,
+          "p50_ms": 453.0,
+          "p95_ms": 969.0,
+          "min_ms": 453.0,
+          "max_ms": 969.0
+        },
+        "worker_setup_ms": {
+          "count": 3,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    },
+    "first_attempt": {
+      "client": {
+        "count": 1,
+        "p50_ms": 4031.0,
+        "p95_ms": 4031.0,
+        "min_ms": 4031.0,
+        "max_ms": 4031.0
+      },
+      "capture": {
+        "count": 1,
+        "p50_ms": 3985,
+        "p95_ms": 3985,
+        "min_ms": 3985,
+        "max_ms": 3985
+      },
+      "phases": {
+        "display_ms": {
+          "count": 1,
+          "p50_ms": 328.0,
+          "p95_ms": 328.0,
+          "min_ms": 328.0,
+          "max_ms": 328.0
+        },
+        "foreground_after_ms": {
+          "count": 1,
+          "p50_ms": 422.0,
+          "p95_ms": 422.0,
+          "min_ms": 422.0,
+          "max_ms": 422.0
+        },
+        "foreground_before_ms": {
+          "count": 1,
+          "p50_ms": 406.0,
+          "p95_ms": 406.0,
+          "min_ms": 406.0,
+          "max_ms": 406.0
+        },
+        "queue_ms": {
+          "count": 1,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 1,
+          "p50_ms": 3985.0,
+          "p95_ms": 3985.0,
+          "min_ms": 3985.0,
+          "max_ms": 3985.0
+        },
+        "screen_ready_after_ms": {
+          "count": 1,
+          "p50_ms": 313.0,
+          "p95_ms": 313.0,
+          "min_ms": 313.0,
+          "max_ms": 313.0
+        },
+        "screen_ready_before_ms": {
+          "count": 1,
+          "p50_ms": 1516.0,
+          "p95_ms": 1516.0,
+          "min_ms": 1516.0,
+          "max_ms": 1516.0
+        },
+        "snapshot_ms": {
+          "count": 1,
+          "p50_ms": 31.0,
+          "p95_ms": 31.0,
+          "min_ms": 31.0,
+          "max_ms": 31.0
+        },
+        "tree_ms": {
+          "count": 1,
+          "p50_ms": 969.0,
+          "p95_ms": 969.0,
+          "min_ms": 969.0,
+          "max_ms": 969.0
+        },
+        "worker_setup_ms": {
+          "count": 1,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    },
+    "subsequent_attempts": {
+      "client": {
+        "count": 2,
+        "p50_ms": 2515.0,
+        "p95_ms": 2532.0,
+        "min_ms": 2515.0,
+        "max_ms": 2532.0
+      },
+      "capture": {
+        "count": 2,
+        "p50_ms": 2515,
+        "p95_ms": 2516,
+        "min_ms": 2515,
+        "max_ms": 2516
+      },
+      "phases": {
+        "display_ms": {
+          "count": 2,
+          "p50_ms": 344.0,
+          "p95_ms": 359.0,
+          "min_ms": 344.0,
+          "max_ms": 359.0
+        },
+        "foreground_after_ms": {
+          "count": 2,
+          "p50_ms": 500.0,
+          "p95_ms": 500.0,
+          "min_ms": 500.0,
+          "max_ms": 500.0
+        },
+        "foreground_before_ms": {
+          "count": 2,
+          "p50_ms": 485.0,
+          "p95_ms": 516.0,
+          "min_ms": 485.0,
+          "max_ms": 516.0
+        },
+        "queue_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 2,
+          "p50_ms": 2515.0,
+          "p95_ms": 2516.0,
+          "min_ms": 2515.0,
+          "max_ms": 2516.0
+        },
+        "screen_ready_after_ms": {
+          "count": 2,
+          "p50_ms": 359.0,
+          "p95_ms": 375.0,
+          "min_ms": 359.0,
+          "max_ms": 375.0
+        },
+        "screen_ready_before_ms": {
+          "count": 2,
+          "p50_ms": 312.0,
+          "p95_ms": 344.0,
+          "min_ms": 312.0,
+          "max_ms": 344.0
+        },
+        "snapshot_ms": {
+          "count": 2,
+          "p50_ms": 15.0,
+          "p95_ms": 16.0,
+          "min_ms": 15.0,
+          "max_ms": 16.0
+        },
+        "tree_ms": {
+          "count": 2,
+          "p50_ms": 453.0,
+          "p95_ms": 453.0,
+          "min_ms": 453.0,
+          "max_ms": 453.0
+        },
+        "worker_setup_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    }
+  },
+  "samples": [
+    {
+      "index": 1,
+      "status": "ok",
+      "client_ms": 4031.0,
+      "timing": {
+        "screen_ready_before_ms": 1516.0,
+        "foreground_before_ms": 406.0,
+        "tree_ms": 969.0,
+        "display_ms": 328.0,
+        "snapshot_ms": 31.0,
+        "foreground_after_ms": 422.0,
+        "screen_ready_after_ms": 313.0,
+        "queue_ms": 0,
+        "worker_setup_ms": 0,
+        "request_ms": 3985.0
+      },
+      "capture_ms": 3985,
+      "checks": {
+        "actionable": true,
+        "foreground_consistent": true,
+        "image_present": false
+      }
+    },
+    {
+      "index": 2,
+      "status": "ok",
+      "client_ms": 2532.0,
+      "timing": {
+        "screen_ready_before_ms": 344.0,
+        "foreground_before_ms": 485.0,
+        "tree_ms": 453.0,
+        "display_ms": 359.0,
+        "snapshot_ms": 16.0,
+        "foreground_after_ms": 500.0,
+        "screen_ready_after_ms": 359.0,
+        "queue_ms": 0,
+        "worker_setup_ms": 0,
+        "request_ms": 2516.0
+      },
+      "capture_ms": 2516,
+      "checks": {
+        "actionable": true,
+        "foreground_consistent": true,
+        "image_present": false
+      }
+    },
+    {
+      "index": 3,
+      "status": "ok",
+      "client_ms": 2515.0,
+      "timing": {
+        "screen_ready_before_ms": 312.0,
+        "foreground_before_ms": 516.0,
+        "tree_ms": 453.0,
+        "display_ms": 344.0,
+        "snapshot_ms": 15.0,
+        "foreground_after_ms": 500.0,
+        "screen_ready_after_ms": 375.0,
+        "queue_ms": 0,
+        "worker_setup_ms": 0,
+        "request_ms": 2515.0
+      },
+      "capture_ms": 2515,
+      "checks": {
+        "actionable": true,
+        "foreground_consistent": true,
+        "image_present": false
+      }
+    }
+  ]
+}

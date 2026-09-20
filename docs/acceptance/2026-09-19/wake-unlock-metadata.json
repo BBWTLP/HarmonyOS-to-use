@@ -1,0 +1,72 @@
+{
+  "tested_at": "2026-09-18T20:52:47.817198+00:00",
+  "runner_sha256": "974b0b33f21023681e962824665f608acee526d13d4ea0c8cce7847cfe117b7b",
+  "transport": "authenticated_resident_service",
+  "requested_rounds": 3,
+  "rounds": [
+    {
+      "round": 1,
+      "passed": true,
+      "before": {
+        "screen_on": false,
+        "screen_locked": true
+      },
+      "round_trip_ms": 4594,
+      "capture_ms": 4578,
+      "observed_state": {
+        "screen_on": true,
+        "screen_locked": false
+      },
+      "catalog_count": 68,
+      "actionable": true,
+      "observation_received": true,
+      "after": {
+        "screen_on": true,
+        "screen_locked": false
+      }
+    },
+    {
+      "round": 2,
+      "passed": true,
+      "before": {
+        "screen_on": false,
+        "screen_locked": true
+      },
+      "round_trip_ms": 4265,
+      "capture_ms": 4265,
+      "observed_state": {
+        "screen_on": true,
+        "screen_locked": false
+      },
+      "catalog_count": 68,
+      "actionable": true,
+      "observation_received": true,
+      "after": {
+        "screen_on": true,
+        "screen_locked": false
+      }
+    },
+    {
+      "round": 3,
+      "passed": true,
+      "before": {
+        "screen_on": false,
+        "screen_locked": true
+      },
+      "round_trip_ms": 4329,
+      "capture_ms": 4329,
+      "observed_state": {
+        "screen_on": true,
+        "screen_locked": false
+      },
+      "catalog_count": 68,
+      "actionable": true,
+      "observation_received": true,
+      "after": {
+        "screen_on": true,
+        "screen_locked": false
+      }
+    }
+  ],
+  "status": "passed"
+}

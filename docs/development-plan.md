@@ -1,5 +1,7 @@
 # HarmonyOS Mobile Agent Runtime 最终开发计划
 
+> 2026-09-19 补充：本文件保留 v1 历史计划。最新参考为用户提供的 harmonyos-design-v2；系统与首期验收以[用户当前真机](device-baseline.md)为准，不固定为 6.0/6.1。当前实现及 v2 任务映射见[审计记录](project-audit-2026-09-19.md)。
+
 版本：1.0 Final Planning Baseline  
 日期：2026-09-18  
 目标仓库：BBWTLP/HarmonyOS-to-use  

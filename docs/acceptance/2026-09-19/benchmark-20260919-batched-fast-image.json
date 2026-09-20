@@ -1,0 +1,611 @@
+{
+  "schema_version": 1,
+  "transport": "stdio_mcp",
+  "mode": "FAST",
+  "include_image": true,
+  "requested_samples": 3,
+  "attempted_samples": 3,
+  "successful_samples": 2,
+  "failed_samples": 1,
+  "unattempted_samples": 0,
+  "status": "not_ready",
+  "error_counts": {
+    "capture_unverified": 1
+  },
+  "percentile_method": "nearest_rank",
+  "thermal_state": "uncontrolled",
+  "service_startup_included": false,
+  "session_setup_included": false,
+  "application_actions_issued": false,
+  "screen_recovery_possible": true,
+  "metrics": {
+    "all_attempts": {
+      "client": {
+        "count": 3,
+        "p50_ms": 3734.0,
+        "p95_ms": 4234.0,
+        "min_ms": 3344.0,
+        "max_ms": 4234.0
+      },
+      "capture": {
+        "count": 3,
+        "p50_ms": 3687,
+        "p95_ms": 4140,
+        "min_ms": 3250,
+        "max_ms": 4140
+      },
+      "phases": {
+        "display_after_ms": {
+          "count": 3,
+          "p50_ms": 313.0,
+          "p95_ms": 344.0,
+          "min_ms": 282.0,
+          "max_ms": 344.0
+        },
+        "display_ms": {
+          "count": 3,
+          "p50_ms": 297.0,
+          "p95_ms": 375.0,
+          "min_ms": 297.0,
+          "max_ms": 375.0
+        },
+        "encode_image_ms": {
+          "count": 3,
+          "p50_ms": 172.0,
+          "p95_ms": 172.0,
+          "min_ms": 156.0,
+          "max_ms": 172.0
+        },
+        "foreground_after_ms": {
+          "count": 3,
+          "p50_ms": 422.0,
+          "p95_ms": 469.0,
+          "min_ms": 406.0,
+          "max_ms": 469.0
+        },
+        "foreground_before_ms": {
+          "count": 3,
+          "p50_ms": 468.0,
+          "p95_ms": 484.0,
+          "min_ms": 281.0,
+          "max_ms": 484.0
+        },
+        "queue_ms": {
+          "count": 3,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 3,
+          "p50_ms": 3687.0,
+          "p95_ms": 4140.0,
+          "min_ms": 3250.0,
+          "max_ms": 4140.0
+        },
+        "screen_ready_after_ms": {
+          "count": 3,
+          "p50_ms": 312.0,
+          "p95_ms": 359.0,
+          "min_ms": 297.0,
+          "max_ms": 359.0
+        },
+        "screen_ready_before_ms": {
+          "count": 3,
+          "p50_ms": 328.0,
+          "p95_ms": 344.0,
+          "min_ms": 328.0,
+          "max_ms": 344.0
+        },
+        "screenshot_ms": {
+          "count": 3,
+          "p50_ms": 688.0,
+          "p95_ms": 734.0,
+          "min_ms": 578.0,
+          "max_ms": 734.0
+        },
+        "snapshot_after_ms": {
+          "count": 3,
+          "p50_ms": 31.0,
+          "p95_ms": 47.0,
+          "min_ms": 15.0,
+          "max_ms": 47.0
+        },
+        "snapshot_ms": {
+          "count": 3,
+          "p50_ms": 32.0,
+          "p95_ms": 32.0,
+          "min_ms": 31.0,
+          "max_ms": 32.0
+        },
+        "tree_after_ms": {
+          "count": 3,
+          "p50_ms": 328.0,
+          "p95_ms": 406.0,
+          "min_ms": 296.0,
+          "max_ms": 406.0
+        },
+        "tree_ms": {
+          "count": 3,
+          "p50_ms": 344.0,
+          "p95_ms": 406.0,
+          "min_ms": 203.0,
+          "max_ms": 406.0
+        },
+        "worker_setup_ms": {
+          "count": 3,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    },
+    "successful": {
+      "client": {
+        "count": 2,
+        "p50_ms": 3344.0,
+        "p95_ms": 4234.0,
+        "min_ms": 3344.0,
+        "max_ms": 4234.0
+      },
+      "capture": {
+        "count": 2,
+        "p50_ms": 3250,
+        "p95_ms": 4140,
+        "min_ms": 3250,
+        "max_ms": 4140
+      },
+      "phases": {
+        "display_after_ms": {
+          "count": 2,
+          "p50_ms": 282.0,
+          "p95_ms": 344.0,
+          "min_ms": 282.0,
+          "max_ms": 344.0
+        },
+        "display_ms": {
+          "count": 2,
+          "p50_ms": 297.0,
+          "p95_ms": 375.0,
+          "min_ms": 297.0,
+          "max_ms": 375.0
+        },
+        "encode_image_ms": {
+          "count": 2,
+          "p50_ms": 172.0,
+          "p95_ms": 172.0,
+          "min_ms": 172.0,
+          "max_ms": 172.0
+        },
+        "foreground_after_ms": {
+          "count": 2,
+          "p50_ms": 406.0,
+          "p95_ms": 469.0,
+          "min_ms": 406.0,
+          "max_ms": 469.0
+        },
+        "foreground_before_ms": {
+          "count": 2,
+          "p50_ms": 281.0,
+          "p95_ms": 484.0,
+          "min_ms": 281.0,
+          "max_ms": 484.0
+        },
+        "queue_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 2,
+          "p50_ms": 3250.0,
+          "p95_ms": 4140.0,
+          "min_ms": 3250.0,
+          "max_ms": 4140.0
+        },
+        "screen_ready_after_ms": {
+          "count": 2,
+          "p50_ms": 312.0,
+          "p95_ms": 359.0,
+          "min_ms": 312.0,
+          "max_ms": 359.0
+        },
+        "screen_ready_before_ms": {
+          "count": 2,
+          "p50_ms": 328.0,
+          "p95_ms": 344.0,
+          "min_ms": 328.0,
+          "max_ms": 344.0
+        },
+        "screenshot_ms": {
+          "count": 2,
+          "p50_ms": 578.0,
+          "p95_ms": 734.0,
+          "min_ms": 578.0,
+          "max_ms": 734.0
+        },
+        "snapshot_after_ms": {
+          "count": 2,
+          "p50_ms": 31.0,
+          "p95_ms": 47.0,
+          "min_ms": 31.0,
+          "max_ms": 47.0
+        },
+        "snapshot_ms": {
+          "count": 2,
+          "p50_ms": 32.0,
+          "p95_ms": 32.0,
+          "min_ms": 32.0,
+          "max_ms": 32.0
+        },
+        "tree_after_ms": {
+          "count": 2,
+          "p50_ms": 296.0,
+          "p95_ms": 406.0,
+          "min_ms": 296.0,
+          "max_ms": 406.0
+        },
+        "tree_ms": {
+          "count": 2,
+          "p50_ms": 203.0,
+          "p95_ms": 406.0,
+          "min_ms": 203.0,
+          "max_ms": 406.0
+        },
+        "worker_setup_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    },
+    "first_attempt": {
+      "client": {
+        "count": 1,
+        "p50_ms": 3734.0,
+        "p95_ms": 3734.0,
+        "min_ms": 3734.0,
+        "max_ms": 3734.0
+      },
+      "capture": {
+        "count": 1,
+        "p50_ms": 3687,
+        "p95_ms": 3687,
+        "min_ms": 3687,
+        "max_ms": 3687
+      },
+      "phases": {
+        "display_after_ms": {
+          "count": 1,
+          "p50_ms": 313.0,
+          "p95_ms": 313.0,
+          "min_ms": 313.0,
+          "max_ms": 313.0
+        },
+        "display_ms": {
+          "count": 1,
+          "p50_ms": 297.0,
+          "p95_ms": 297.0,
+          "min_ms": 297.0,
+          "max_ms": 297.0
+        },
+        "encode_image_ms": {
+          "count": 1,
+          "p50_ms": 156.0,
+          "p95_ms": 156.0,
+          "min_ms": 156.0,
+          "max_ms": 156.0
+        },
+        "foreground_after_ms": {
+          "count": 1,
+          "p50_ms": 422.0,
+          "p95_ms": 422.0,
+          "min_ms": 422.0,
+          "max_ms": 422.0
+        },
+        "foreground_before_ms": {
+          "count": 1,
+          "p50_ms": 468.0,
+          "p95_ms": 468.0,
+          "min_ms": 468.0,
+          "max_ms": 468.0
+        },
+        "queue_ms": {
+          "count": 1,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 1,
+          "p50_ms": 3687.0,
+          "p95_ms": 3687.0,
+          "min_ms": 3687.0,
+          "max_ms": 3687.0
+        },
+        "screen_ready_after_ms": {
+          "count": 1,
+          "p50_ms": 297.0,
+          "p95_ms": 297.0,
+          "min_ms": 297.0,
+          "max_ms": 297.0
+        },
+        "screen_ready_before_ms": {
+          "count": 1,
+          "p50_ms": 328.0,
+          "p95_ms": 328.0,
+          "min_ms": 328.0,
+          "max_ms": 328.0
+        },
+        "screenshot_ms": {
+          "count": 1,
+          "p50_ms": 688.0,
+          "p95_ms": 688.0,
+          "min_ms": 688.0,
+          "max_ms": 688.0
+        },
+        "snapshot_after_ms": {
+          "count": 1,
+          "p50_ms": 15.0,
+          "p95_ms": 15.0,
+          "min_ms": 15.0,
+          "max_ms": 15.0
+        },
+        "snapshot_ms": {
+          "count": 1,
+          "p50_ms": 31.0,
+          "p95_ms": 31.0,
+          "min_ms": 31.0,
+          "max_ms": 31.0
+        },
+        "tree_after_ms": {
+          "count": 1,
+          "p50_ms": 328.0,
+          "p95_ms": 328.0,
+          "min_ms": 328.0,
+          "max_ms": 328.0
+        },
+        "tree_ms": {
+          "count": 1,
+          "p50_ms": 344.0,
+          "p95_ms": 344.0,
+          "min_ms": 344.0,
+          "max_ms": 344.0
+        },
+        "worker_setup_ms": {
+          "count": 1,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    },
+    "subsequent_attempts": {
+      "client": {
+        "count": 2,
+        "p50_ms": 3344.0,
+        "p95_ms": 4234.0,
+        "min_ms": 3344.0,
+        "max_ms": 4234.0
+      },
+      "capture": {
+        "count": 2,
+        "p50_ms": 3250,
+        "p95_ms": 4140,
+        "min_ms": 3250,
+        "max_ms": 4140
+      },
+      "phases": {
+        "display_after_ms": {
+          "count": 2,
+          "p50_ms": 282.0,
+          "p95_ms": 344.0,
+          "min_ms": 282.0,
+          "max_ms": 344.0
+        },
+        "display_ms": {
+          "count": 2,
+          "p50_ms": 297.0,
+          "p95_ms": 375.0,
+          "min_ms": 297.0,
+          "max_ms": 375.0
+        },
+        "encode_image_ms": {
+          "count": 2,
+          "p50_ms": 172.0,
+          "p95_ms": 172.0,
+          "min_ms": 172.0,
+          "max_ms": 172.0
+        },
+        "foreground_after_ms": {
+          "count": 2,
+          "p50_ms": 406.0,
+          "p95_ms": 469.0,
+          "min_ms": 406.0,
+          "max_ms": 469.0
+        },
+        "foreground_before_ms": {
+          "count": 2,
+          "p50_ms": 281.0,
+          "p95_ms": 484.0,
+          "min_ms": 281.0,
+          "max_ms": 484.0
+        },
+        "queue_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 2,
+          "p50_ms": 3250.0,
+          "p95_ms": 4140.0,
+          "min_ms": 3250.0,
+          "max_ms": 4140.0
+        },
+        "screen_ready_after_ms": {
+          "count": 2,
+          "p50_ms": 312.0,
+          "p95_ms": 359.0,
+          "min_ms": 312.0,
+          "max_ms": 359.0
+        },
+        "screen_ready_before_ms": {
+          "count": 2,
+          "p50_ms": 328.0,
+          "p95_ms": 344.0,
+          "min_ms": 328.0,
+          "max_ms": 344.0
+        },
+        "screenshot_ms": {
+          "count": 2,
+          "p50_ms": 578.0,
+          "p95_ms": 734.0,
+          "min_ms": 578.0,
+          "max_ms": 734.0
+        },
+        "snapshot_after_ms": {
+          "count": 2,
+          "p50_ms": 31.0,
+          "p95_ms": 47.0,
+          "min_ms": 31.0,
+          "max_ms": 47.0
+        },
+        "snapshot_ms": {
+          "count": 2,
+          "p50_ms": 32.0,
+          "p95_ms": 32.0,
+          "min_ms": 32.0,
+          "max_ms": 32.0
+        },
+        "tree_after_ms": {
+          "count": 2,
+          "p50_ms": 296.0,
+          "p95_ms": 406.0,
+          "min_ms": 296.0,
+          "max_ms": 406.0
+        },
+        "tree_ms": {
+          "count": 2,
+          "p50_ms": 203.0,
+          "p95_ms": 406.0,
+          "min_ms": 203.0,
+          "max_ms": 406.0
+        },
+        "worker_setup_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    }
+  },
+  "samples": [
+    {
+      "index": 1,
+      "status": "not_ready",
+      "client_ms": 3734.0,
+      "timing": {
+        "screen_ready_before_ms": 328.0,
+        "foreground_before_ms": 468.0,
+        "tree_ms": 344.0,
+        "display_ms": 297.0,
+        "snapshot_ms": 31.0,
+        "screenshot_ms": 688.0,
+        "encode_image_ms": 156.0,
+        "tree_after_ms": 328.0,
+        "display_after_ms": 313.0,
+        "snapshot_after_ms": 15.0,
+        "foreground_after_ms": 422.0,
+        "screen_ready_after_ms": 297.0,
+        "queue_ms": 0,
+        "worker_setup_ms": 0,
+        "request_ms": 3687.0
+      },
+      "capture_ms": 3687,
+      "checks": {
+        "actionable": false,
+        "foreground_consistent": true,
+        "image_tree_consistent": false,
+        "image_dimensions_match": true,
+        "image_present": true
+      },
+      "image_tree_skew_ms": 695,
+      "error_code": "capture_unverified"
+    },
+    {
+      "index": 2,
+      "status": "ok",
+      "client_ms": 4234.0,
+      "timing": {
+        "screen_ready_before_ms": 328.0,
+        "foreground_before_ms": 484.0,
+        "tree_ms": 406.0,
+        "display_ms": 375.0,
+        "snapshot_ms": 32.0,
+        "screenshot_ms": 734.0,
+        "encode_image_ms": 172.0,
+        "tree_after_ms": 406.0,
+        "display_after_ms": 344.0,
+        "snapshot_after_ms": 31.0,
+        "foreground_after_ms": 469.0,
+        "screen_ready_after_ms": 359.0,
+        "queue_ms": 0,
+        "worker_setup_ms": 0,
+        "request_ms": 4140.0
+      },
+      "capture_ms": 4140,
+      "checks": {
+        "actionable": true,
+        "foreground_consistent": true,
+        "image_tree_consistent": true,
+        "image_dimensions_match": true,
+        "image_present": true
+      },
+      "image_tree_skew_ms": 743
+    },
+    {
+      "index": 3,
+      "status": "ok",
+      "client_ms": 3344.0,
+      "timing": {
+        "screen_ready_before_ms": 344.0,
+        "foreground_before_ms": 281.0,
+        "tree_ms": 203.0,
+        "display_ms": 297.0,
+        "snapshot_ms": 32.0,
+        "screenshot_ms": 578.0,
+        "encode_image_ms": 172.0,
+        "tree_after_ms": 296.0,
+        "display_after_ms": 282.0,
+        "snapshot_after_ms": 47.0,
+        "foreground_after_ms": 406.0,
+        "screen_ready_after_ms": 312.0,
+        "queue_ms": 0,
+        "worker_setup_ms": 0,
+        "request_ms": 3250.0
+      },
+      "capture_ms": 3250,
+      "checks": {
+        "actionable": true,
+        "foreground_consistent": true,
+        "image_tree_consistent": true,
+        "image_dimensions_match": true,
+        "image_present": true
+      },
+      "image_tree_skew_ms": 578
+    }
+  ]
+}

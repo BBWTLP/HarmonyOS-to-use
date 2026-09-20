@@ -1,0 +1,674 @@
+{
+  "schema_version": 1,
+  "transport": "stdio_mcp",
+  "mode": "FULL",
+  "include_image": true,
+  "requested_samples": 3,
+  "attempted_samples": 3,
+  "successful_samples": 2,
+  "failed_samples": 1,
+  "unattempted_samples": 0,
+  "status": "not_ready",
+  "error_counts": {
+    "capture_unverified": 1
+  },
+  "percentile_method": "nearest_rank",
+  "thermal_state": "uncontrolled",
+  "service_startup_included": false,
+  "session_setup_included": false,
+  "application_actions_issued": false,
+  "screen_recovery_possible": true,
+  "metrics": {
+    "all_attempts": {
+      "client": {
+        "count": 3,
+        "p50_ms": 4484.0,
+        "p95_ms": 4532.0,
+        "min_ms": 3969.0,
+        "max_ms": 4532.0
+      },
+      "capture": {
+        "count": 3,
+        "p50_ms": 4265,
+        "p95_ms": 4281,
+        "min_ms": 3844,
+        "max_ms": 4281
+      },
+      "phases": {
+        "annotation_ms": {
+          "count": 2,
+          "p50_ms": 16.0,
+          "p95_ms": 16.0,
+          "min_ms": 16.0,
+          "max_ms": 16.0
+        },
+        "display_after_ms": {
+          "count": 3,
+          "p50_ms": 360.0,
+          "p95_ms": 391.0,
+          "min_ms": 359.0,
+          "max_ms": 391.0
+        },
+        "display_ms": {
+          "count": 3,
+          "p50_ms": 375.0,
+          "p95_ms": 375.0,
+          "min_ms": 360.0,
+          "max_ms": 375.0
+        },
+        "encode_annotation_ms": {
+          "count": 2,
+          "p50_ms": 109.0,
+          "p95_ms": 140.0,
+          "min_ms": 109.0,
+          "max_ms": 140.0
+        },
+        "encode_image_ms": {
+          "count": 3,
+          "p50_ms": 156.0,
+          "p95_ms": 157.0,
+          "min_ms": 94.0,
+          "max_ms": 157.0
+        },
+        "foreground_after_ms": {
+          "count": 3,
+          "p50_ms": 516.0,
+          "p95_ms": 531.0,
+          "min_ms": 484.0,
+          "max_ms": 531.0
+        },
+        "foreground_before_ms": {
+          "count": 3,
+          "p50_ms": 468.0,
+          "p95_ms": 547.0,
+          "min_ms": 422.0,
+          "max_ms": 547.0
+        },
+        "queue_ms": {
+          "count": 3,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 3,
+          "p50_ms": 4265.0,
+          "p95_ms": 4281.0,
+          "min_ms": 3844.0,
+          "max_ms": 4281.0
+        },
+        "screen_ready_after_ms": {
+          "count": 3,
+          "p50_ms": 359.0,
+          "p95_ms": 391.0,
+          "min_ms": 297.0,
+          "max_ms": 391.0
+        },
+        "screen_ready_before_ms": {
+          "count": 3,
+          "p50_ms": 297.0,
+          "p95_ms": 328.0,
+          "min_ms": 250.0,
+          "max_ms": 328.0
+        },
+        "screenshot_ms": {
+          "count": 3,
+          "p50_ms": 656.0,
+          "p95_ms": 735.0,
+          "min_ms": 609.0,
+          "max_ms": 735.0
+        },
+        "snapshot_after_ms": {
+          "count": 3,
+          "p50_ms": 47.0,
+          "p95_ms": 47.0,
+          "min_ms": 31.0,
+          "max_ms": 47.0
+        },
+        "snapshot_ms": {
+          "count": 3,
+          "p50_ms": 31.0,
+          "p95_ms": 47.0,
+          "min_ms": 16.0,
+          "max_ms": 47.0
+        },
+        "tree_after_ms": {
+          "count": 3,
+          "p50_ms": 390.0,
+          "p95_ms": 422.0,
+          "min_ms": 375.0,
+          "max_ms": 422.0
+        },
+        "tree_ms": {
+          "count": 3,
+          "p50_ms": 422.0,
+          "p95_ms": 437.0,
+          "min_ms": 312.0,
+          "max_ms": 437.0
+        },
+        "worker_setup_ms": {
+          "count": 3,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    },
+    "successful": {
+      "client": {
+        "count": 2,
+        "p50_ms": 4484.0,
+        "p95_ms": 4532.0,
+        "min_ms": 4484.0,
+        "max_ms": 4532.0
+      },
+      "capture": {
+        "count": 2,
+        "p50_ms": 4265,
+        "p95_ms": 4281,
+        "min_ms": 4265,
+        "max_ms": 4281
+      },
+      "phases": {
+        "annotation_ms": {
+          "count": 2,
+          "p50_ms": 16.0,
+          "p95_ms": 16.0,
+          "min_ms": 16.0,
+          "max_ms": 16.0
+        },
+        "display_after_ms": {
+          "count": 2,
+          "p50_ms": 360.0,
+          "p95_ms": 391.0,
+          "min_ms": 360.0,
+          "max_ms": 391.0
+        },
+        "display_ms": {
+          "count": 2,
+          "p50_ms": 375.0,
+          "p95_ms": 375.0,
+          "min_ms": 375.0,
+          "max_ms": 375.0
+        },
+        "encode_annotation_ms": {
+          "count": 2,
+          "p50_ms": 109.0,
+          "p95_ms": 140.0,
+          "min_ms": 109.0,
+          "max_ms": 140.0
+        },
+        "encode_image_ms": {
+          "count": 2,
+          "p50_ms": 94.0,
+          "p95_ms": 156.0,
+          "min_ms": 94.0,
+          "max_ms": 156.0
+        },
+        "foreground_after_ms": {
+          "count": 2,
+          "p50_ms": 516.0,
+          "p95_ms": 531.0,
+          "min_ms": 516.0,
+          "max_ms": 531.0
+        },
+        "foreground_before_ms": {
+          "count": 2,
+          "p50_ms": 468.0,
+          "p95_ms": 547.0,
+          "min_ms": 468.0,
+          "max_ms": 547.0
+        },
+        "queue_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 2,
+          "p50_ms": 4265.0,
+          "p95_ms": 4281.0,
+          "min_ms": 4265.0,
+          "max_ms": 4281.0
+        },
+        "screen_ready_after_ms": {
+          "count": 2,
+          "p50_ms": 297.0,
+          "p95_ms": 359.0,
+          "min_ms": 297.0,
+          "max_ms": 359.0
+        },
+        "screen_ready_before_ms": {
+          "count": 2,
+          "p50_ms": 250.0,
+          "p95_ms": 328.0,
+          "min_ms": 250.0,
+          "max_ms": 328.0
+        },
+        "screenshot_ms": {
+          "count": 2,
+          "p50_ms": 656.0,
+          "p95_ms": 735.0,
+          "min_ms": 656.0,
+          "max_ms": 735.0
+        },
+        "snapshot_after_ms": {
+          "count": 2,
+          "p50_ms": 31.0,
+          "p95_ms": 47.0,
+          "min_ms": 31.0,
+          "max_ms": 47.0
+        },
+        "snapshot_ms": {
+          "count": 2,
+          "p50_ms": 16.0,
+          "p95_ms": 47.0,
+          "min_ms": 16.0,
+          "max_ms": 47.0
+        },
+        "tree_after_ms": {
+          "count": 2,
+          "p50_ms": 390.0,
+          "p95_ms": 422.0,
+          "min_ms": 390.0,
+          "max_ms": 422.0
+        },
+        "tree_ms": {
+          "count": 2,
+          "p50_ms": 422.0,
+          "p95_ms": 437.0,
+          "min_ms": 422.0,
+          "max_ms": 437.0
+        },
+        "worker_setup_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    },
+    "first_attempt": {
+      "client": {
+        "count": 1,
+        "p50_ms": 4532.0,
+        "p95_ms": 4532.0,
+        "min_ms": 4532.0,
+        "max_ms": 4532.0
+      },
+      "capture": {
+        "count": 1,
+        "p50_ms": 4265,
+        "p95_ms": 4265,
+        "min_ms": 4265,
+        "max_ms": 4265
+      },
+      "phases": {
+        "annotation_ms": {
+          "count": 1,
+          "p50_ms": 16.0,
+          "p95_ms": 16.0,
+          "min_ms": 16.0,
+          "max_ms": 16.0
+        },
+        "display_after_ms": {
+          "count": 1,
+          "p50_ms": 391.0,
+          "p95_ms": 391.0,
+          "min_ms": 391.0,
+          "max_ms": 391.0
+        },
+        "display_ms": {
+          "count": 1,
+          "p50_ms": 375.0,
+          "p95_ms": 375.0,
+          "min_ms": 375.0,
+          "max_ms": 375.0
+        },
+        "encode_annotation_ms": {
+          "count": 1,
+          "p50_ms": 140.0,
+          "p95_ms": 140.0,
+          "min_ms": 140.0,
+          "max_ms": 140.0
+        },
+        "encode_image_ms": {
+          "count": 1,
+          "p50_ms": 94.0,
+          "p95_ms": 94.0,
+          "min_ms": 94.0,
+          "max_ms": 94.0
+        },
+        "foreground_after_ms": {
+          "count": 1,
+          "p50_ms": 531.0,
+          "p95_ms": 531.0,
+          "min_ms": 531.0,
+          "max_ms": 531.0
+        },
+        "foreground_before_ms": {
+          "count": 1,
+          "p50_ms": 547.0,
+          "p95_ms": 547.0,
+          "min_ms": 547.0,
+          "max_ms": 547.0
+        },
+        "queue_ms": {
+          "count": 1,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 1,
+          "p50_ms": 4265.0,
+          "p95_ms": 4265.0,
+          "min_ms": 4265.0,
+          "max_ms": 4265.0
+        },
+        "screen_ready_after_ms": {
+          "count": 1,
+          "p50_ms": 297.0,
+          "p95_ms": 297.0,
+          "min_ms": 297.0,
+          "max_ms": 297.0
+        },
+        "screen_ready_before_ms": {
+          "count": 1,
+          "p50_ms": 328.0,
+          "p95_ms": 328.0,
+          "min_ms": 328.0,
+          "max_ms": 328.0
+        },
+        "screenshot_ms": {
+          "count": 1,
+          "p50_ms": 656.0,
+          "p95_ms": 656.0,
+          "min_ms": 656.0,
+          "max_ms": 656.0
+        },
+        "snapshot_after_ms": {
+          "count": 1,
+          "p50_ms": 47.0,
+          "p95_ms": 47.0,
+          "min_ms": 47.0,
+          "max_ms": 47.0
+        },
+        "snapshot_ms": {
+          "count": 1,
+          "p50_ms": 16.0,
+          "p95_ms": 16.0,
+          "min_ms": 16.0,
+          "max_ms": 16.0
+        },
+        "tree_after_ms": {
+          "count": 1,
+          "p50_ms": 390.0,
+          "p95_ms": 390.0,
+          "min_ms": 390.0,
+          "max_ms": 390.0
+        },
+        "tree_ms": {
+          "count": 1,
+          "p50_ms": 437.0,
+          "p95_ms": 437.0,
+          "min_ms": 437.0,
+          "max_ms": 437.0
+        },
+        "worker_setup_ms": {
+          "count": 1,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    },
+    "subsequent_attempts": {
+      "client": {
+        "count": 2,
+        "p50_ms": 3969.0,
+        "p95_ms": 4484.0,
+        "min_ms": 3969.0,
+        "max_ms": 4484.0
+      },
+      "capture": {
+        "count": 2,
+        "p50_ms": 3844,
+        "p95_ms": 4281,
+        "min_ms": 3844,
+        "max_ms": 4281
+      },
+      "phases": {
+        "annotation_ms": {
+          "count": 1,
+          "p50_ms": 16.0,
+          "p95_ms": 16.0,
+          "min_ms": 16.0,
+          "max_ms": 16.0
+        },
+        "display_after_ms": {
+          "count": 2,
+          "p50_ms": 359.0,
+          "p95_ms": 360.0,
+          "min_ms": 359.0,
+          "max_ms": 360.0
+        },
+        "display_ms": {
+          "count": 2,
+          "p50_ms": 360.0,
+          "p95_ms": 375.0,
+          "min_ms": 360.0,
+          "max_ms": 375.0
+        },
+        "encode_annotation_ms": {
+          "count": 1,
+          "p50_ms": 109.0,
+          "p95_ms": 109.0,
+          "min_ms": 109.0,
+          "max_ms": 109.0
+        },
+        "encode_image_ms": {
+          "count": 2,
+          "p50_ms": 156.0,
+          "p95_ms": 157.0,
+          "min_ms": 156.0,
+          "max_ms": 157.0
+        },
+        "foreground_after_ms": {
+          "count": 2,
+          "p50_ms": 484.0,
+          "p95_ms": 516.0,
+          "min_ms": 484.0,
+          "max_ms": 516.0
+        },
+        "foreground_before_ms": {
+          "count": 2,
+          "p50_ms": 422.0,
+          "p95_ms": 468.0,
+          "min_ms": 422.0,
+          "max_ms": 468.0
+        },
+        "queue_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        },
+        "request_ms": {
+          "count": 2,
+          "p50_ms": 3844.0,
+          "p95_ms": 4281.0,
+          "min_ms": 3844.0,
+          "max_ms": 4281.0
+        },
+        "screen_ready_after_ms": {
+          "count": 2,
+          "p50_ms": 359.0,
+          "p95_ms": 391.0,
+          "min_ms": 359.0,
+          "max_ms": 391.0
+        },
+        "screen_ready_before_ms": {
+          "count": 2,
+          "p50_ms": 250.0,
+          "p95_ms": 297.0,
+          "min_ms": 250.0,
+          "max_ms": 297.0
+        },
+        "screenshot_ms": {
+          "count": 2,
+          "p50_ms": 609.0,
+          "p95_ms": 735.0,
+          "min_ms": 609.0,
+          "max_ms": 735.0
+        },
+        "snapshot_after_ms": {
+          "count": 2,
+          "p50_ms": 31.0,
+          "p95_ms": 47.0,
+          "min_ms": 31.0,
+          "max_ms": 47.0
+        },
+        "snapshot_ms": {
+          "count": 2,
+          "p50_ms": 31.0,
+          "p95_ms": 47.0,
+          "min_ms": 31.0,
+          "max_ms": 47.0
+        },
+        "tree_after_ms": {
+          "count": 2,
+          "p50_ms": 375.0,
+          "p95_ms": 422.0,
+          "min_ms": 375.0,
+          "max_ms": 422.0
+        },
+        "tree_ms": {
+          "count": 2,
+          "p50_ms": 312.0,
+          "p95_ms": 422.0,
+          "min_ms": 312.0,
+          "max_ms": 422.0
+        },
+        "worker_setup_ms": {
+          "count": 2,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "min_ms": 0,
+          "max_ms": 0
+        }
+      }
+    }
+  },
+  "samples": [
+    {
+      "index": 1,
+      "status": "ok",
+      "client_ms": 4532.0,
+      "timing": {
+        "screen_ready_before_ms": 328.0,
+        "foreground_before_ms": 547.0,
+        "tree_ms": 437.0,
+        "display_ms": 375.0,
+        "snapshot_ms": 16.0,
+        "screenshot_ms": 656.0,
+        "encode_image_ms": 94.0,
+        "tree_after_ms": 390.0,
+        "display_after_ms": 391.0,
+        "snapshot_after_ms": 47.0,
+        "foreground_after_ms": 531.0,
+        "screen_ready_after_ms": 297.0,
+        "annotation_ms": 16.0,
+        "encode_annotation_ms": 140.0,
+        "queue_ms": 0,
+        "worker_setup_ms": 0,
+        "request_ms": 4265.0
+      },
+      "capture_ms": 4265,
+      "checks": {
+        "actionable": true,
+        "foreground_consistent": true,
+        "image_tree_consistent": true,
+        "image_dimensions_match": true,
+        "image_present": true,
+        "som_available": true
+      },
+      "image_tree_skew_ms": 655
+    },
+    {
+      "index": 2,
+      "status": "ok",
+      "client_ms": 4484.0,
+      "timing": {
+        "screen_ready_before_ms": 250.0,
+        "foreground_before_ms": 468.0,
+        "tree_ms": 422.0,
+        "display_ms": 375.0,
+        "snapshot_ms": 47.0,
+        "screenshot_ms": 735.0,
+        "encode_image_ms": 156.0,
+        "tree_after_ms": 422.0,
+        "display_after_ms": 360.0,
+        "snapshot_after_ms": 31.0,
+        "foreground_after_ms": 516.0,
+        "screen_ready_after_ms": 359.0,
+        "annotation_ms": 16.0,
+        "encode_annotation_ms": 109.0,
+        "queue_ms": 0,
+        "worker_setup_ms": 0,
+        "request_ms": 4281.0
+      },
+      "capture_ms": 4281,
+      "checks": {
+        "actionable": true,
+        "foreground_consistent": true,
+        "image_tree_consistent": true,
+        "image_dimensions_match": true,
+        "image_present": true,
+        "som_available": true
+      },
+      "image_tree_skew_ms": 745
+    },
+    {
+      "index": 3,
+      "status": "not_ready",
+      "client_ms": 3969.0,
+      "timing": {
+        "screen_ready_before_ms": 297.0,
+        "foreground_before_ms": 422.0,
+        "tree_ms": 312.0,
+        "display_ms": 360.0,
+        "snapshot_ms": 31.0,
+        "screenshot_ms": 609.0,
+        "encode_image_ms": 157.0,
+        "tree_after_ms": 375.0,
+        "display_after_ms": 359.0,
+        "snapshot_after_ms": 47.0,
+        "foreground_after_ms": 484.0,
+        "screen_ready_after_ms": 391.0,
+        "queue_ms": 0,
+        "worker_setup_ms": 0,
+        "request_ms": 3844.0
+      },
+      "capture_ms": 3844,
+      "checks": {
+        "actionable": false,
+        "foreground_consistent": true,
+        "image_tree_consistent": false,
+        "image_dimensions_match": true,
+        "image_present": true,
+        "som_available": false
+      },
+      "image_tree_skew_ms": 609,
+      "error_code": "capture_unverified"
+    }
+  ]
+}

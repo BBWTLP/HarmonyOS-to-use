@@ -2,9 +2,9 @@
 import asyncio
 import re
 import sys
-from pathlib import Path
 from mcp.client.session import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
+from pathlib import Path
 
 
 def failure(code):
@@ -30,13 +30,11 @@ def summarize(result):
 
 
 async def probe(root):
-    # Reuse the selected resident service and its lease; never start a competing
-    # device runtime. Initialization and tool discovery remain side-effect free.
-    parameters = StdioServerParameters(command=sys.executable,
-        args=["-m", "harmony_runtime.cli", "mcp", "--state-dir", str(root)],
-        env={"PYTHONPATH": str(Path(__file__).resolve().parents[1])})
+    # Launch only the thin frontend; the resident service owns the device.
+    params = StdioServerParameters(command=sys.executable, args=[
+        "-m", "harmony_runtime.cli", "mcp", "--state-dir", str(Path(root).resolve())])
     try:
-        async with stdio_client(parameters) as streams:
+        async with stdio_client(params) as streams:
             async with ClientSession(*streams) as client:
                 await client.initialize()
                 opened = await client.call_tool("mobile_session", {"operation": "open"})
@@ -44,17 +42,16 @@ async def probe(root):
                     return summarize(opened)
                 sid = opened.structured_content["session_id"]
                 try:
-                    observed = await client.call_tool("mobile_observe",
-                        {"session_id": sid, "include_image": True})
-                    result = summarize(observed)
+                    result = await client.call_tool("mobile_observe", {
+                        "session_id": sid, "include_image": True, "mode": "FAST"})
+                    report = summarize(result)
+                    report["transport"] = "stdio_mcp"
                 finally:
-                    closed = await client.call_tool("mobile_session",
-                        {"operation": "close", "session_id": sid})
+                    closed = await client.call_tool("mobile_session", {"operation":"close", "session_id":sid})
                 if closed.is_error:
-                    result.update(status="not_ready", error_code="session_cleanup_failed")
-                return result
+                    return failure("session_close_failed")
+                return report
     except Exception:
-        # Raw transport errors may include endpoint credentials or device data.
         return failure("probe_transport_failed")
 
 
