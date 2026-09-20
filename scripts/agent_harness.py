@@ -9,6 +9,7 @@ works on a different device build or page layout.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -30,6 +31,58 @@ class HarnessError(RuntimeError):
     def __init__(self, code: str, message: str):
         self.code = code
         super().__init__(message)
+
+
+class SetupUnavailable(HarnessError):
+    """Navigation needed to reach the measured page did not complete.
+
+    No primitive was measured, so an acceptance runner must count this as a
+    *setup* failure and must not put it in the primitive's denominator.
+    """
+
+
+@dataclass
+class SetupBudget:
+    """Bounded, auditable budget for the navigation that precedes a measurement.
+
+    Values follow measured device timing on the acceptance device (SGT-AL10):
+    one FAST observation costs ~2.5-4.5 s and one dispatched action 4-7 s, so
+    ``max_actions`` bounds a single setup at roughly a minute. The requirement is
+    that the budget is explicit, observable and finite - not that it is large.
+    """
+
+    max_actions: int = 10
+    max_elapsed_ms: float = 90_000.0
+    max_stale_refusals: int = 6
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"max_actions": self.max_actions,
+                "max_elapsed_ms": self.max_elapsed_ms,
+                "max_stale_refusals": self.max_stale_refusals}
+
+
+@dataclass
+class SetupStats:
+    """Setup accounting, reported separately from primitive success."""
+
+    attempts: int = 0
+    success: int = 0
+    failures: int = 0
+    stale_refusals: int = 0
+    elapsed_ms: float = 0.0
+    failure_code: str | None = None
+    failure_codes: list[str] = field(default_factory=list)
+    latency_ms: list[float] = field(default_factory=list)
+    drift: list[dict[str, Any]] = field(default_factory=list)
+
+    def as_dict(self, budget: SetupBudget) -> dict[str, Any]:
+        return {"attempts": self.attempts, "success": self.success,
+                "failures": self.failures, "stale_refusals": self.stale_refusals,
+                "elapsed_ms": round(self.elapsed_ms, 3),
+                "failure_codes": sorted(set(self.failure_codes)),
+                "failure_code": self.failure_code,
+                "target_drift": self.drift[:12],
+                "budget": budget.as_dict()}
 
 
 def _structured(result) -> dict[str, Any]:
@@ -497,8 +550,28 @@ def editor_input(observation: dict[str, Any]) -> dict[str, Any] | None:
     return inputs[0] if len(inputs) == 1 and lists else None
 
 
+def has_weibo_evidence(observation: dict[str, Any]) -> bool:
+    """Independent evidence that this observation really is the Weibo app.
+
+    `foreground_bundle` is authoritative when the device reports it, but some
+    builds do not (``getDeviceInfo`` unavailable), so the UI tree's own
+    ``bundleName`` is the second, independent source. A single anonymous top
+    Flex is never evidence: the launcher's own UI matches that shape, which is
+    how a desktop surface was once classified as the Weibo discover page.
+    """
+    if observation.get("foreground_bundle") == WEIBO:
+        return True
+    return any(item.get("bundle") == WEIBO for item in observation.get("catalog") or [])
+
+
 def surface_kind(observation: dict[str, Any]) -> str:
-    """Coarse page class used to steer navigation without app-private hooks."""
+    """Coarse page class used to steer navigation without app-private hooks.
+
+    Returns ``unknown`` unless the observation carries Weibo evidence, so a
+    foreign or unidentified surface can never be steered as a Weibo page.
+    """
+    if not has_weibo_evidence(observation):
+        return "unknown"
     if editor_input(observation) is not None:
         return "search_editor"
     if find_search_bar(observation) is not None:
@@ -521,6 +594,113 @@ def target(text: str | None = None, resource_id: str | None = None) -> dict[str,
     if resource_id:
         return {"resource_id": resource_id}
     return {"text": text}
+
+
+DRIFT_FIELDS = ("type", "bounds", "hit_bounds", "enabled", "clickable", "focused",
+                "resource_id", "accessibility_id", "hierarchy", "host_window_id",
+                "bundle", "checked", "selected")
+
+
+def _prefix(value: Any) -> str:
+    return hashlib.sha256(str(value or "").encode("utf-8")).hexdigest()[:12]
+
+
+def drift_metadata(before: dict[str, Any] | None, current: dict[str, Any] | None,
+                   selector: str) -> dict[str, Any]:
+    """Sanitized description of why a grounded target no longer matches.
+
+    Hashes and presence flags only: no UI text, no account data, no screenshots.
+    """
+    if before is None or current is None:
+        return {"selector": selector, "resolved_before": before is not None,
+                "resolved_current": current is not None}
+    changed = [name for name in DRIFT_FIELDS if before.get(name) != current.get(name)]
+    return {
+        "selector": selector,
+        "resolved_before": True,
+        "resolved_current": True,
+        "action_id_changed": before.get("action_id") != current.get("action_id"),
+        "parent_action_id_changed": (before.get("parent_action_id")
+                                     != current.get("parent_action_id")),
+        "bounds": {"before": before.get("bounds"), "after": current.get("bounds")},
+        "fields_changed": changed,
+        "label_hash_changed": (_prefix(before.get("text")) != _prefix(current.get("text"))
+                               or _prefix(before.get("description"))
+                               != _prefix(current.get("description"))
+                               or _prefix(before.get("accessibility_id"))
+                               != _prefix(current.get("accessibility_id"))),
+        "subtree_fingerprint_changed": (before.get("target_fingerprint")
+                                        != current.get("target_fingerprint")),
+        "subtree_fingerprint": {
+            "before": _prefix(before.get("target_fingerprint")),
+            "after": _prefix(current.get("target_fingerprint"))},
+        "local_attributes_changed": [name for name in changed
+                                     if name != "target_fingerprint"],
+    }
+
+
+async def setup_act(harness, *, locate, action_for, selector: str, budget=None,
+                    stats=None, expected: dict | None = None,
+                    timeout_ms: int = 10000) -> tuple[dict, dict]:
+    """Observe -> locate -> act, re-observing and **re-locating** after a refusal.
+
+    A pre-dispatch refusal never reaches the device, so retrying on a fresh
+    observation is a new attempt, not a replay of a write. The locator is always
+    re-run against the new catalog: an ``action_id`` only means something inside
+    the observation it was produced from, so a cached one must never be reused.
+    """
+    budget = budget or SetupBudget()
+    stats = stats if stats is not None else SetupStats()
+    started = time.monotonic()
+    deadline = started + budget.max_elapsed_ms / 1000.0
+    previous_node: dict[str, Any] | None = None
+    refused = False
+
+    def expire(code: str) -> SetupUnavailable:
+        stats.elapsed_ms = (time.monotonic() - started) * 1000
+        stats.failures += 1
+        stats.failure_code = code
+        stats.failure_codes.append(code)
+        return SetupUnavailable(code, f"{selector}: {code}")
+
+    while True:
+        if stats.attempts >= budget.max_actions:
+            raise expire("setup_budget_exhausted")
+        if time.monotonic() > deadline:
+            raise expire("setup_budget_exhausted")
+        observation = await harness.observe(mode="FAST")
+        node = locate(observation)
+        if node is None:
+            raise expire("setup_target_missing")
+        if refused:
+            stats.drift.append(drift_metadata(previous_node, node, selector))
+            refused = False
+        previous_node = node
+        action = action_for(node)
+        stats.attempts += 1
+        try:
+            result = await harness.act(observation_id=observation["observation_id"],
+                                       action=action, expected=expected,
+                                       timeout_ms=timeout_ms)
+        except HarnessError as error:
+            if error.code == "stale_observation":
+                stats.stale_refusals += 1
+                stats.failure_codes.append("stale_observation")
+                if stats.stale_refusals > budget.max_stale_refusals:
+                    raise expire("setup_stale_budget_exhausted") from error
+                refused = True
+                continue
+            stats.failures += 1
+            stats.failure_codes.append(error.code)
+            raise
+        stats.elapsed_ms = (time.monotonic() - started) * 1000
+        if result.get("execution_status") != "executed":
+            stats.failures += 1
+            stats.failure_codes.append("setup_not_executed")
+            raise SetupUnavailable("setup_not_executed",
+                                   f"{selector}: {result.get('status')}")
+        stats.success += 1
+        return observation, result
 
 
 def encode_report(report: dict[str, Any]) -> str:

@@ -25,8 +25,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from agent_harness import (AgentHarness, HarnessError, WEIBO, editor_input, find_node,
-                           find_search_bar, focused_input, surface_kind)
+from agent_harness import (AgentHarness, HarnessError, SetupBudget, SetupStats,
+                           SetupUnavailable, WEIBO, editor_input, find_node,
+                           find_search_bar, focused_input, has_weibo_evidence,
+                           setup_act, surface_kind)
 
 #: Ordered cheap-first so partial evidence is still useful if a run is stopped.
 PRIMITIVES = ("launch", "tree", "screenshot", "swipe", "tap", "back", "input")
@@ -41,6 +43,10 @@ INPUT_VALUES = ("鸿蒙", "harmony", "测试test", "ABC123")
 MAX_CONSECUTIVE_DEVICE_ERRORS = 5
 MAX_REOBSERVE_RETRIES = 4
 SETTLE_SECONDS = 0.5
+#: Setup is navigation, not measurement. It is bounded and reported separately;
+#: after this many failed setups a primitive is reported with
+#: `insufficient_valid_samples` instead of hammering the device.
+MAX_SETUP_FAILURES = 5
 
 
 def percentile(values: list[float], fraction: float) -> float:
@@ -53,13 +59,16 @@ def percentile(values: list[float], fraction: float) -> float:
 
 class PrimitiveRunner:
     def __init__(self, harness: AgentHarness, *, per_primitive: int, only: tuple[str, ...],
-                 progress_path: str | Path | None = None):
+                 progress_path: str | Path | None = None,
+                 setup_budget: SetupBudget | None = None):
         self.harness = harness
         self.per_primitive = per_primitive
         self.only = only
         self.results: dict[str, dict] = {}
         self.notes: list[str] = []
         self.progress_path = Path(progress_path) if progress_path else None
+        self.setup_budget = setup_budget or SetupBudget()
+        self.setup = SetupStats()
         self.retries = 0
         self.setup_actions = 0
         self.current: str | None = None
@@ -77,106 +86,116 @@ class PrimitiveRunner:
         if message not in self.notes:
             self.notes.append(message)
 
-    # -- navigation ---------------------------------------------------------
+    # -- navigation (setup: never part of the measured primitive) -----------
     async def settle(self) -> None:
         await asyncio.sleep(SETTLE_SECONDS)
 
+    async def _setup_step(self, *, selector: str, locate, action_for,
+                          expected=None, timeout_ms: int = 10000) -> dict:
+        """One bounded setup action: observe, locate, act, re-locate on refusal."""
+        observation, result = await setup_act(
+            self.harness, selector=selector, locate=locate, action_for=action_for,
+            expected=expected if expected is not None else {"changed": True},
+            timeout_ms=timeout_ms, budget=self.setup_budget, stats=self.setup)
+        self.setup_actions = self.setup.attempts
+        await self.settle()
+        return result
+
+    def _setup_fail(self, code: str, message: str) -> SetupUnavailable:
+        self.setup.failures += 1
+        self.setup.failure_code = code
+        self.setup.failure_codes.append(code)
+        return SetupUnavailable(code, message)
+
     async def ensure_weibo(self) -> dict:
+        """Bind to Weibo using independent app evidence before any steering."""
         observation = await self.harness.observe(mode="FAST")
-        if observation.get("foreground_bundle") == WEIBO and observation.get("actionable"):
+        if has_weibo_evidence(observation) and observation.get("actionable"):
             return observation
-        result = await self.harness.act(
-            observation_id=observation["observation_id"],
-            action={"kind": "launch", "bundle": WEIBO},
+        if not has_weibo_evidence(observation):
+            self.note("foreign or unidentified surface: launching Weibo before measuring")
+        result = await self._setup_step(
+            selector="launch_weibo",
+            locate=lambda obs: {"launch": WEIBO},
+            action_for=lambda node: {"kind": "launch", "bundle": WEIBO},
             expected={"bundle": WEIBO}, timeout_ms=15000)
-        self.setup_actions += 1
         if result.get("verification_status") != "verified":
-            raise HarnessError("weibo_launch_unverified", str(result.get("status")))
-        return await self.harness.observe(mode="FAST")
-
-    async def tap_text(self, observation: dict, label: str, *, setup: bool) -> dict:
-        await self.settle()
-        if setup:
-            self.setup_actions += 1
-        return await self.harness.act(
-            observation_id=observation["observation_id"],
-            action={"kind": "tap", "target": {"text": label}},
-            expected={"changed": True}, timeout_ms=10000)
-
-    async def press_back(self, observation: dict, *, setup: bool) -> dict:
-        await self.settle()
-        if setup:
-            self.setup_actions += 1
-        return await self.harness.act(
-            observation_id=observation["observation_id"],
-            action={"kind": "back"},
-            expected={"changed": True}, timeout_ms=10000)
+            raise self._setup_fail("weibo_launch_unverified", str(result.get("status")))
+        observation = await self.harness.observe(mode="FAST")
+        if not has_weibo_evidence(observation):
+            raise self._setup_fail(
+                "weibo_evidence_missing",
+                "Weibo was launched but the observation carries no Weibo evidence")
+        return observation
 
     async def ensure_tabs_page(self) -> dict:
         """Home or Messages, i.e. a page showing the bottom navigation."""
-        for _ in range(4):
+        deadline = time.monotonic() + self.setup_budget.max_elapsed_ms / 1000
+        while (self.setup.attempts < self.setup_budget.max_actions
+               and time.monotonic() < deadline):
             observation = await self.ensure_weibo()
             kind = surface_kind(observation)
             if kind == "tabs":
                 return observation
-            try:
-                if kind == "search_editor":
-                    await self.press_back(observation, setup=True)
-                else:
-                    node = find_node(observation, text=TAB_A)
-                    if node is None:
-                        break
-                    await self.tap_text(observation, TAB_A, setup=True)
-            except HarnessError:
-                pass
-        return await self.ensure_weibo()
+            if kind == "search_editor":
+                await self._setup_step(selector="back_from_search_editor",
+                                       locate=lambda obs: {"back": True},
+                                       action_for=lambda node: {"kind": "back"})
+                continue
+            if kind == "discover" or kind == "unknown":
+                # Known Weibo surface, wrong page: return to the home tab.
+                await self._setup_step(
+                    selector="tap_home_tab",
+                    locate=lambda obs: find_node(obs, text=TAB_A),
+                    action_for=lambda node: {"kind": "tap", "target": {"text": TAB_A}})
+                continue
+        raise SetupUnavailable("tabs_unavailable",
+                               "Weibo main tabs were not reached within the setup budget")
 
     async def ensure_search_editor(self) -> dict:
-        """Weibo's search editor, reached through the Discover search bar."""
-        for _ in range(7):
+        """Weibo's search editor, reached through the Discover search entry.
+
+        Every step is a bounded setup step. A failure here means the
+        *precondition* could not be established: no primitive was measured.
+        """
+        deadline = time.monotonic() + self.setup_budget.max_elapsed_ms / 1000
+        while (self.setup.attempts < self.setup_budget.max_actions
+               and time.monotonic() < deadline):
             observation = await self.ensure_weibo()
             field = editor_input(observation)
             if field is not None and field.get("focused"):
                 return observation
             if field is not None:
-                try:
-                    await self.settle()
-                    self.setup_actions += 1
-                    await self.harness.act(
-                        observation_id=observation["observation_id"],
-                        action={"kind": "tap", "target": {"action_id": field["action_id"]}},
-                        expected={"changed": True}, timeout_ms=10000)
-                except HarnessError:
-                    pass
+                await self._setup_step(
+                    selector="focus_search_editor_field",
+                    locate=editor_input,
+                    action_for=lambda node: {"kind": "tap",
+                                             "target": {"action_id": node["action_id"]}})
                 continue
             kind = surface_kind(observation)
             if kind == "discover":
-                bar = find_search_bar(observation)
-                if bar is None:
-                    break
-                try:
-                    await self.settle()
-                    self.setup_actions += 1
-                    await self.harness.act(
-                        observation_id=observation["observation_id"],
-                        action={"kind": "tap", "target": {"action_id": bar["action_id"]}},
-                        expected={"changed": True}, timeout_ms=10000)
-                except HarnessError:
-                    pass
+                if find_search_bar(observation) is None:
+                    raise self._setup_fail(
+                        "search_entry_missing",
+                        "Discover page exposes no unique search entry")
+                await self._setup_step(
+                    selector="open_search_editor",
+                    locate=find_search_bar,
+                    action_for=lambda node: {"kind": "tap",
+                                             "target": {"action_id": node["action_id"]}})
                 continue
-            tab = find_node(observation, text=DISCOVER_TAB)
-            if tab is None:
-                try:
-                    await self.press_back(observation, setup=True)
-                except HarnessError:
-                    break
+            if kind == "tabs":
+                await self._setup_step(
+                    selector="tap_discover_tab",
+                    locate=lambda obs: find_node(obs, text=DISCOVER_TAB),
+                    action_for=lambda node: {"kind": "tap",
+                                             "target": {"text": DISCOVER_TAB}})
                 continue
-            try:
-                await self.tap_text(observation, DISCOVER_TAB, setup=True)
-            except HarnessError:
-                pass
-        raise HarnessError("search_editor_unavailable",
-                           "Search editor could not be reached within the setup budget")
+            await self._setup_step(selector="back_to_known_page",
+                                   locate=lambda obs: {"back": True},
+                                   action_for=lambda node: {"kind": "back"})
+        raise SetupUnavailable("search_editor_unavailable",
+                               "Search editor could not be reached within the setup budget")
 
     # -- primitives ---------------------------------------------------------
     async def _launch(self, index: int) -> float:
@@ -296,33 +315,36 @@ class PrimitiveRunner:
         latencies: list[float] = []
         failures: list[dict] = []
         refusals: dict[str, int] = {}
+        setup = SetupStats()
+        setup_sessions = 0
         errors_in_a_row = 0
         started = time.time()
 
         def publish() -> None:
             """Expose partial counters so a long run stays observable."""
-            attempts = len(latencies) + len(failures)
-            self.results[name] = {
-                "attempts": attempts,
-                "success": len(latencies),
-                "failure": len(failures),
-                "success_rate": round(len(latencies) / attempts, 4) if attempts else 0.0,
-                "p50_ms": percentile(latencies, 0.5),
-                "p95_ms": percentile(latencies, 0.95),
-                "max_ms": round(max(latencies), 3) if latencies else 0.0,
-                "refusals_before_dispatch": dict(refusals),
-                "failures": failures[:20],
-                "failure_codes": sorted({item["code"] for item in failures}),
-                "elapsed_seconds": round(time.time() - started, 3),
-                "in_progress": True,
-            }
+            self.results[name] = self._primitive_record(
+                name, latencies, failures, refusals, setup, setup_sessions, started, True)
             self.save_progress()
 
         publish()
-        for index in range(self.per_primitive):
+        while len(latencies) + len(failures) < self.per_primitive:
+            index = len(latencies) + len(failures)
             try:
                 latencies.append(float(await handler(index)))
                 errors_in_a_row = 0
+            except SetupUnavailable as error:
+                # The precondition was never established: nothing was measured,
+                # so this must not enter the primitive's denominator.
+                setup_sessions += 1
+                setup.failure_code = error.code
+                if error.code not in setup.failure_codes:
+                    setup.failure_codes.append(error.code)
+                self.note(f"{name}: setup failed ({error.code}); primitive not measured")
+                if setup_sessions >= MAX_SETUP_FAILURES:
+                    self.note(f"{name}: stopped after {setup_sessions} failed setups")
+                    break
+                publish()
+                continue
             except Exception as error:
                 code = getattr(error, "code", type(error).__name__)
                 if code == "stale_observation":
@@ -334,6 +356,9 @@ class PrimitiveRunner:
                             latencies.append(float(await handler(index)))
                             retried = True
                             break
+                        except SetupUnavailable as setup_error:
+                            error = setup_error
+                            break
                         except Exception as retry_error:
                             code = getattr(retry_error, "code", type(retry_error).__name__)
                             if code != "stale_observation":
@@ -344,10 +369,20 @@ class PrimitiveRunner:
                         errors_in_a_row = 0
                         publish()
                         continue
+                    if isinstance(error, SetupUnavailable):
+                        setup_sessions += 1
+                        setup.failure_code = error.code
+                        if error.code not in setup.failure_codes:
+                            setup.failure_codes.append(error.code)
+                        if setup_sessions >= MAX_SETUP_FAILURES:
+                            self.note(f"{name}: stopped after {setup_sessions} failed setups")
+                            break
+                        publish()
+                        continue
                     refusals[code] = refusals.get(code, 0) + 1
                 failures.append({"index": index, "code": code,
                                  "message": str(error)[:200],
-                                 "setup_actions": self.setup_actions})
+                                 "setup_actions": setup.attempts})
                 if code in ("device_unavailable", "runtime_unavailable",
                             "device_selection_required", "session_invalid",
                             "lease_expired", "client_invalid",
@@ -360,40 +395,98 @@ class PrimitiveRunner:
                 else:
                     errors_in_a_row = 0
             publish()
-        attempts = len(latencies) + len(failures)
+        return self._primitive_record(name, latencies, failures, refusals, setup,
+                                      setup_sessions, started, False)
+
+    def _primitive_record(self, name: str, latencies: list[float],
+                          failures: list[dict], refusals: dict[str, int],
+                          setup: SetupStats, setup_sessions: int, started: float,
+                          in_progress: bool) -> dict:
+        """One primitive's accounting.
+
+        `valid_attempts` counts only samples whose precondition was established
+        and whose primitive was actually attempted. Setup is reported next to it
+        and never inside the success rate; a run that cannot reach the required
+        number of valid attempts is `insufficient_valid_samples`, not a pass.
+        """
+        valid = len(latencies) + len(failures)
         return {
-            "attempts": attempts,
+            "requested_samples": self.per_primitive,
+            "valid_attempts": valid,
             "success": len(latencies),
-            "failure": len(failures),
-            "success_rate": round(len(latencies) / attempts, 4) if attempts else 0.0,
+            "primitive_failures": len(failures),
+            "success_rate": round(len(latencies) / valid, 4) if valid else 0.0,
+            "insufficient_valid_samples": valid < self.per_primitive,
             "p50_ms": percentile(latencies, 0.5),
             "p95_ms": percentile(latencies, 0.95),
             "max_ms": round(max(latencies), 3) if latencies else 0.0,
-            "refusals_before_dispatch": refusals,
+            "refusals_before_dispatch": dict(refusals),
             "failures": failures[:20],
             "failure_codes": sorted({item["code"] for item in failures}),
+            "setup": setup.as_dict(self.setup_budget),
+            "setup_sessions_failed": setup_sessions,
             "elapsed_seconds": round(time.time() - started, 3),
-            "in_progress": False,
+            "in_progress": in_progress,
         }
 
     def report(self) -> dict:
         summary = {name: self.results[name] for name in PRIMITIVES if name in self.results}
-        totals = sum(item["attempts"] for item in summary.values())
+        totals = sum(item["valid_attempts"] for item in summary.values())
         success = sum(item["success"] for item in summary.values())
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "scope": "M0 primitive matrix on the current authorised device; acceptance app = Weibo",
             "per_primitive": self.per_primitive,
             "primitives": summary,
             "current_primitive": self.current,
-            "totals": {"attempts": totals, "success": success,
-                       "success_rate": round(success / totals, 4) if totals else 0.0},
-            "threshold": {"key_primitives_success_rate": 0.99},
+            "totals": {
+                "valid_attempts": totals,
+                "success": success,
+                "success_rate": round(success / totals, 4) if totals else 0.0,
+                "setup_attempts": sum(item["setup"]["attempts"]
+                                      for item in summary.values()),
+                "setup_success": sum(item["setup"]["success"]
+                                     for item in summary.values()),
+                "setup_failures": sum(item["setup"]["failures"]
+                                      for item in summary.values()),
+                "setup_stale_refusals": sum(item["setup"]["stale_refusals"]
+                                            for item in summary.values()),
+            },
+            "threshold": {"key_primitives_success_rate": 0.99,
+                          "required_valid_attempts": self.per_primitive},
+            "setup_budget": self.setup_budget.as_dict(),
             "bounded_reobserves": self.retries,
             "setup_actions": self.setup_actions,
             "notes": self.notes,
             "privacy": "metadata only: no UI text, screenshots, or input values",
         }
+
+
+def evaluate_gate(report: dict, requested: tuple[str, ...]) -> dict:
+    """The M0 gate: validity of the samples AND the success rate.
+
+    `valid_attempts == requested` is required, so setup instability can never be
+    hidden by scoring only the samples that happened to be measurable.
+    """
+    primitives = report.get("primitives", {})
+    session = report.get("session") or {}
+    complete = set(requested).issubset(primitives.keys())
+    insufficient = sorted(name for name, item in primitives.items()
+                          if item.get("insufficient_valid_samples"))
+    rate_ok = bool(primitives) and all(item["success_rate"] >= 0.99
+                                       for item in primitives.values())
+    gate = {
+        "requested_samples_per_primitive": report.get("per_primitive"),
+        "all_requested_primitives_present": complete,
+        "insufficient_valid_samples": insufficient,
+        "primitive_success_rate_ok": rate_ok,
+        "unresolved_actions": session.get("unresolved_actions"),
+        "recovery_required": session.get("recovery_required"),
+    }
+    gate["passed"] = bool(complete and not insufficient and rate_ok
+                          and not session.get("unresolved_actions")
+                          and not session.get("recovery_required"))
+    return gate
 
 
 async def main(args) -> int:
@@ -403,7 +496,8 @@ async def main(args) -> int:
         opened = await harness.open(args.device_id)
         runner = PrimitiveRunner(harness, per_primitive=args.per_primitive,
                                  only=tuple(args.only or PRIMITIVES),
-                                 progress_path=args.report)
+                                 progress_path=args.report,
+                                 setup_budget=SetupBudget())
         if args.report:
             Path(args.report).parent.mkdir(parents=True, exist_ok=True)
         report = await runner.run()
@@ -415,10 +509,9 @@ async def main(args) -> int:
             "recovery_required": bool(status.get("recovery_required")),
         }
     report["duration_seconds"] = round(time.time() - started, 3)
-    complete = set(PRIMITIVES).issubset(report.get("primitives", {}).keys())
-    met = complete and all(item["success_rate"] >= 0.99
-                           for item in report["primitives"].values())
-    report["status"] = "ok" if met and not report["session"]["unresolved_actions"] else "not_ready"
+    requested = tuple(args.only or PRIMITIVES)
+    report["gate"] = evaluate_gate(report, requested)
+    report["status"] = "ok" if report["gate"]["passed"] else "not_ready"
     rendered = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True)
     print(rendered)
     if args.report:
