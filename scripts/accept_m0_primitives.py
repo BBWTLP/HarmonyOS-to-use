@@ -87,10 +87,13 @@ TRANSITION_TARGETS = {
 SETTLE_OBSERVATIONS = 2
 SETTLE_DEADLINE_MS = 9_000
 
-#: Setup failures that retrying or waiting cannot fix.
+#: Setup failures that retrying or waiting cannot fix. A stale-budget exhaustion
+#: is deliberately *not* here: a refusal never reached the device, so the state
+#: machine may re-observe, re-locate and try the same transition again - bounded
+#: by `max_no_progress`.
 HARD_SETUP_FAILURES = ("setup_app_not_stable", "setup_state_loop",
-                       "setup_budget_exhausted", "setup_stale_budget_exhausted",
-                       "weibo_launch_unverified", "setup_unknown_transition")
+                       "setup_budget_exhausted", "weibo_launch_unverified",
+                       "setup_unknown_transition")
 
 
 def percentile(values: list[float], fraction: float) -> float:
@@ -287,6 +290,7 @@ class PrimitiveRunner:
         session = {"steps": 0, "transitions": {}, "no_progress": 0, "outcome": "failed",
                    "actions_start": self.setup.attempts,
                    "stale_start": self.setup.stale_refusals}
+        self.setup.begin_session()
         repeats: dict[str, int] = {}
         last_state: str | None = None
         no_progress = 0
@@ -301,7 +305,7 @@ class PrimitiveRunner:
             self.setup_actions = self.setup.attempts
 
         while True:
-            if self.setup.attempts >= self.setup_budget.max_actions:
+            if self.setup.session_actions() >= self.setup_budget.max_actions:
                 finish("failed", "setup_budget_exhausted")
                 raise self._setup_fail("setup_budget_exhausted",
                                        "setup action budget exhausted")

@@ -54,7 +54,10 @@ class SetupBudget:
 
     max_actions: int = 10
     max_elapsed_ms: float = 90_000.0
-    max_stale_refusals: int = 6
+    #: Per *transition attempt*. Measured: on a settled page the search entry
+    #: taps on the first try; consecutive refusals mean the page is drifting,
+    #: where more retries do not help - the state machine re-locates instead.
+    max_stale_refusals: int = 3
     #: Transition-aware bounds. Raising `max_actions` is explicitly *not* the
     #: fix for a state machine that does not converge: an action that verifies
     #: but changes nothing, or returning to a state we already left, is bounded
@@ -90,6 +93,19 @@ class SetupStats:
     no_progress: int = 0
     transition_counts: dict[str, int] = field(default_factory=dict)
     failure_kind: str | None = None
+    #: Baselines so the per-session budget is a delta, not a cumulative counter.
+    session_actions_start: int = 0
+    session_stale_start: int = 0
+
+    def session_actions(self) -> int:
+        return self.attempts - self.session_actions_start
+
+    def session_stale_refusals(self) -> int:
+        return self.stale_refusals - self.session_stale_start
+
+    def begin_session(self) -> None:
+        self.session_actions_start = self.attempts
+        self.session_stale_start = self.stale_refusals
 
     def as_dict(self, budget: SetupBudget) -> dict[str, Any]:
         return {"attempts": self.attempts, "success": self.success,
@@ -752,7 +768,9 @@ async def setup_act(harness, *, locate, action_for, selector: str, budget=None,
         return SetupUnavailable(code, f"{selector}: {code}")
 
     while True:
-        if stats.attempts >= budget.max_actions:
+        # Budgets are per *session*: a primitive runs several setup sessions, and
+        # a cumulative counter would make every later attempt fail instantly.
+        if stats.session_actions() >= budget.max_actions:
             raise expire("setup_budget_exhausted")
         if time.monotonic() > deadline:
             raise expire("setup_budget_exhausted")
@@ -774,7 +792,7 @@ async def setup_act(harness, *, locate, action_for, selector: str, budget=None,
             if error.code == "stale_observation":
                 stats.stale_refusals += 1
                 stats.failure_codes.append("stale_observation")
-                if stats.stale_refusals > budget.max_stale_refusals:
+                if stats.session_stale_refusals() > budget.max_stale_refusals:
                     raise expire("setup_stale_budget_exhausted") from error
                 refused = True
                 continue

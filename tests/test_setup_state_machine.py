@@ -222,6 +222,25 @@ class SetupStateMachineTests(unittest.TestCase):
         self.assertEqual(result["runner"].setup.trace[0]["transition"], "back_to_known")
         self.assertIn("back_to_known", TRANSITION_TARGETS)
 
+    def test_the_action_budget_is_per_session_not_cumulative(self):
+        """Regression: the first RC4-A.1 build reset nothing.
+
+        `max_actions` was checked against a counter that only ever grew, so once
+        a primitive had spent its budget the *next* setup session failed
+        instantly with `setup_budget_exhausted` - which is exactly what the
+        device run showed as "sessions with 0 steps and 0 actions".
+        """
+        harness = FakeHarness("discover", {"tap_id:discover:sb": "editor"})
+        runner = PrimitiveRunner(harness, per_primitive=1, only=("back",),
+                                 setup_budget=SetupBudget(max_actions=3))
+        for _ in range(4):
+            harness.surface = "discover"        # each session starts over
+            self.assertIsNotNone(asyncio.run(
+                runner._drive("search_editor", SEARCH_EDITOR_FSM)))
+        self.assertEqual([session["outcome"] for session in runner.setup.sessions],
+                         ["ok", "ok", "ok", "ok"])
+        self.assertEqual(runner.setup.attempts, 4)     # one action per session
+
 
 if __name__ == "__main__":
     unittest.main()
