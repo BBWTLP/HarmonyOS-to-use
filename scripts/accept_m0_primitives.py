@@ -288,6 +288,13 @@ class PrimitiveRunner:
         for transition in preferred:
             if transition in allowed and self._transition_possible(transition, observation):
                 return transition
+        # The preference above is written for the search-editor target. Other
+        # targets (e.g. the tabs page) declare their own allowed transitions, so
+        # fall back to any of them that is actually possible instead of
+        # reporting a missing locator.
+        for transition in allowed:
+            if self._transition_possible(transition, observation):
+                return transition
         return None
 
     async def _drive(self, target: str, transitions: dict) -> dict:

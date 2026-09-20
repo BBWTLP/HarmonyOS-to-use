@@ -235,6 +235,19 @@ class SetupStateMachineTests(unittest.TestCase):
         self.assertEqual(result["runner"].setup.trace[0]["transition"], "back_to_known")
         self.assertIn("back_to_known", TRANSITION_TARGETS)
 
+    def test_the_tabs_target_reaches_home_from_the_discover_page(self):
+        """Regression: the choice was hardcoded for the search-editor target.
+
+        From `discover` the tabs target allows `open_home`/`back_to_known`, but
+        the preference list asked for `open_search` - which is not allowed there -
+        so the machine reported `setup_locator_missing` with zero actions. That
+        is what made `swipe`/`tap` fail instantly on the device.
+        """
+        result = drive("discover", {"tap_text:首页": "tabs"}, target=TABS_FSM)
+        self.assertEqual(result["outcome"], "ok")
+        self.assertEqual(result["runner"].setup.trace[0]["transition"], "open_home")
+        self.assertEqual(result["runner"].setup.attempts, 1)
+
     def test_the_action_budget_is_per_session_not_cumulative(self):
         """Regression: the first RC4-A.1 build reset nothing.
 
