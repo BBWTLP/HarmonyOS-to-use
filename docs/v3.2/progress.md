@@ -36,9 +36,10 @@ deferred        明确推迟，不阻塞发布
 | 11 | M2 任务规格（30 任务） | **verified_offline（规格）** | `evals/tasks/m2-30.json` + 13 项校验；执行 `blocked_device` |
 | 12 | 离线故障注入矩阵 | **verified_offline** | 14 项；真机故障 `blocked_device` |
 | 13 | 安装 / 迁移 / 回滚 | **verified_offline** | 9 项；干净环境安装与跨版本回滚仍待真机/新环境复跑 |
-| — | 真机 Acceptance Sprint | **blocked_device** | 见 `blocked-device.md` |
+| — | 真机 Acceptance Sprint | **ready（ALLOW_DEVICE_TEST=YES）** | 见 `blocked-device.md`；用 `device-test-handoff.md` 的 NEW RC `b4049f5` 从 Stage 3 重新开始 |
 | — | 三客户端对照（Codex/OpenCode/DeepSeek） | **deferred** | 非发布阻塞；Runtime 保持 client-agnostic |
 | — | Pre-Device Release Gate（Gate A–G） | **verified_offline** | `pre-device-gate.md`；6 个真实缺陷已闭环，测试 562 → 607 |
+| — | RC 重新冻结（OFFLINE-1 / OFFLINE-2） | **verified_offline** | `pre-device-gate.md` 第 9 节；终态与 result 原子可见、单测与机器本地 token 解耦，测试 607 → 618 |
 
 ## 2. Phase 0 — Offline Baseline
 
@@ -209,3 +210,43 @@ G 任意 calibration 字符串即开 canary  → 必须完整 artifact，否则 
 离线部分已按计划推进到 Phase 13。真机恢复后按 `blocked-device.md` 顺序执行
 Device Acceptance Sprint；在此之前不因缺少真机而跳到 Decider 优化
 （Decider 重评估为 P2，见 `blocked-device.md` 第 9 节）。
+
+## 9. RC 重新冻结（2026-09-20，第二轮）
+
+真机测试机在 fresh clone 上重跑 Stage 3 时 3/3 失败，确认两个 release blocker：
+
+```text
+OFFLINE-2  任务状态先于 result 持久化 → RECONCILIATION_REQUIRED 可见但 result 读不到
+OFFLINE-1  DeciderProvider 单测隐式依赖 gitignore 的 services/decider/.runtime/api-token
+```
+
+修复与回归：
+
+```text
+fix        TaskStore.finalize_task() 单事务写 state + result + 收尾事件；
+           _finish() 改用它；删除 _run_subgoal() 提前发布终态的写操作
+tests      test_task_finalize_atomicity.py（500 次终态竞态 + 10 次端到端）
+           test_fresh_clone_semantics.py（local_off / local_shadow / 临时 token 三态）
+           测试代码改用 agent_fakes.make_decider_provider() 的临时 token；
+           生产 token 逻辑未改（默认仓库相对路径，HARMONY_DECIDER_TOKEN_FILE 可覆盖）
+```
+
+Gate 结果：
+
+```text
+fresh clone     Python 3.13.14 与 3.11.16 各 Ran 618 tests，OK，pip check clean
+稳定性          修复后连续 6 次全量回归 exit 0（修复前 3/3 失败）
+竞态敏感性      改回旧发布顺序后新测试在 attempt 0 抓到 2 次可见窗口，改回修复版后全绿
+adversarial     58 项通过
+fault matrix 等 93 项通过
+soak            3000 周期 / 48 任务：48/48 SUCCEEDED，750 次派发，0 错误，线程 1 → 1
+```
+
+```text
+previous RC  80e28988c98e4f8cb75c3f4d976d637eaa31c22a
+             DEVICE_BASELINE_READY，但被拒绝继续验收（Stage 3 不可 fresh-clone 复现）
+NEW RC       b4049f50b851241817e0be577e080bcbcf8519a8
+ALLOW_DEVICE_TEST = YES
+```
+
+真机正式证据必须从 **Stage 3 Offline Regression** 重新开始，用新 RC，不要复用旧 RC 的数据。

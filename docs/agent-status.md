@@ -16,7 +16,8 @@ Phase 0/1/2 已在该台账中标记为 `verified_offline`。
 |---|---|---|
 | A01 工作树与验收证据索引 | verified | `scripts/evidence_manifest.py`、`docs/acceptance/2026-09-20/baseline-manifest.json`；按文件哈希冻结含未提交变更的工作树 |
 | A02 v1 兼容与 v2 契约定义 | verified | `src/harmony_agent/contracts.py`、`docs/agent-layer.md`；`tests/test_agent_contracts.py` 与 `test_agent_planner.McpToolVisibilityTests` 证明 v1 六工具不变、v2 契约可校验 |
-| A03 可复现测试入口 | verified | `scripts/reproduce.py`；`python -m unittest discover -s tests` 于 2026-09-20 Pre-Device Gate 后实测 **607** 项通过（v3.2 离线阶段开始前为 346 项，Gate 前为 562 项）；数量随代码变化，以 `.runtime/tests-current.json` 为准 |
+| A03 可复现测试入口 | verified | `scripts/reproduce.py`；`python -m unittest discover -s tests` 于 2026-09-20 RC 重新冻结后实测 **618** 项通过（346 → 562 → 607 → 618）；已在 **fresh clone** 上用 Python 3.11.16 与 3.13.14 双版本验证，数量随代码变化，以 `.runtime/tests-current.json` 为准 |
+| A04 RC blocker 闭环 | verified | OFFLINE-2 终态与 result 原子可见（`TaskStore.finalize_task()`）；OFFLINE-1 单测与机器本地 token 解耦（`agent_fakes.make_decider_provider()`）。详见 `docs/v3.2/pre-device-gate.md` 第 9 节 |
 | B01 首个真实 Agent 客户端接入 | implemented | `scripts/agent_harness.py`（真实 MCP stdio 客户端）、`scripts/check_agent_link.py`；真实调用记录见 `docs/acceptance/2026-09-20/agent-client.json`（生成命令见同目录 README） |
 | B02 十个低风险任务与独立判定器 | implemented | `evals/tasks/m1-weibo.json`（10 任务，含中文输入、同名/缺树、返回、应用内跳转）、`scripts/accept_m1_weibo.py` 的程序化判定器 |
 | B03 M1 三十次自主任务验收 | implemented（待单批复跑） | 修复后 batch2 + batch2b 覆盖 30 个 (任务,运行) 组合且 **30/30 成功**、无错误完成声明；因中途一次 worker 隔离分两批完成，单批连续 30 次仍建议复跑 |

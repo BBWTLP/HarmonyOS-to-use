@@ -242,7 +242,8 @@ HARMONY_AGENT_PROVIDER_TIMEOUT   单次调用超时秒数，默认 15
 ```powershell
 Set-Location .\services\decider; .\Start-Decider.ps1; .\Test-Decider.ps1
 Set-Location ..\..
-.\.venv\Scripts\python.exe .\scripts\check_agent_link.py --report .runtime\link.json
+.\.venv\Scripts\python.exe .\scripts\check_agent_link.py --state-dir .runtime\agent-state `
+  --report .runtime\link.json
 .\.venv\Scripts\python.exe .\scripts\accept_m0_primitives.py --execute --per-primitive 25 `
   --report .\docs\acceptance\2026-09-20\m0-primitives.json
 .\.venv\Scripts\python.exe .\scripts\accept_m1_weibo.py --execute --runs 3 `

@@ -7,15 +7,36 @@
 ```text
 repository   https://github.com/BBWTLP/HarmonyOS-to-use
 branch       feat/runtime-foundation
-RC SHA       80e28988c98e4f8cb75c3f4d976d637eaa31c22a
-Python       3.11+
+RC SHA       b4049f50b851241817e0be577e080bcbcf8519a8
+Python       3.11+（本轮已在 3.11.16 与 3.13.14 上验证）
 OS           Windows（脚本为 PowerShell）
-test count   607 offline（0 failed / 0 error / 0 skip）
+test count   618 offline（0 failed / 0 error / 0 skip）
+gate         Pre-Device Gate 第二轮全绿（见 pre-device-gate.md 第 9 节）
 lock          requirements.lock（sha256 18a991d5…a126055）
 ```
 
 注意：RC 之后可能还有一个仅修改文档的提交。真机测试要 checkout 上面这个
 **代码** SHA，而不是分支最新提交。
+
+被替换的上一轮 RC（**不要再测**）：
+
+```text
+80e28988c98e4f8cb75c3f4d976d637eaa31c22a
+状态：DEVICE_BASELINE_READY，但因 Stage 3 离线回归无法 fresh-clone 复现而被拒绝继续验收。
+原因：OFFLINE-1 / OFFLINE-2，已在本轮修复（见 pre-device-gate.md 第 9 节）。
+```
+
+## 0.1 Python 兼容性（本轮实测）
+
+```text
+Python 3.13.14   fresh clone，pip check clean，Ran 618 tests，OK
+Python 3.11.16   fresh clone，pip check clean，Ran 618 tests，OK
+```
+
+3.13 是受支持版本，不是特殊环境：fresh clone 上**不需要**
+`services/decider/.runtime/api-token` 就能全绿。`local_off` 主测试路径不构造 Decider，
+也不读取任何 token；只有 `local_shadow` / `local_canary` 才真正需要 token 文件，缺失时按
+`token_unavailable` 安全回退。需要换路径时用 `HARMONY_DECIDER_TOKEN_FILE` 覆盖。
 
 ## 1. 取代码（必须精确到 SHA）
 
@@ -53,7 +74,10 @@ $env:HARMONY_AGENT_PROFILE = "local_off" # 主测试固定值；不要设 canary
 .\.venv\Scripts\python.exe -m pip check
 ```
 
-期望：`Ran 607 tests` 且 `OK`。不通过就不要继续真机测试，先报告。
+期望：`Ran 618 tests` 且 `OK`。不通过就不要继续真机测试，先报告。
+
+本步必须在**全新 clone**（无 `services/decider/.runtime/api-token`、无 `.runtime/`）上通过；
+如果它只在开发机上通过，说明测试又依赖了机器本地状态。
 
 ## 4. 真机只读起点
 
@@ -65,6 +89,16 @@ $env:HARMONY_AGENT_PROFILE = "local_off" # 主测试固定值；不要设 canary
 ```
 
 这些命令不执行导航或输入。记录设备型号、系统发行版本、HDC/uitest 版本、截图与树是否可用。
+
+一次真机验收批次必须**显式复用同一个 `$stateDir`**，不要依赖脚本默认目录：
+
+```powershell
+$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$stateDir = ".runtime\acceptance-$stamp"
+.\.venv\Scripts\python.exe .\scripts\check_agent_link.py --state-dir $stateDir `
+  --report "$stateDir\agent-link.json"
+.\.venv\Scripts\harmony-runtime.exe --state-dir $stateDir probe
+```
 
 ## 5. 然后按 blocked-device 顺序执行
 
@@ -115,4 +149,16 @@ canary 不可用：没有 calibration artifact 时 local_canary 一定 fail clos
 视觉风险证据：完全无 UI-tree 文本的纯视觉区域只有 proposer label 作为语义证据
 风险词表：词法匹配，同义改写可能绕过
 未知写入：一旦出现，必须人工对账，系统不会自动重放
+```
+
+来自上一轮真机的**观察项**（本轮未修，属于下一 RC 的采集任务，不是放行条件）：
+
+```text
+image_tree skew 接近 1000ms 阈值：实测 747–976 ms，冷启动阶段曾出现图树一致性失败
+                                （catalog 掉到 99–140，正常 241–259）
+                                → 不改阈值；下一轮真机做 20–30 次 observe/probe 稳定性采样
+check_agent_link 一次性停顿：约 9 分钟未复现；同刻独立 probe 正常、等价链路 15 秒通过
+                                → 下一轮真机连续跑 10–20 次，若再现再开 stdio/subprocess/lifecycle 专项
+foreground_known=false：设备端 getDeviceInfo 仍不返回可用结构，前景判定不可用
+cold baseline 未产出：没有受控冷启动流程，first sample 不等于 cold
 ```

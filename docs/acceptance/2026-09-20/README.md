@@ -111,7 +111,9 @@
 .\.venv\Scripts\python.exe .\scripts\reproduce.py
 
 # 3 需要真机与常驻服务的验收（显式 --execute）
-.\.venv\Scripts\python.exe .\scripts\check_agent_link.py --report .runtime\link.json
+# 一次验收批次必须显式复用同一个 $stateDir（不要依赖脚本默认的 .runtime/agent-state）
+.\.venv\Scripts\python.exe .\scripts\check_agent_link.py --state-dir $stateDir `
+  --report ".runtime\acceptance-$stamp\agent-link.json"
 .\.venv\Scripts\python.exe .\scripts\accept_m0_primitives.py --execute --per-primitive 100 `
   --report .\docs\acceptance\2026-09-20\m0-primitives.json
 .\.venv\Scripts\python.exe .\scripts\accept_m1_weibo.py --execute --runs 3 `

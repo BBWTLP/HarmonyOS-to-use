@@ -118,6 +118,87 @@ date/time        2026-09-20（Asia/Shanghai）
 RC 之后的提交只允许是文档（例如把本 SHA 写进交接单）。如出现新的代码提交，
 必须重新执行本 Gate 并给出新的 RC SHA。
 
+---
+
+# 9. RC 重新冻结（第二轮，2026-09-20）
+
+## 9.1 为什么第一轮 RC 被拒绝
+
+真机测试机在**全新 clone** 上重跑 Stage 3 Offline Regression 时，3/3 次运行都失败
+（每次 1–15 项）。两个真实缺陷被确认，第一轮 RC
+`80e28988c98e4f8cb75c3f4d976d637eaa31c22a` 因此只保留
+`DEVICE_BASELINE_READY`，**不允许继续真机写路径验收**。证据见
+`docs/acceptance/2026-09-20/rc80e2898-device-reacceptance-stage0-7.md`。
+
+```text
+OFFLINE-2  任务状态先于 result 持久化：
+           RECONCILIATION_REQUIRED 已对外可见，但 result 尚不可读。
+           另外 _finish() 也是 set_state() 与 save_result() 两次提交。
+
+OFFLINE-1  DeciderProvider 单测隐式依赖 services/decider/.runtime/api-token：
+           该文件被 gitignore，fresh clone 不存在，14 项测试在假 transport 之前
+           就抛 token_unavailable。Gate 声称的「607 全绿」依赖未提交的本地工件。
+```
+
+## 9.2 本轮修复
+
+| Blocker | 修复 | 回归 |
+|---|---|---|
+| OFFLINE-2 | 新增 `TaskStore.finalize_task()`：在**一个事务**内写 state + result + 收尾事件；`_finish()` 改为调用它；删除 `_run_subgoal()` 里提前发布 `RECONCILIATION_REQUIRED` 的写操作 | `tests/test_task_finalize_atomicity.py`：5 个 result-bearing 状态 × 100 次 = **500 次终态竞态轮询**，外加 10 次端到端 unknown-write 可见性检查 |
+| OFFLINE-1 | 测试改用 `agent_fakes.make_decider_provider()` / `temp_token_file()` 提供的临时 token；**生产 token 逻辑未改**（默认仍是仓库相对路径，可用 `HARMONY_DECIDER_TOKEN_FILE` 覆盖） | `tests/test_fresh_clone_semantics.py`：Case A（无 token + `local_off` 不构造 provider）、Case B（无 token + `local_shadow` 安全回退）、Case C（假 transport + 临时 token 可复现） |
+
+竞态测试的**敏感性已验证**：把发布顺序临时改回「两次提交 + 提前发布终态」后，
+该测试在 attempt 0 抓到 2 次 `RECONCILIATION_REQUIRED` 无 result 的可见窗口；改回修复版后 6/6 通过。
+
+## 9.3 本轮 Gate 结果
+
+```text
+fresh clone（无 api-token、无 .runtime、tree clean）
+  Python 3.13.14   reproduce exit 0，Ran 618 tests，OK
+  Python 3.11.16   reproduce exit 0，Ran 618 tests，OK
+pip check          No broken requirements found.（3.11 / 3.13 均是）
+稳定性             修复后连续 6 次全量回归全部 exit 0（修复前 3/3 失败）
+adversarial        58 项通过（pre_device_gate + visual_target_authority）
+fault matrix 等    93 项通过（offline_fault_matrix + agent_tasks + runner_boundaries
+                            + agent_boundaries + visual_providers）
+soak               HARMONY_SOAK_CYCLES=3000 / TASKS=48：5 项通过，
+                   48/48 SUCCEEDED，750 次派发，0 错误，线程 1 → 1，
+                   journal 4096 → 4096 bytes，无未决写入
+requirements.lock  sha256 18a991d5…a126055（未变）
+```
+
+## 9.4 RC 冻结（第二轮）
+
+```text
+branch           feat/runtime-foundation
+NEW RC SHA       b4049f50b851241817e0be577e080bcbcf8519a8
+test count       618（0 failed / 0 error / 0 skip）
+Python           3.11.16 与 3.13.14，均在 fresh clone 上全绿
+date/time        2026-09-20（Asia/Shanghai）
+```
+
+`b4049f5` 之后只允许文档 / CI 提交；一旦再出现运行时代码或测试改动，
+必须重新执行本 Gate 并给出新的 RC SHA。
+
+## 9.5 进入真机的前置清单
+
+```text
+[x] OFFLINE-1 fixed
+[x] OFFLINE-2 fixed
+[x] race regression green（500 次竞态 + 端到端）
+[x] fresh clone regression green（3.11.16 / 3.13.14）
+[x] no runtime token dependency in local_off
+[x] Python supported-version regression green
+[x] full Pre-Device Gate green
+[x] soak green（3000 周期 / 48 任务）
+[x] working tree clean
+[x] NEW_RC_SHA frozen
+```
+
+```text
+ALLOW_DEVICE_TEST = YES
+```
+
 ## 9. 剩余风险
 
 ```text
