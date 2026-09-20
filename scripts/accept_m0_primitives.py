@@ -315,7 +315,10 @@ class PrimitiveRunner:
         latencies: list[float] = []
         failures: list[dict] = []
         refusals: dict[str, int] = {}
-        setup = SetupStats()
+        # The navigation helpers write into `self.setup`; this primitive's
+        # record must report that same object, not a fresh empty one.
+        self.setup = SetupStats()
+        setup = self.setup
         setup_sessions = 0
         errors_in_a_row = 0
         started = time.time()

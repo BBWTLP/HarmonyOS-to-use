@@ -169,6 +169,33 @@ class SetupAccountingTests(unittest.TestCase):
         self.assertEqual(error.exception.code, "setup_target_missing")
         self.assertEqual(fake.calls, [])
 
+    def test_the_record_reports_the_stats_the_navigation_helpers_write(self):
+        """Regression: the runner reported a fresh, empty SetupStats.
+
+        Navigation writes into the runner's live stats object, so the primitive
+        record must expose that same object - otherwise a run can report
+        `setup_attempts: 0` while it actually performed (and was refused) setup
+        actions on the device.
+        """
+        fake = FakeHarness([HarnessError("stale_observation", "page moved")])
+        subject = runner(fake)
+
+        async def handler(index: int) -> float:
+            await subject._setup_step(
+                selector="tap_discover_tab",
+                locate=lambda obs: obs["catalog"][0],
+                action_for=lambda node: {"kind": "tap",
+                                         "target": {"action_id": node["action_id"]}})
+            return 5.0
+
+        subject._back = handler
+        record = asyncio.run(subject.run())["primitives"]["back"]
+        self.assertEqual(record["success"], 1)
+        self.assertEqual(record["setup"]["attempts"], 2)
+        self.assertEqual(record["setup"]["stale_refusals"], 1)
+        self.assertEqual(record["setup"]["success"], 1)
+        self.assertEqual(len(record["setup"]["target_drift"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
