@@ -6,6 +6,9 @@ network. Everything is deterministic so failures point at the agent layer.
 from __future__ import annotations
 
 import copy
+import pathlib
+import shutil
+import tempfile
 
 WEIBO = "com.sina.weibo.stage"
 
@@ -166,3 +169,26 @@ def calibration(calibration_id="cal-2026-09-20", *, revision="fake-revision",
     return Calibration(calibration_id=calibration_id, provider_revision=revision,
                        confidence_threshold=confidence,
                        certainty_threshold=certainty, dataset_sha256="a" * 64)
+
+
+def temp_token_file(case, token: str = "test-token") -> pathlib.Path:
+    """A throwaway Decider token file, removed when the test finishes.
+
+    ``DeciderProvider`` defaults to the repo-relative runtime token
+    (``services/decider/.runtime/api-token``). That file is gitignored and only
+    exists on a machine that has started the Decider service, so a test that
+    relies on the default is not reproducible from a fresh clone. Tests must
+    supply their own token instead of reading machine state.
+    """
+    directory = tempfile.mkdtemp(prefix="decider-token-")
+    case.addCleanup(shutil.rmtree, directory, ignore_errors=True)
+    path = pathlib.Path(directory) / "api-token"
+    path.write_text(token, encoding="utf-8")
+    return path
+
+
+def make_decider_provider(case, transport, *, token: str = "test-token", **kwargs):
+    """``DeciderProvider`` wired to a hermetic test token, never to machine state."""
+    from harmony_agent.decision.providers.decider import DeciderProvider
+    return DeciderProvider(transport=transport, token_file=temp_token_file(case, token),
+                           **kwargs)

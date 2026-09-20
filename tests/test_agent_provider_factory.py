@@ -18,7 +18,7 @@ import unittest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from agent_fakes import (WEIBO, FakeTransportProvider, FakeWeiboDevice, calibration,
-                         weibo_home)
+                         make_decider_provider, weibo_home)
 from harmony_agent.candidates import CandidateError, CandidateRegistry
 from harmony_agent.contracts import Predicate
 from harmony_agent.decision.factory import (ProviderConfig, build_fast_provider,
@@ -336,7 +336,7 @@ class ProviderFailureIsolationTests(unittest.TestCase):
         def refused(payload, token, timeout):
             raise ConnectionError("connection refused")
 
-        outcome = self.decide(DeciderProvider(transport=refused))
+        outcome = self.decide(make_decider_provider(self, refused))
         self.assertEqual(outcome.decision.provider, "rules")
         self.assertEqual(outcome.fallback_reason, "transport_error")
         self.assertEqual(outcome.decision.selected_candidate_id, self.selected)
@@ -344,14 +344,16 @@ class ProviderFailureIsolationTests(unittest.TestCase):
 
     def test_busy_and_deadline_are_reported_separately(self):
         for status, code in ((503, "model_busy"), (504, "model_timeout")):
-            provider = DeciderProvider(
+            provider = make_decider_provider(
+                self,
                 transport=lambda payload, token, timeout, status=status: (status, {}, {}))
             outcome = self.decide(provider)
             self.assertEqual(outcome.fallback_reason, code, status)
             self.assertEqual(outcome.decision.provider, "rules", status)
 
     def test_a_body_without_a_deployment_is_rejected(self):
-        provider = DeciderProvider(transport=lambda payload, token, timeout: (200, {}, {}))
+        provider = make_decider_provider(
+            self, lambda payload, token, timeout: (200, {}, {}))
         with self.assertRaises(DeciderError) as error:
             self.evaluate(provider)
         self.assertEqual(error.exception.code, "revision_mismatch")
@@ -361,7 +363,7 @@ class ProviderFailureIsolationTests(unittest.TestCase):
             return 200, {"deployment": {"model_revision": DEFAULT_REVISION}}, {}
 
         with self.assertRaises(DeciderError) as error:
-            self.evaluate(DeciderProvider(transport=transport))
+            self.evaluate(make_decider_provider(self, transport))
         self.assertEqual(error.exception.code, "malformed_response")
 
     def test_invalid_schema_is_rejected(self):
@@ -370,7 +372,7 @@ class ProviderFailureIsolationTests(unittest.TestCase):
                          "deployment": {"model_revision": DEFAULT_REVISION}}, {}
 
         with self.assertRaises(DeciderError) as error:
-            self.evaluate(DeciderProvider(transport=transport))
+            self.evaluate(make_decider_provider(self, transport))
         self.assertIn(error.exception.code,
                       ("malformed_response", "candidate_not_registered"))
 
@@ -385,7 +387,7 @@ class ProviderFailureIsolationTests(unittest.TestCase):
                          "deployment": {"model_revision": DEFAULT_REVISION}}, {}
 
         with self.assertRaises(DeciderError) as error:
-            self.evaluate(DeciderProvider(transport=transport))
+            self.evaluate(make_decider_provider(self, transport))
         self.assertEqual(error.exception.code, "non_finite_score")
 
     def test_expired_candidate_never_becomes_a_decider_execution(self):

@@ -5,8 +5,8 @@ import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from agent_fakes import (WEIBO, FakeTransportProvider, calibration, weibo_home,
-                         weibo_results)
+from agent_fakes import (WEIBO, FakeTransportProvider, calibration,
+                         make_decider_provider, weibo_home, weibo_results)
 from harmony_agent.candidates import CandidateRegistry
 from harmony_agent.contracts import Predicate
 from harmony_agent.decision.providers.decider import (CircuitBreaker, DeciderProvider,
@@ -194,7 +194,8 @@ class RouterShadowTests(unittest.TestCase):
 
 class DeciderProviderTests(unittest.TestCase):
     def provider(self, transport, **overrides):
-        return DeciderProvider(transport=transport, **overrides)
+        # Hermetic token: never read the machine-local Decider runtime token.
+        return make_decider_provider(self, transport, **overrides)
 
     def evaluate(self, provider):
         obs = observation(weibo_home())

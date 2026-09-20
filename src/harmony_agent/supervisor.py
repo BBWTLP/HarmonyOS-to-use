@@ -30,6 +30,12 @@ from .memory import Memory
 from .planner import LoopDetector, Plan, Subgoal, plan_from_task
 
 TERMINAL = ("SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED")
+#: States that carry a final result. Once one of these is readable through
+#: `TaskStore.task()`, the matching result must be readable in the same read.
+#: `RECONCILIATION_REQUIRED` is not TERMINAL (the task can still be reconciled),
+#: but it is result-bearing: it ends the autonomous run and reports an outcome.
+RESULT_BEARING_STATES = ("SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED",
+                         "RECONCILIATION_REQUIRED")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS tasks (
@@ -165,6 +171,49 @@ class TaskStore:
                             (json.dumps(result, ensure_ascii=False, sort_keys=True),
                              time.time(), task_id))
             self.db.commit()
+
+    def finalize_task(self, task_id: str, state: str, result: dict[str, Any],
+                      event: tuple[str, dict[str, Any]] | None = None) -> bool:
+        """Publish a result-bearing state and its result in a single transaction.
+
+        Invariant: as soon as `task()` reports a result-bearing state, that same
+        read carries the result. Publishing state and result as two separate
+        commits opens a window where a poller sees the final state while
+        `task()["result"]` is still ``None``.
+
+        Returns ``False`` when a terminal state already won and the outcome was
+        therefore not published (the same precedence rule `set_state` applies).
+        """
+        if state not in RESULT_BEARING_STATES:
+            raise TaskError("invalid_final_state",
+                            f"{state} is not a result-bearing task state")
+        payload = json.dumps(result, ensure_ascii=False, sort_keys=True)
+        now = time.time()
+        with self.lock:
+            row = self.db.execute("SELECT state FROM tasks WHERE task_id=?",
+                                  (task_id,)).fetchone()
+            if row is None:
+                raise TaskError("unknown_task", "No such task")
+            if state not in TERMINAL and row[0] in TERMINAL:
+                return False
+            try:
+                self.db.execute("UPDATE tasks SET state=?, result=?, updated=?"
+                                " WHERE task_id=?", (state, payload, now, task_id))
+                if event is not None:
+                    event_type, event_payload = event
+                    sequence = self.db.execute(
+                        "SELECT COALESCE(MAX(sequence),0)+1 FROM task_events"
+                        " WHERE task_id=?", (task_id,)).fetchone()[0]
+                    self.db.execute(
+                        "INSERT INTO task_events (task_id, sequence, type, payload, created)"
+                        " VALUES (?,?,?,?,?)",
+                        (task_id, int(sequence), event_type,
+                         json.dumps(event_payload, ensure_ascii=False, sort_keys=True), now))
+            except Exception:
+                self.db.rollback()
+                raise
+            self.db.commit()
+            return True
 
     def task(self, task_id: str) -> dict[str, Any] | None:
         with self.lock:
@@ -413,7 +462,9 @@ class TaskRunner:
                     subgoal.status = "blocked"
                     return "stop"
                 if result.get("execution_status") == "unknown":
-                    run.store.set_state(run.task_id, "RECONCILIATION_REQUIRED")
+                    # Do not publish the final state here: the state must become
+                    # visible together with the result in `_finish()`. An early
+                    # write would expose RECONCILIATION_REQUIRED with no result.
                     run.memory.record_incident(result.get("incident_id") or uuid.uuid4().hex,
                                                "execution_unknown", result.get("request_id"))
                     return "reconciliation"
@@ -608,11 +659,16 @@ class TaskRunner:
             except Exception as error:
                 result["limitations"] = [*result["limitations"],
                                          f"artifact_store_error:{safety_code(error)}"]
-        run.store.set_state(run.task_id, state)
-        run.store.save_result(run.task_id, result)
-        run.event("task_finished", {"status": state, "reason": reason,
-                                    "resolution_required": result["resolution_required"],
-                                    "result_artifact_id": result.get("result_artifact_id")})
+        # State, result and the closing event become visible together: a poller
+        # that sees a result-bearing state always sees the matching result.
+        published = run.store.finalize_task(
+            run.task_id, state, result,
+            event=("task_finished",
+                   {"status": state, "reason": reason,
+                    "resolution_required": result["resolution_required"],
+                    "result_artifact_id": result.get("result_artifact_id")}))
+        if published:
+            run.events += 1
         return result
 
 
