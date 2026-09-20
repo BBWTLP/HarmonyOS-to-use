@@ -1,0 +1,806 @@
+"""TaskSupervisor and TaskRunner.
+
+The supervisor owns task state, budget and the event log in one SQLite
+database. The runner holds no device driver and no writable journal: every
+observation and every write goes through the runtime's public session API, so
+the guard, epoch checks and the unknown-write barrier still apply.
+
+After a service restart a RUNNING task is not resumed automatically; it is
+reported as PAUSED so that a human decides.
+"""
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import json
+import sqlite3
+import threading
+import time
+import uuid
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from .candidates import CandidateRegistry, RegisteredCandidate
+from .checker import CheckReport, ReadOnlyChecker
+from .contracts import Predicate, TaskSubmit
+from .decision.router import Router, RouterOutcome
+from .grounding import GroundingIntent, GroundingUnavailable
+from .memory import Memory
+from .planner import LoopDetector, Plan, Subgoal, plan_from_task
+
+TERMINAL = ("SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED")
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS tasks (
+  task_id TEXT PRIMARY KEY,
+  request_key TEXT UNIQUE NOT NULL,
+  goal_hash TEXT NOT NULL,
+  state TEXT NOT NULL,
+  controller_epoch INTEGER NOT NULL,
+  payload TEXT NOT NULL,
+  created REAL NOT NULL,
+  updated REAL NOT NULL,
+  result TEXT
+);
+CREATE TABLE IF NOT EXISTS task_events (
+  task_id TEXT NOT NULL,
+  sequence INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  created REAL NOT NULL,
+  PRIMARY KEY (task_id, sequence)
+);
+CREATE TABLE IF NOT EXISTS task_plans (
+  task_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT NOT NULL,
+  created REAL NOT NULL,
+  PRIMARY KEY (task_id, version)
+);
+"""
+
+
+class TaskError(RuntimeError):
+    def __init__(self, code: str, message: str):
+        self.code = code
+        super().__init__(message)
+
+
+def _digest(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def safety_code(error: BaseException) -> str:
+    code = getattr(error, "code", None)
+    if isinstance(code, str) and code:
+        return code
+    return type(error).__name__
+
+
+class TaskStore:
+    """Transactional task state, event log and plan history."""
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.lock = threading.RLock()
+        self.db = sqlite3.connect(self.path, check_same_thread=False)
+        self.db.execute("PRAGMA journal_mode=WAL")
+        self.db.execute("PRAGMA synchronous=FULL")
+        self.db.executescript(SCHEMA)
+        # A task that was running when the process died is never resumed.
+        self.db.execute("UPDATE tasks SET state='PAUSED'"
+                        " WHERE state IN ('RUNNING','VERIFYING','RECOVERING')")
+        self.db.commit()
+
+    def close(self) -> None:
+        with self.lock:
+            self.db.close()
+
+    def create(self, task: TaskSubmit, controller_epoch: int) -> dict[str, Any]:
+        with self.lock:
+            row = self.db.execute(
+                "SELECT task_id, state, payload FROM tasks WHERE request_key=?",
+                (task.request_id,)).fetchone()
+            if row is not None:
+                stored = TaskSubmit.model_validate(json.loads(row[2]))
+                if stored.model_dump() != task.model_dump():
+                    raise TaskError("request_conflict",
+                                    "request_id was already used with different arguments")
+                return {"task_id": row[0], "state": row[1], "deduplicated": True}
+            task_id = "task_" + uuid.uuid4().hex[:24]
+            now = time.time()
+            self.db.execute(
+                "INSERT INTO tasks (task_id, request_key, goal_hash, state, controller_epoch,"
+                " payload, created, updated, result) VALUES (?,?,?,?,?,?,?,?,NULL)",
+                (task_id, task.request_id, _digest(task.goal), "QUEUED", controller_epoch,
+                 json.dumps(task.model_dump()), now, now))
+            self.db.commit()
+            return {"task_id": task_id, "state": "QUEUED", "deduplicated": False}
+
+    def set_state(self, task_id: str, state: str) -> None:
+        with self.lock:
+            if state in TERMINAL:
+                self.db.execute("UPDATE tasks SET state=?, updated=? WHERE task_id=?",
+                                (state, time.time(), task_id))
+            else:
+                self.db.execute(
+                    "UPDATE tasks SET state=?, updated=? WHERE task_id=?"
+                    " AND state NOT IN ('SUCCEEDED','PARTIAL','FAILED','CANCELLED')",
+                    (state, time.time(), task_id))
+            self.db.commit()
+
+    def state(self, task_id: str) -> str | None:
+        with self.lock:
+            row = self.db.execute("SELECT state FROM tasks WHERE task_id=?", (task_id,)).fetchone()
+        return row[0] if row else None
+
+    def add_event(self, task_id: str, event_type: str, payload: dict[str, Any]) -> int:
+        with self.lock:
+            row = self.db.execute(
+                "SELECT COALESCE(MAX(sequence),0)+1 FROM task_events WHERE task_id=?",
+                (task_id,)).fetchone()
+            sequence = int(row[0])
+            self.db.execute(
+                "INSERT INTO task_events (task_id, sequence, type, payload, created)"
+                " VALUES (?,?,?,?,?)",
+                (task_id, sequence, event_type,
+                 json.dumps(payload, ensure_ascii=False, sort_keys=True), time.time()))
+            self.db.commit()
+            return sequence
+
+    def add_plan(self, task_id: str, plan: Plan) -> None:
+        with self.lock:
+            self.db.execute(
+                "INSERT OR REPLACE INTO task_plans (task_id, version, payload, created)"
+                " VALUES (?,?,?,?)",
+                (task_id, plan.version,
+                 json.dumps(plan.to_dict(), ensure_ascii=False), time.time()))
+            self.db.commit()
+
+    def save_result(self, task_id: str, result: dict[str, Any]) -> None:
+        with self.lock:
+            self.db.execute("UPDATE tasks SET result=?, updated=? WHERE task_id=?",
+                            (json.dumps(result, ensure_ascii=False, sort_keys=True),
+                             time.time(), task_id))
+            self.db.commit()
+
+    def task(self, task_id: str) -> dict[str, Any] | None:
+        with self.lock:
+            row = self.db.execute(
+                "SELECT task_id, request_key, state, controller_epoch, payload, created,"
+                " updated, result FROM tasks WHERE task_id=?", (task_id,)).fetchone()
+        if row is None:
+            return None
+        return {"task_id": row[0], "request_key": row[1], "state": row[2],
+                "controller_epoch": row[3], "payload": json.loads(row[4]),
+                "created": row[5], "updated": row[6],
+                "result": json.loads(row[7]) if row[7] else None}
+
+    def events(self, task_id: str, after: int = 0, limit: int = 50) -> dict[str, Any]:
+        limit = max(1, min(int(limit), 200))
+        with self.lock:
+            rows = self.db.execute(
+                "SELECT sequence, type, payload, created FROM task_events"
+                " WHERE task_id=? AND sequence>? ORDER BY sequence LIMIT ?",
+                (task_id, int(after), limit)).fetchall()
+            last = self.db.execute(
+                "SELECT COALESCE(MAX(sequence),0) FROM task_events WHERE task_id=?",
+                (task_id,)).fetchone()[0]
+        items = [{"sequence": r[0], "type": r[1], "payload": json.loads(r[2]), "created": r[3]}
+                 for r in rows]
+        return {"items": items, "next_seq": items[-1]["sequence"] if items else int(after),
+                "last_seq": int(last), "limit": limit}
+
+    def plans(self, task_id: str) -> list[dict[str, Any]]:
+        with self.lock:
+            rows = self.db.execute(
+                "SELECT version, payload FROM task_plans WHERE task_id=? ORDER BY version",
+                (task_id,)).fetchall()
+        return [{"version": r[0], **json.loads(r[1])} for r in rows]
+
+    def inflight(self) -> list[str]:
+        with self.lock:
+            rows = self.db.execute(
+                "SELECT task_id FROM tasks WHERE state NOT IN"
+                " ('SUCCEEDED','PARTIAL','FAILED','CANCELLED')").fetchall()
+        return [row[0] for row in rows]
+
+
+@dataclass
+class RuntimeFacade:
+    """The runner's only device access path: the runtime's public session API."""
+
+    runtime: Any
+    owner: str
+    session_id: str
+
+    def observe(self, mode: str = "FAST", include_image: bool = False) -> dict[str, Any]:
+        return self.runtime.observe(self.owner, self.session_id,
+                                    include_image=include_image, mode=mode)
+
+    def act(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.runtime.act(self.owner, payload)
+
+    def wait(self, **kwargs) -> dict[str, Any]:
+        return self.runtime.wait(self.owner, self.session_id, **kwargs)
+
+    def status(self) -> dict[str, Any]:
+        return self.runtime.session(self.owner, "status", session_id=self.session_id)
+
+    def controller_epoch(self) -> int:
+        return int(self.status().get("controller_epoch", 0))
+
+    def unresolved(self) -> list[dict[str, Any]]:
+        return self.status().get("unresolved_actions", [])
+
+
+@dataclass
+class TaskRun:
+    task_id: str
+    task: TaskSubmit
+    plan: Plan
+    memory: Memory
+    facade: RuntimeFacade
+    registry: CandidateRegistry
+    router: Router
+    checker: ReadOnlyChecker
+    store: TaskStore
+    artifacts: Any = None
+    ocr: Any = None
+    matcher: Any = None
+    arguments: dict[str, str] = field(default_factory=dict)
+    cancel: threading.Event = field(default_factory=threading.Event)
+    pause: threading.Event = field(default_factory=threading.Event)
+    dispatches: int = 0
+    model_calls: int = 0
+    observations: int = 0
+    loop: LoopDetector = field(default_factory=LoopDetector)
+    started_at: float = field(default_factory=time.time)
+    events: int = 0
+
+    def remaining(self) -> dict[str, Any]:
+        elapsed = time.time() - self.started_at
+        return {
+            "dispatches": max(0, self.task.budget.max_dispatches - self.dispatches),
+            "seconds": max(0.0, float(self.task.budget.max_seconds) - elapsed),
+            "model_calls": max(0, self.task.budget.max_model_calls - self.model_calls),
+            "cost_usd": None,
+        }
+
+    def event(self, event_type: str, payload: dict[str, Any]) -> None:
+        self.events += 1
+        self.store.add_event(self.task_id, event_type, payload)
+
+
+class TaskRunner:
+    """Executes one plan through the runtime facade under a hard budget."""
+
+    def __init__(self, run: TaskRun):
+        self.run = run
+
+    # -- entry --------------------------------------------------------------
+    def execute(self) -> dict[str, Any]:
+        run = self.run
+        run.store.set_state(run.task_id, "RUNNING")
+        run.event("task_started", {"goal_hash": _digest(run.task.goal),
+                                   "plan_version": run.plan.version,
+                                   "profile": run.router.profile})
+        try:
+            while True:
+                if run.cancel.is_set():
+                    return self._finish("CANCELLED", "cancelled_by_supervisor")
+                if run.pause.is_set():
+                    return self._paused()
+                subgoal = run.plan.next_pending()
+                if subgoal is None:
+                    break
+                outcome = self._run_subgoal(subgoal)
+                if outcome == "cancel":
+                    return self._finish("CANCELLED", "cancelled_by_supervisor")
+                if outcome == "paused":
+                    return self._paused()
+                if outcome == "reconciliation":
+                    return self._finish("RECONCILIATION_REQUIRED", "unknown_write")
+                if outcome == "stop":
+                    return self._finish("FAILED", "subgoal_blocked_or_escalated")
+            return self._verify()
+        except Exception as error:  # the runner must always persist an outcome
+            code = safety_code(error)
+            run.event("task_error", {"code": code})
+            return self._finish("FAILED", code)
+
+    # -- subgoal ------------------------------------------------------------
+    def _run_subgoal(self, subgoal: Subgoal) -> str:
+        run = self.run
+        run.memory.add_subgoal(subgoal.subgoal_id, subgoal.description)
+        reobserve_budget = 2
+        for attempt in range(1, 4):
+            if run.cancel.is_set():
+                return "cancel"
+            if run.pause.is_set():
+                return "paused"
+            if self._early_progress(subgoal) is True:
+                return "continue"
+            remaining = run.remaining()
+            if remaining["dispatches"] <= 0 or remaining["seconds"] <= 0:
+                subgoal.status = "failed"
+                run.event("budget_exhausted", {"subgoal_id": subgoal.subgoal_id, **remaining})
+                return "stop"
+            subgoal.attempts = attempt
+            observation = run.facade.observe(mode="FULL" if attempt == 1 else "FAST")
+            run.observations += 1
+            run.memory.record_state(observation)
+            if observation.get("blocking_dialog"):
+                run.store.set_state(run.task_id, "WAITING_USER")
+                run.event("authentication_required",
+                          {"subgoal_id": subgoal.subgoal_id,
+                           "source": observation["blocking_dialog"].get("source")})
+                return "stop"
+            criteria = list(subgoal.expected)
+            # An action with no explicit postcondition still declares the effect
+            # the runtime will verify: the page must change after the dispatch.
+            expected_predicates = criteria or [Predicate(id="__effect",
+                                                         type="page_changed")]
+            intent = GroundingIntent(
+                action_kind=subgoal.action_kind,
+                text=subgoal.intent_text,
+                resource_id=subgoal.intent_resource_id,
+                accessibility_id=subgoal.intent_accessibility_id,
+                description=subgoal.description,
+                require_clickable=subgoal.action_kind in ("tap", "long_press"),
+            )
+            try:
+                candidate_set = run.registry.build(
+                    task_id=run.task_id, subgoal_id=subgoal.subgoal_id,
+                    scope_id=run.task.scope.device_ref, observation=observation,
+                    controller_epoch=run.facade.controller_epoch(), intent=intent,
+                    action_kind=subgoal.action_kind, arguments=run.arguments,
+                    expected_predicates=expected_predicates,
+                    argument_refs=subgoal.argument_refs,
+                    ocr=run.ocr, matcher=run.matcher,
+                )
+            except GroundingUnavailable as error:
+                run.event("grounding_unavailable",
+                          {"subgoal_id": subgoal.subgoal_id, "code": error.code})
+                if error.code == "stale_observation" and reobserve_budget > 0:
+                    reobserve_budget -= 1
+                    continue
+                subgoal.status = "blocked"
+                return "stop"
+            grounding = candidate_set.grounding
+            run.event("candidates", {
+                "subgoal_id": subgoal.subgoal_id,
+                "count": len(candidate_set.candidates),
+                "hash": candidate_set.hash,
+                "layers": grounding.layers_used if grounding else [],
+                "rejected": grounding.rejected if grounding else [],
+                "notes": grounding.notes if grounding else [],
+            })
+            if not candidate_set.candidates:
+                if reobserve_budget > 0:
+                    reobserve_budget -= 1
+                    run.event("reobserve", {"subgoal_id": subgoal.subgoal_id,
+                                            "reason": "no_candidate",
+                                            "remaining": reobserve_budget})
+                    continue
+                subgoal.status = "blocked"
+                run.event("subgoal_blocked", {"subgoal_id": subgoal.subgoal_id,
+                                              "reason": "no_candidate_after_retry"})
+                return "stop"
+            outcome = self._decide(subgoal, observation, candidate_set)
+            run.event("decision", _decision_payload(outcome))
+            if outcome.decision.route == "execute":
+                selected = candidate_set.by_id(outcome.decision.selected_candidate_id or "")
+                if selected is None:
+                    subgoal.status = "blocked"
+                    run.event("subgoal_blocked", {"subgoal_id": subgoal.subgoal_id,
+                                                  "reason": "selected_candidate_missing"})
+                    return "stop"
+                try:
+                    result = self._dispatch(subgoal, observation, selected,
+                                            expected_predicates)
+                except Exception as error:
+                    # A refused dispatch is a recoverable refusal, not a task
+                    # failure: re-observe and let the guard decide again.
+                    run.event("dispatch_refused",
+                              {"subgoal_id": subgoal.subgoal_id,
+                               "code": safety_code(error)})
+                    if reobserve_budget > 0:
+                        reobserve_budget -= 1
+                        continue
+                    subgoal.status = "blocked"
+                    return "stop"
+                if result.get("execution_status") == "unknown":
+                    run.store.set_state(run.task_id, "RECONCILIATION_REQUIRED")
+                    run.memory.record_incident(result.get("incident_id") or uuid.uuid4().hex,
+                                               "execution_unknown", result.get("request_id"))
+                    return "reconciliation"
+                if result.get("verification_status") == "verified":
+                    subgoal.status = "verified"
+                    return "continue"
+                reobserve_budget = max(reobserve_budget, 1)
+                continue
+            if outcome.decision.route == "reobserve":
+                if reobserve_budget > 0:
+                    reobserve_budget -= 1
+                    continue
+                subgoal.status = "blocked"
+                return "stop"
+            subgoal.status = "blocked"
+            return "stop"
+        subgoal.status = "failed"
+        run.event("subgoal_failed", {"subgoal_id": subgoal.subgoal_id,
+                                     "attempts": subgoal.attempts})
+        return "stop"
+
+    def _early_progress(self, subgoal: Subgoal) -> bool | None:
+        """Skip a subgoal whose conditions already hold; never dispatches."""
+        criteria = list(subgoal.expected)
+        if not criteria:
+            return None
+        if self.run.observations > 0 and subgoal.attempts > 0:
+            return None
+        try:
+            observation = self.run.facade.observe(mode="FAST")
+        except Exception:
+            return None
+        self.run.observations += 1
+        report = self.run.checker.check(criteria, observation,
+                                        arguments=self.run.arguments,
+                                        incident_free=not self.run.facade.unresolved())
+        if report.verdict == "pass":
+            subgoal.status = "verified"
+            self.run.event("subgoal_already_satisfied",
+                           {"subgoal_id": subgoal.subgoal_id,
+                            "evidence": report.evidence_refs[:4]})
+            return True
+        return False
+
+    # -- decision -----------------------------------------------------------
+    def _decide(self, subgoal: Subgoal, observation: dict[str, Any],
+                candidate_set) -> RouterOutcome:
+        run = self.run
+        outcome = asyncio.run(run.router.decide(
+            task_id=run.task_id, subgoal_id=subgoal.subgoal_id,
+            scope_id=run.task.scope.device_ref, observation=observation,
+            candidate_set=candidate_set, controller_epoch=run.facade.controller_epoch(),
+            remaining_model_calls=run.remaining()["model_calls"],
+            goal=run.task.goal, facts=run.memory.context_facts()))
+        if outcome.decision.provider != "rules" or outcome.shadow is not None:
+            run.model_calls += 1
+        return outcome
+
+    # -- dispatch -----------------------------------------------------------
+    def _dispatch(self, subgoal: Subgoal, observation: dict[str, Any],
+                  selected: RegisteredCandidate, criteria: list[Predicate]) -> dict[str, Any]:
+        run = self.run
+        epoch = run.facade.controller_epoch()
+        if epoch != selected.candidate.controller_epoch:
+            run.event("late_candidate_rejected", {
+                "subgoal_id": subgoal.subgoal_id,
+                "candidate_epoch": selected.candidate.controller_epoch,
+                "current_epoch": epoch})
+            return {"status": "epoch_mismatch", "execution_status": "not_dispatched",
+                    "verification_status": "inconclusive"}
+        action = _action_payload(subgoal, selected)
+        expected = _expected_payload(criteria, run.arguments)
+        request_id = "act_" + uuid.uuid4().hex[:24]
+        payload = {
+            "session_id": run.facade.session_id,
+            "request_id": request_id,
+            "observation_id": observation["observation_id"],
+            "action": action,
+            "expected": expected,
+            "timeout_ms": 8000,
+        }
+        signature = f"{action['kind']}:{selected.candidate.target_ref}"
+        if run.loop.observe(signature, observation.get("fingerprint", ""),
+                            is_scroll=subgoal.action_kind == "swipe"):
+            run.event("loop_detected", {"subgoal_id": subgoal.subgoal_id,
+                                        "signature_hash": _digest(signature)[:16]})
+            return {"status": "loop_detected", "execution_status": "not_dispatched",
+                    "verification_status": "inconclusive"}
+        run.dispatches += 1
+        result = run.facade.act(payload)
+        run.event("dispatch", {
+            "subgoal_id": subgoal.subgoal_id,
+            "request_id": request_id,
+            "candidate_id": selected.candidate.candidate_id,
+            "target_ref": selected.candidate.target_ref,
+            "action_kind": action["kind"],
+            "risk_class": selected.candidate.risk_class,
+            "execution_status": result.get("execution_status"),
+            "verification_status": result.get("verification_status"),
+            "status": result.get("status"),
+        })
+        if run.artifacts is not None and result.get("observation"):
+            try:
+                artifact = run.artifacts.put_json(
+                    {"observation_id": result["observation"].get("observation_id"),
+                     "fingerprint": result["observation"].get("fingerprint"),
+                     "foreground": result["observation"].get("foreground_bundle"),
+                     "catalog_size": len(result["observation"].get("catalog", []))},
+                    kind="event", task_id=run.task_id, sensitivity="metadata")
+                run.event("evidence", {"artifact_id": artifact["artifact_id"],
+                                       "sha256": artifact["sha256"]})
+            except Exception as error:  # storage failure must not fake success
+                run.event("evidence_incomplete", {"code": safety_code(error)})
+        return result
+
+    # -- verification -------------------------------------------------------
+    def _verify(self) -> dict[str, Any]:
+        run = self.run
+        run.store.set_state(run.task_id, "VERIFYING")
+        report = CheckReport(verdict="inconclusive", conditions=[])
+        try:
+            observation = run.facade.observe(mode="FULL", include_image=False)
+            run.observations += 1
+            run.memory.record_state(observation)
+            report = run.checker.check(run.task.success_criteria, observation,
+                                       arguments=run.arguments,
+                                       incident_free=not run.facade.unresolved())
+        except Exception as error:
+            run.event("verify_failed", {"code": safety_code(error)})
+        if report.verdict == "pass":
+            return self._finish("SUCCEEDED", "all_conditions_verified", report)
+        if report.verdict == "fail":
+            return self._finish("FAILED", "condition_failed", report)
+        return self._finish("PARTIAL", "conditions_inconclusive", report)
+
+    # -- terminal -----------------------------------------------------------
+    def _paused(self) -> dict[str, Any]:
+        run = self.run
+        run.store.set_state(run.task_id, "PAUSED")
+        run.event("task_paused", {"reason": "supervisor_request"})
+        return {"task_id": run.task_id, "status": "PAUSED",
+                "usage": {"dispatches": run.dispatches, "model_calls": run.model_calls,
+                          "observations": run.observations},
+                "events": run.events}
+
+    def _finish(self, state: str, reason: str,
+                report: CheckReport | None = None) -> dict[str, Any]:
+        run = self.run
+        unresolved = run.facade.unresolved()
+        result = {
+            "task_id": run.task_id,
+            "status": state,
+            "reason": reason,
+            "goal_hash": _digest(run.task.goal),
+            "plan": run.plan.to_dict(),
+            "conditions": [item.to_dict() for item in (report.conditions if report else [])],
+            "unobserved_conditions": list(report.unobserved) if report else [],
+            "unresolved_actions": unresolved,
+            "resolution_required": bool(unresolved),
+            "usage": {"dispatches": run.dispatches, "model_calls": run.model_calls,
+                      "observations": run.observations,
+                      "elapsed_seconds": round(time.time() - run.started_at, 3)},
+            "memory": run.memory.snapshot(),
+            "limitations": list(report.limitations) if report else [],
+        }
+        if run.artifacts is not None:
+            try:
+                artifact = run.artifacts.put_json(
+                    {key: value for key, value in result.items() if key != "memory"},
+                    kind="task_result", task_id=run.task_id)
+                result["result_artifact_id"] = artifact["artifact_id"]
+            except Exception as error:
+                result["limitations"] = [*result["limitations"],
+                                         f"artifact_store_error:{safety_code(error)}"]
+        run.store.set_state(run.task_id, state)
+        run.store.save_result(run.task_id, result)
+        run.event("task_finished", {"status": state, "reason": reason,
+                                    "resolution_required": result["resolution_required"],
+                                    "result_artifact_id": result.get("result_artifact_id")})
+        return result
+
+
+class TaskSupervisor:
+    """Submission, control, status and result queries for tasks."""
+
+    def __init__(self, store: TaskStore, runner_factory=None):
+        self.store = store
+        self.runner_factory = runner_factory
+        self.runs: dict[str, TaskRun] = {}
+        self.threads: dict[str, threading.Thread] = {}
+        self.lock = threading.RLock()
+
+    def submit(self, payload: dict[str, Any], *, controller_epoch: int,
+               session_id: str) -> dict[str, Any]:
+        task = TaskSubmit.model_validate(payload)
+        created = self.store.create(task, controller_epoch)
+        task_id = created["task_id"]
+        return {**created, "accepted": True,
+                "status": self.store.state(task_id),
+                "capability_version": "2.0", "session_id": session_id}
+
+    def start(self, task_id: str, run: TaskRun) -> None:
+        with self.lock:
+            self.runs[task_id] = run
+            self.store.add_plan(task_id, run.plan)
+            thread = threading.Thread(target=self._execute, args=(run,),
+                                      name=f"task-{task_id[-8:]}", daemon=True)
+            self.threads[task_id] = thread
+            thread.start()
+
+    def _execute(self, run: TaskRun) -> None:
+        try:
+            TaskRunner(run).execute()
+        finally:
+            with self.lock:
+                self.threads.pop(run.task_id, None)
+
+    def status(self, task_id: str, after_event_seq: int = 0) -> dict[str, Any]:
+        record = self.store.task(task_id)
+        if record is None:
+            raise TaskError("unknown_task", "No such task")
+        events = self.store.events(task_id, after=after_event_seq, limit=1)
+        run = self.runs.get(task_id)
+        return {
+            "task_id": task_id,
+            "status": record["state"],
+            "controller_epoch": record["controller_epoch"],
+            "created": record["created"],
+            "updated": record["updated"],
+            "usage": ({**run.remaining(), "dispatches_used": run.dispatches,
+                       "model_calls_used": run.model_calls,
+                       "observations": run.observations}
+                      if run else None),
+            "next_event_seq": events["last_seq"],
+            "terminal": record["state"] in TERMINAL,
+            "result_available": record["result"] is not None,
+        }
+
+    def control(self, task_id: str, operation: str,
+                control_request_id: str | None = None) -> dict[str, Any]:
+        if operation not in ("pause", "cancel", "resume"):
+            raise TaskError("invalid_arguments", "operation must be pause, cancel or resume")
+        record = self.store.task(task_id)
+        if record is None:
+            raise TaskError("unknown_task", "No such task")
+        state = record["state"]
+        if state in TERMINAL and operation != "resume":
+            return {"task_id": task_id, "operation": operation, "status": state,
+                    "applied": False, "message": "Task is already terminal"}
+        with self.lock:
+            run = self.runs.get(task_id)
+            if operation == "pause":
+                if run:
+                    run.pause.set()
+                else:
+                    self.store.set_state(task_id, "PAUSED")
+                self.store.add_event(task_id, "control_pause",
+                                     {"control_request_id": control_request_id})
+                return {"task_id": task_id, "operation": "pause", "applied": True,
+                        "status": self.store.state(task_id),
+                        "message": "New dispatches are refused; in-flight results drain conservatively"}
+            if operation == "cancel":
+                if run:
+                    run.cancel.set()
+                self.store.set_state(task_id, "CANCELLING")
+                self.store.add_event(task_id, "control_cancel",
+                                     {"control_request_id": control_request_id})
+                return {"task_id": task_id, "operation": "cancel", "applied": True,
+                        "status": self.store.state(task_id),
+                        "message": "Cancellation cannot retract input the phone already received"}
+            if state not in ("PAUSED", "WAITING_USER"):
+                return {"task_id": task_id, "operation": "resume", "applied": False,
+                        "status": state, "message": "resume requires PAUSED or WAITING_USER"}
+            if run is None:
+                return {"task_id": task_id, "operation": "resume", "applied": False,
+                        "status": state,
+                        "message": "No live runner; start a new task with a fresh observation"}
+            run.pause.clear()
+            self.store.set_state(task_id, "RUNNING")
+            self.store.add_event(task_id, "control_resume",
+                                 {"control_request_id": control_request_id})
+            return {"task_id": task_id, "operation": "resume", "applied": True,
+                    "status": "RUNNING",
+                    "message": "Resuming requires a fresh observation and epoch check"}
+
+    def events(self, task_id: str, after: int = 0, limit: int = 50) -> dict[str, Any]:
+        if self.store.task(task_id) is None:
+            raise TaskError("unknown_task", "No such task")
+        return self.store.events(task_id, after=after, limit=limit)
+
+    def result(self, task_id: str) -> dict[str, Any]:
+        record = self.store.task(task_id)
+        if record is None:
+            raise TaskError("unknown_task", "No such task")
+        if record["result"] is None:
+            return {"task_id": task_id, "status": record["state"], "available": False,
+                    "message": "No final result yet; query status and events"}
+        return {"task_id": task_id, "status": record["state"], "available": True,
+                "result": record["result"], "plan_versions": self.store.plans(task_id)}
+
+    def close(self) -> None:
+        with self.lock:
+            for run in self.runs.values():
+                run.cancel.set()
+            threads = list(self.threads.values())
+        for thread in threads:
+            thread.join(timeout=30)
+
+
+# -- helpers ----------------------------------------------------------------
+
+ACTION_NEEDS_TARGET = ("tap", "long_press", "input_text", "replace_text")
+
+
+def _action_payload(subgoal: Subgoal, selected: RegisteredCandidate) -> dict[str, Any]:
+    target = selected.target
+    action: dict[str, Any] = {"kind": subgoal.action_kind}
+    if subgoal.action_kind in ACTION_NEEDS_TARGET:
+        action["target"] = {
+            "target_ref": target.target_ref,
+            "observation_id": target.observation_id,
+            "local_fingerprint": target.local_fingerprint,
+        }
+        if subgoal.action_kind in ("input_text", "replace_text"):
+            value = selected.argument_values.get("text")
+            if value is None:
+                raise TaskError("missing_argument",
+                                "Input action requires a resolved text argument")
+            action["text"] = value
+    elif subgoal.action_kind == "swipe":
+        action["direction"] = subgoal.argument_refs.get("direction", "down")
+    elif subgoal.action_kind == "launch":
+        bundle = subgoal.argument_refs.get("bundle")
+        if not bundle:
+            raise TaskError("missing_argument", "launch requires a bundle")
+        action["bundle"] = bundle
+    return action
+
+
+def _expected_payload(criteria: list[Predicate], arguments: dict[str, str]) -> dict[str, Any] | None:
+    """Map a v2 predicate onto the v1 expected postcondition when possible."""
+    for predicate in criteria:
+        if predicate.type == "text_equals":
+            return {"text": _value(predicate, arguments)}
+        if predicate.type == "foreground_is":
+            return {"bundle": _value(predicate, arguments)}
+        if predicate.type == "page_changed":
+            return {"changed": True}
+    if criteria:
+        return {"changed": True}
+    return None
+
+
+def _value(predicate: Predicate, arguments: dict[str, str]) -> str:
+    if predicate.value_ref:
+        key = predicate.value_ref[4:] if predicate.value_ref.startswith("arg.") else predicate.value_ref
+        return arguments[key]
+    return str(predicate.value)
+
+
+def _decision_payload(outcome: RouterOutcome) -> dict[str, Any]:
+    native = outcome.decision.native_scores.model_dump()
+    payload = {
+        "route": outcome.decision.route,
+        "provider": outcome.decision.provider,
+        "reason_code": outcome.decision.reason_code,
+        "selected_candidate_id": outcome.decision.selected_candidate_id,
+        "elapsed_ms": outcome.decision.elapsed_ms,
+        "candidate_set_hash": outcome.decision.candidate_set_hash,
+        "controller_epoch": outcome.decision.controller_epoch,
+        "model_revision": outcome.decision.model_revision,
+        "calibration_version": outcome.decision.calibration_version,
+        "native_scores": native,
+    }
+    if outcome.shadow is not None:
+        shadow_native = outcome.shadow.native_scores.model_dump()
+        shadow_answer = shadow_native.get("answers", {}).get("action", {})
+        payload["shadow"] = {
+            "provider": outcome.shadow.provider,
+            "suggestion": shadow_answer.get("choice"),
+            "confidence": shadow_answer.get("confidence"),
+            "certainty": shadow_answer.get("certainty"),
+            "route": outcome.shadow.route,
+            "reason_code": outcome.shadow.reason_code,
+            "elapsed_ms": outcome.shadow.elapsed_ms,
+            "calibration_version": outcome.shadow.calibration_version,
+        }
+    if outcome.fallback_reason:
+        payload["fallback_reason"] = outcome.fallback_reason
+    return payload

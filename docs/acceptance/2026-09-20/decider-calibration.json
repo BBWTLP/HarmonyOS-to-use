@@ -1,0 +1,607 @@
+{
+  "calibration": {
+    "applied_gate": 0.0,
+    "candidates": {
+      "confidence_gate": null,
+      "reason": "no gate met the error budget on the calibration split",
+      "threshold": null
+    },
+    "fitted_on": "calibration split only",
+    "note": "thresholds are never fitted on the holdout split"
+  },
+  "dataset": ".runtime/evals/decision/states.jsonl",
+  "decider": {
+    "by_split": {
+      "calibration": {
+        "accepted": 0,
+        "accepted_correct": 0,
+        "accepted_errors": 0,
+        "brier": 0.0,
+        "coverage": 0.0,
+        "ece": 0.0,
+        "error_denominator": 0,
+        "error_rate_among_accepted": null,
+        "refused": 13,
+        "samples": 13
+      },
+      "development": {
+        "accepted": 0,
+        "accepted_correct": 0,
+        "accepted_errors": 0,
+        "brier": 0.0,
+        "coverage": 0.0,
+        "ece": 0.0,
+        "error_denominator": 0,
+        "error_rate_among_accepted": null,
+        "refused": 20,
+        "samples": 20
+      },
+      "holdout": {
+        "accepted": 0,
+        "accepted_correct": 0,
+        "accepted_errors": 0,
+        "brier": 0.0,
+        "coverage": 0.0,
+        "ece": 0.0,
+        "error_denominator": 0,
+        "error_rate_among_accepted": null,
+        "refused": 12,
+        "samples": 12
+      }
+    },
+    "gated_holdout": {
+      "accepted": 0,
+      "accepted_correct": 0,
+      "accepted_errors": 0,
+      "brier": 0.0,
+      "coverage": 0.0,
+      "ece": 0.0,
+      "error_denominator": 0,
+      "error_rate_among_accepted": null,
+      "refused": 12,
+      "samples": 12
+    },
+    "gated_overall": {
+      "accepted": 0,
+      "accepted_correct": 0,
+      "accepted_errors": 0,
+      "brier": 0.0,
+      "coverage": 0.0,
+      "ece": 0.0,
+      "error_denominator": 0,
+      "error_rate_among_accepted": null,
+      "refused": 45,
+      "samples": 45
+    },
+    "overall": {
+      "accepted": 0,
+      "accepted_correct": 0,
+      "accepted_errors": 0,
+      "brier": 0.0,
+      "coverage": 0.0,
+      "ece": 0.0,
+      "error_denominator": 0,
+      "error_rate_among_accepted": null,
+      "refused": 45,
+      "samples": 45
+    }
+  },
+  "duration_seconds": 5.761,
+  "health": {
+    "busy": false,
+    "mode": "shadow_only",
+    "model": "Mapika/decider-2b",
+    "ok": true,
+    "revision": "7789eb65d5cf519737608e218fa88819bddea0af"
+  },
+  "holdout_verdict": "keep_shadow_only",
+  "model_revision": "7789eb65d5cf519737608e218fa88819bddea0af",
+  "rows": [
+    {
+      "certainty": null,
+      "choice": null,
+      "confidence": null,
+      "correct": false,
+      "error": "invalid_request",
+      "label": "none",
+      "split": "development",
+      "state_id": "tap_discover-001"
+    },
+    {
+      "certainty": 0.0773,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6622,
+      "correct": false,
+      "error": null,
+      "label": "cand_a983f3d019c94c59a849891a",
+      "split": "development",
+      "state_id": "tap_discover-002"
+    },
+    {
+      "certainty": 0.0773,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6622,
+      "correct": false,
+      "error": null,
+      "label": "cand_cb40a68c1978440b8476c79d",
+      "split": "development",
+      "state_id": "tap_discover-003"
+    },
+    {
+      "certainty": 0.1361,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7137,
+      "correct": false,
+      "error": null,
+      "label": "cand_777e2b932ad241b598766280",
+      "split": "development",
+      "state_id": "tap_discover-004"
+    },
+    {
+      "certainty": 0.0487,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6292,
+      "correct": false,
+      "error": null,
+      "label": "cand_bc699918dcae49f0a282191e",
+      "split": "calibration",
+      "state_id": "tap_discover-005"
+    },
+    {
+      "certainty": 0.0671,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6514,
+      "correct": false,
+      "error": null,
+      "label": "cand_927a577b14bd4fdfb0a13528",
+      "split": "calibration",
+      "state_id": "tap_discover-006"
+    },
+    {
+      "certainty": 0.0993,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6834,
+      "correct": false,
+      "error": null,
+      "label": "cand_633a419c6c9145aeb8120d0c",
+      "split": "calibration",
+      "state_id": "tap_discover-007"
+    },
+    {
+      "certainty": 0.0773,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6622,
+      "correct": false,
+      "error": null,
+      "label": "cand_5e1a65f60ff64bc58c5aae42",
+      "split": "holdout",
+      "state_id": "tap_discover-008"
+    },
+    {
+      "certainty": 0.088,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6729,
+      "correct": false,
+      "error": null,
+      "label": "cand_12716d90a4ef474cbf47f262",
+      "split": "holdout",
+      "state_id": "tap_discover-009"
+    },
+    {
+      "certainty": 0.0671,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6514,
+      "correct": false,
+      "error": null,
+      "label": "cand_db8edf9ebd4941b1887328ca",
+      "split": "holdout",
+      "state_id": "tap_discover-010"
+    },
+    {
+      "certainty": 0.0405,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6179,
+      "correct": false,
+      "error": null,
+      "label": "cand_b8a0dbff2cf0465b9aaf274d",
+      "split": "development",
+      "state_id": "tap_messages-001"
+    },
+    {
+      "certainty": 0.1111,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6937,
+      "correct": false,
+      "error": null,
+      "label": "cand_a0ecf1709075418a925240ad",
+      "split": "development",
+      "state_id": "tap_messages-002"
+    },
+    {
+      "certainty": 0.0405,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6179,
+      "correct": false,
+      "error": null,
+      "label": "cand_c8a66d4d2317457eba8e1fef",
+      "split": "development",
+      "state_id": "tap_messages-003"
+    },
+    {
+      "certainty": 0.0576,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6404,
+      "correct": false,
+      "error": null,
+      "label": "cand_e36a944584c44ab09af063a1",
+      "split": "development",
+      "state_id": "tap_messages-004"
+    },
+    {
+      "certainty": 0.1361,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7137,
+      "correct": false,
+      "error": null,
+      "label": "cand_651b3b28e0914c9781eeed55",
+      "split": "calibration",
+      "state_id": "tap_messages-005"
+    },
+    {
+      "certainty": 0.0671,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6514,
+      "correct": false,
+      "error": null,
+      "label": "cand_c31783442264498583a55404",
+      "split": "calibration",
+      "state_id": "tap_messages-006"
+    },
+    {
+      "certainty": 0.0576,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6404,
+      "correct": false,
+      "error": null,
+      "label": "cand_6c46d34a82c34afab7dac4d6",
+      "split": "calibration",
+      "state_id": "tap_messages-007"
+    },
+    {
+      "certainty": 0.0576,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6404,
+      "correct": false,
+      "error": null,
+      "label": "cand_23dac2300e22405eb61dd289",
+      "split": "holdout",
+      "state_id": "tap_messages-008"
+    },
+    {
+      "certainty": 0.1111,
+      "choice": "cand_none_applicable",
+      "confidence": 0.6937,
+      "correct": false,
+      "error": null,
+      "label": "cand_8996ca6d7ca04ab184474a66",
+      "split": "holdout",
+      "state_id": "tap_messages-009"
+    },
+    {
+      "certainty": 0.0201,
+      "choice": "cand_none_applicable",
+      "confidence": 0.5833,
+      "correct": false,
+      "error": null,
+      "label": "cand_df106060d2dc400d884fd1fc",
+      "split": "holdout",
+      "state_id": "tap_messages-010"
+    },
+    {
+      "certainty": 0.296,
+      "choice": "cand_none_applicable",
+      "confidence": 0.8088,
+      "correct": false,
+      "error": null,
+      "label": "cand_377265de89324315b21085e6",
+      "split": "development",
+      "state_id": "tap_me-001"
+    },
+    {
+      "certainty": 0.1361,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7137,
+      "correct": false,
+      "error": null,
+      "label": "cand_cb26cbbc06f14b8399372eea",
+      "split": "development",
+      "state_id": "tap_me-002"
+    },
+    {
+      "certainty": 0.1767,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7422,
+      "correct": false,
+      "error": null,
+      "label": "cand_d8cf4c31aa2044df8f8a0b00",
+      "split": "development",
+      "state_id": "tap_me-003"
+    },
+    {
+      "certainty": 0.2053,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7602,
+      "correct": false,
+      "error": null,
+      "label": "cand_4baaede565f24127b2f0e0cb",
+      "split": "development",
+      "state_id": "tap_me-004"
+    },
+    {
+      "certainty": 0.2053,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7602,
+      "correct": false,
+      "error": null,
+      "label": "cand_5167530544374a2291210147",
+      "split": "calibration",
+      "state_id": "tap_me-005"
+    },
+    {
+      "certainty": 0.1628,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7329,
+      "correct": false,
+      "error": null,
+      "label": "cand_4dfe763575a54021b5111d17",
+      "split": "calibration",
+      "state_id": "tap_me-006"
+    },
+    {
+      "certainty": 0.22,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7689,
+      "correct": false,
+      "error": null,
+      "label": "cand_590228b73fe4499d830f0aca",
+      "split": "calibration",
+      "state_id": "tap_me-007"
+    },
+    {
+      "certainty": 0.1628,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7329,
+      "correct": false,
+      "error": null,
+      "label": "cand_7e6b95a290d944bfa93aeb1b",
+      "split": "holdout",
+      "state_id": "tap_me-008"
+    },
+    {
+      "certainty": 0.2053,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7602,
+      "correct": false,
+      "error": null,
+      "label": "cand_11dbb94c61d74a238780270e",
+      "split": "holdout",
+      "state_id": "tap_me-009"
+    },
+    {
+      "certainty": 0.1909,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7513,
+      "correct": false,
+      "error": null,
+      "label": "cand_0af3bae0910f45888deae2e3",
+      "split": "holdout",
+      "state_id": "tap_me-010"
+    },
+    {
+      "certainty": 0.2653,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7935,
+      "correct": false,
+      "error": null,
+      "label": "cand_b6712e94b12b4d908f731a72",
+      "split": "development",
+      "state_id": "tap_home-001"
+    },
+    {
+      "certainty": 0.2349,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7773,
+      "correct": false,
+      "error": null,
+      "label": "cand_8adac903aa3b48b497b92a4e",
+      "split": "development",
+      "state_id": "tap_home-002"
+    },
+    {
+      "certainty": 0.25,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7855,
+      "correct": false,
+      "error": null,
+      "label": "cand_a4c8812bac8e468780b00358",
+      "split": "development",
+      "state_id": "tap_home-003"
+    },
+    {
+      "certainty": 0.1628,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7329,
+      "correct": false,
+      "error": null,
+      "label": "cand_23ccedcdbfe842c1ac4e8efc",
+      "split": "development",
+      "state_id": "tap_home-004"
+    },
+    {
+      "certainty": 0.1628,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7329,
+      "correct": false,
+      "error": null,
+      "label": "cand_8c153629c48541df90dc35fd",
+      "split": "calibration",
+      "state_id": "tap_home-005"
+    },
+    {
+      "certainty": 0.22,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7689,
+      "correct": false,
+      "error": null,
+      "label": "cand_86a59561f4864c0ab11b5cfc",
+      "split": "calibration",
+      "state_id": "tap_home-006"
+    },
+    {
+      "certainty": 0.25,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7855,
+      "correct": false,
+      "error": null,
+      "label": "cand_5126c983ed7d4c4eb4326e2d",
+      "split": "calibration",
+      "state_id": "tap_home-007"
+    },
+    {
+      "certainty": 0.2349,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7773,
+      "correct": false,
+      "error": null,
+      "label": "cand_02b9527aa6b54a3f921623b9",
+      "split": "holdout",
+      "state_id": "tap_home-008"
+    },
+    {
+      "certainty": 0.1767,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7422,
+      "correct": false,
+      "error": null,
+      "label": "cand_0f4589db9206414abf6b8694",
+      "split": "holdout",
+      "state_id": "tap_home-009"
+    },
+    {
+      "certainty": 0.2053,
+      "choice": "cand_none_applicable",
+      "confidence": 0.7602,
+      "correct": false,
+      "error": null,
+      "label": "cand_f060612dbf6d4a0a92b79352",
+      "split": "holdout",
+      "state_id": "tap_home-010"
+    },
+    {
+      "certainty": null,
+      "choice": null,
+      "confidence": null,
+      "correct": false,
+      "error": "invalid_request",
+      "label": "none",
+      "split": "development",
+      "state_id": "tap_absent-001"
+    },
+    {
+      "certainty": null,
+      "choice": null,
+      "confidence": null,
+      "correct": false,
+      "error": "invalid_request",
+      "label": "none",
+      "split": "development",
+      "state_id": "tap_absent-002"
+    },
+    {
+      "certainty": null,
+      "choice": null,
+      "confidence": null,
+      "correct": false,
+      "error": "invalid_request",
+      "label": "none",
+      "split": "development",
+      "state_id": "tap_absent-003"
+    },
+    {
+      "certainty": null,
+      "choice": null,
+      "confidence": null,
+      "correct": false,
+      "error": "invalid_request",
+      "label": "none",
+      "split": "development",
+      "state_id": "tap_absent-004"
+    },
+    {
+      "certainty": null,
+      "choice": null,
+      "confidence": null,
+      "correct": false,
+      "error": "invalid_request",
+      "label": "none",
+      "split": "calibration",
+      "state_id": "tap_absent-005"
+    }
+  ],
+  "rules": {
+    "by_split": {
+      "calibration": {
+        "accepted": 12,
+        "accepted_correct": 12,
+        "accepted_errors": 0,
+        "brier": 0.0,
+        "coverage": 0.9231,
+        "ece": 0.0,
+        "error_denominator": 12,
+        "error_rate_among_accepted": 0.0,
+        "refused": 1,
+        "samples": 13
+      },
+      "development": {
+        "accepted": 15,
+        "accepted_correct": 15,
+        "accepted_errors": 0,
+        "brier": 0.0,
+        "coverage": 0.75,
+        "ece": 0.0,
+        "error_denominator": 15,
+        "error_rate_among_accepted": 0.0,
+        "refused": 5,
+        "samples": 20
+      },
+      "holdout": {
+        "accepted": 12,
+        "accepted_correct": 12,
+        "accepted_errors": 0,
+        "brier": 0.0,
+        "coverage": 1.0,
+        "ece": 0.0,
+        "error_denominator": 12,
+        "error_rate_among_accepted": 0.0,
+        "refused": 0,
+        "samples": 12
+      }
+    },
+    "overall": {
+      "accepted": 39,
+      "accepted_correct": 39,
+      "accepted_errors": 0,
+      "brier": 0.0,
+      "coverage": 0.8667,
+      "ece": 0.0,
+      "error_denominator": 39,
+      "error_rate_among_accepted": 0.0,
+      "refused": 6,
+      "samples": 45
+    }
+  },
+  "samples": 45,
+  "schema_version": 1,
+  "status": "ok",
+  "task": "F04 / DF2 offline decision comparison"
+}

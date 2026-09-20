@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "milestone": "M1",
+  "app": "com.sina.weibo.stage",
+  "app_note": "Acceptance application is Weibo only, per the current authorisation.",
+  "risk_policy": "No posting, liking, following, deleting or account change. Navigation, search-field input and back only.",
+  "criteria_note": "success_criteria are programme-checked by the harness against a fresh observation; the agent's own claim is never the verdict.",
+  "reset": {
+    "description": "Return to the Weibo home tab before and after every task.",
+    "steps": ["tap:首页"]
+  },
+  "tasks": [
+    {
+      "id": "m1_01_open_search_editor",
+      "goal": "打开微博搜索页",
+      "entry": "tabs",
+      "steps": ["tap:发现", "action_id:search_bar"],
+      "success_criteria": [
+        {"id": "editor", "type": "element_present", "target_key": "type:TextInput",
+         "description": "搜索编辑页的输入框可见"}
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "m1_02_input_chinese",
+      "goal": "在搜索框输入中文查询词",
+      "entry": "editor",
+      "steps": ["tap_focused_input", "replace_text:鸿蒙"],
+      "arguments": {"query": "鸿蒙"},
+      "success_criteria": [
+        {"id": "query", "type": "input_equals", "target_key": "type:TextInput",
+         "value_ref": "query"}
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "m1_03_input_english",
+      "goal": "在搜索框输入英文查询词",
+      "entry": "editor",
+      "steps": ["tap_focused_input", "replace_text:harmony"],
+      "arguments": {"query": "harmony"},
+      "success_criteria": [
+        {"id": "query", "type": "input_equals", "target_key": "type:TextInput",
+         "value_ref": "query"}
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "m1_04_replace_existing_text",
+      "goal": "清空已有内容并输入新的中文查询词",
+      "entry": "editor",
+      "steps": ["tap_focused_input", "replace_text:鸿蒙", "replace_text:微博测试"],
+      "arguments": {"query": "微博测试"},
+      "success_criteria": [
+        {"id": "query", "type": "input_equals", "target_key": "type:TextInput",
+         "value_ref": "query"}
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "m1_05_submit_search",
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "entry": "editor",
+      "arguments": {"query": "鸿蒙"},
+      "steps": ["tap_focused_input", "replace_text:鸿蒙", "tap_first_suggestion"],
+      "success_criteria": [
+        {"id": "tab", "type": "text_equals", "value": "综合"},
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "m1_06_back_to_discover",
+      "goal": "从搜索页面返回发现页",
+      "entry": "editor",
+      "steps": ["back"],
+      "success_criteria": [
+        {"id": "left_editor", "type": "page_changed",
+         "description": "返回后页面相对基线发生变化"},
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "m1_07_open_home_tab",
+      "goal": "回到微博首页",
+      "entry": "any",
+      "steps": ["tap:首页"],
+      "success_criteria": [
+        {"id": "feed", "type": "element_present", "target_key": "id:common_flow_list"}
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "m1_08_open_messages_tab",
+      "goal": "打开消息页并确认已离开首页信息流",
+      "entry": "tabs",
+      "steps": ["tap_tab:消息"],
+      "success_criteria": [
+        {"id": "left_feed", "type": "element_absent", "target_key": "id:common_flow_list"},
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "m1_09_swipe_feed",
+      "goal": "在首页信息流上滑动并确认页面内容发生变化",
+      "entry": "tabs",
+      "steps": ["tap:首页", "swipe:up"],
+      "success_criteria": [
+        {"id": "changed", "type": "page_changed"},
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "m1_10_tab_round_trip",
+      "goal": "在发现与首页之间切换并回到首页",
+      "entry": "tabs",
+      "steps": ["tap:发现", "tap:首页"],
+      "success_criteria": [
+        {"id": "feed", "type": "element_present", "target_key": "id:common_flow_list"}
+      ],
+      "risk": "low"
+    }
+  ]
+}

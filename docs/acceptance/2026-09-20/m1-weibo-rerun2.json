@@ -1,0 +1,307 @@
+{
+  "app": "com.sina.weibo.stage",
+  "milestone": "M1",
+  "runs": [
+    {
+      "dispatches": 3,
+      "elapsed_seconds": 83.069,
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "reobserves": 1,
+      "run": 1,
+      "status": "failed",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5508.181,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7647.987,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 5571.199,
+          "request_id": null,
+          "status": "ok",
+          "step": "submit_search",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_05_submit_search",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "text not present",
+            "evidence_refs": [
+              "obs:0b9799e0b0634738b8831763ecc018dc"
+            ],
+            "id": "tab",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:0b9799e0b0634738b8831763ecc018dc"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:0b9799e0b0634738b8831763ecc018dc",
+          "obs:0b9799e0b0634738b8831763ecc018dc"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "dispatches": 3,
+      "elapsed_seconds": 146.649,
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "reobserves": 1,
+      "run": 2,
+      "status": "failed",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5454.054,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7332.237,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 5393.246,
+          "request_id": null,
+          "status": "ok",
+          "step": "submit_search",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_05_submit_search",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "text not present",
+            "evidence_refs": [
+              "obs:70b8c819c4da4357bf35d9b3ec7dce0f"
+            ],
+            "id": "tab",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:70b8c819c4da4357bf35d9b3ec7dce0f"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:70b8c819c4da4357bf35d9b3ec7dce0f",
+          "obs:70b8c819c4da4357bf35d9b3ec7dce0f"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "dispatches": 3,
+      "elapsed_seconds": 102.53,
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "reobserves": 1,
+      "run": 3,
+      "status": "failed",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5672.893,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7591.289,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 5539.682,
+          "request_id": null,
+          "status": "ok",
+          "step": "submit_search",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_05_submit_search",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "text not present",
+            "evidence_refs": [
+              "obs:c31fa8d6d9c149a6be85e1e901459b7f"
+            ],
+            "id": "tab",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:c31fa8d6d9c149a6be85e1e901459b7f"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:c31fa8d6d9c149a6be85e1e901459b7f",
+          "obs:c31fa8d6d9c149a6be85e1e901459b7f"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 34.712,
+      "goal": "打开消息页并确认已离开首页信息流",
+      "reobserves": 0,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5135.376,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_tab:消息",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_08_open_messages_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:0939b3c5fc1243c08338beb1d0cb1214"
+            ],
+            "id": "left_feed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:0939b3c5fc1243c08338beb1d0cb1214"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:0939b3c5fc1243c08338beb1d0cb1214",
+          "obs:0939b3c5fc1243c08338beb1d0cb1214"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 21.265,
+      "goal": "打开消息页并确认已离开首页信息流",
+      "reobserves": 0,
+      "run": 2,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5225.434,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_tab:消息",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_08_open_messages_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:54ade40d10604f2296d0e6526a346943"
+            ],
+            "id": "left_feed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:54ade40d10604f2296d0e6526a346943"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:54ade40d10604f2296d0e6526a346943",
+          "obs:54ade40d10604f2296d0e6526a346943"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    }
+  ],
+  "runs_per_task": 3,
+  "schema_version": 1,
+  "scope": "10 low-risk Weibo tasks, 3 runs each, real device",
+  "session": {
+    "controller_epoch": 0,
+    "device_bound": true
+  },
+  "status": "not_ready"
+}

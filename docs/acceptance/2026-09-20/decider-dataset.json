@@ -1,0 +1,685 @@
+{
+  "app": "com.sina.weibo.stage",
+  "collected": [
+    {
+      "candidates": 0,
+      "labelled": false,
+      "layers": [],
+      "note": null,
+      "round": 1,
+      "scenario": "tap_discover",
+      "split": "development",
+      "state_chars": 573,
+      "state_id": "tap_discover-001"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 2,
+      "scenario": "tap_discover",
+      "split": "development",
+      "state_chars": 466,
+      "state_id": "tap_discover-002"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 3,
+      "scenario": "tap_discover",
+      "split": "development",
+      "state_chars": 466,
+      "state_id": "tap_discover-003"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 4,
+      "scenario": "tap_discover",
+      "split": "development",
+      "state_chars": 466,
+      "state_id": "tap_discover-004"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 5,
+      "scenario": "tap_discover",
+      "split": "calibration",
+      "state_chars": 466,
+      "state_id": "tap_discover-005"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 6,
+      "scenario": "tap_discover",
+      "split": "calibration",
+      "state_chars": 466,
+      "state_id": "tap_discover-006"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 7,
+      "scenario": "tap_discover",
+      "split": "calibration",
+      "state_chars": 466,
+      "state_id": "tap_discover-007"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 8,
+      "scenario": "tap_discover",
+      "split": "holdout",
+      "state_chars": 466,
+      "state_id": "tap_discover-008"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 9,
+      "scenario": "tap_discover",
+      "split": "holdout",
+      "state_chars": 466,
+      "state_id": "tap_discover-009"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 10,
+      "scenario": "tap_discover",
+      "split": "holdout",
+      "state_chars": 466,
+      "state_id": "tap_discover-010"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 1,
+      "scenario": "tap_messages",
+      "split": "development",
+      "state_chars": 466,
+      "state_id": "tap_messages-001"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 2,
+      "scenario": "tap_messages",
+      "split": "development",
+      "state_chars": 465,
+      "state_id": "tap_messages-002"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 3,
+      "scenario": "tap_messages",
+      "split": "development",
+      "state_chars": 466,
+      "state_id": "tap_messages-003"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 4,
+      "scenario": "tap_messages",
+      "split": "development",
+      "state_chars": 466,
+      "state_id": "tap_messages-004"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 5,
+      "scenario": "tap_messages",
+      "split": "calibration",
+      "state_chars": 466,
+      "state_id": "tap_messages-005"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 6,
+      "scenario": "tap_messages",
+      "split": "calibration",
+      "state_chars": 465,
+      "state_id": "tap_messages-006"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 7,
+      "scenario": "tap_messages",
+      "split": "calibration",
+      "state_chars": 466,
+      "state_id": "tap_messages-007"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 8,
+      "scenario": "tap_messages",
+      "split": "holdout",
+      "state_chars": 466,
+      "state_id": "tap_messages-008"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 9,
+      "scenario": "tap_messages",
+      "split": "holdout",
+      "state_chars": 466,
+      "state_id": "tap_messages-009"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 10,
+      "scenario": "tap_messages",
+      "split": "holdout",
+      "state_chars": 466,
+      "state_id": "tap_messages-010"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 1,
+      "scenario": "tap_me",
+      "split": "development",
+      "state_chars": 465,
+      "state_id": "tap_me-001"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 2,
+      "scenario": "tap_me",
+      "split": "development",
+      "state_chars": 465,
+      "state_id": "tap_me-002"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 3,
+      "scenario": "tap_me",
+      "split": "development",
+      "state_chars": 465,
+      "state_id": "tap_me-003"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 4,
+      "scenario": "tap_me",
+      "split": "development",
+      "state_chars": 465,
+      "state_id": "tap_me-004"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 5,
+      "scenario": "tap_me",
+      "split": "calibration",
+      "state_chars": 464,
+      "state_id": "tap_me-005"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 6,
+      "scenario": "tap_me",
+      "split": "calibration",
+      "state_chars": 465,
+      "state_id": "tap_me-006"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 7,
+      "scenario": "tap_me",
+      "split": "calibration",
+      "state_chars": 465,
+      "state_id": "tap_me-007"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 8,
+      "scenario": "tap_me",
+      "split": "holdout",
+      "state_chars": 465,
+      "state_id": "tap_me-008"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 9,
+      "scenario": "tap_me",
+      "split": "holdout",
+      "state_chars": 465,
+      "state_id": "tap_me-009"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 10,
+      "scenario": "tap_me",
+      "split": "holdout",
+      "state_chars": 465,
+      "state_id": "tap_me-010"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 1,
+      "scenario": "tap_home",
+      "split": "development",
+      "state_chars": 466,
+      "state_id": "tap_home-001"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 2,
+      "scenario": "tap_home",
+      "split": "development",
+      "state_chars": 466,
+      "state_id": "tap_home-002"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 3,
+      "scenario": "tap_home",
+      "split": "development",
+      "state_chars": 466,
+      "state_id": "tap_home-003"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 4,
+      "scenario": "tap_home",
+      "split": "development",
+      "state_chars": 465,
+      "state_id": "tap_home-004"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 5,
+      "scenario": "tap_home",
+      "split": "calibration",
+      "state_chars": 466,
+      "state_id": "tap_home-005"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 6,
+      "scenario": "tap_home",
+      "split": "calibration",
+      "state_chars": 466,
+      "state_id": "tap_home-006"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 7,
+      "scenario": "tap_home",
+      "split": "calibration",
+      "state_chars": 466,
+      "state_id": "tap_home-007"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 8,
+      "scenario": "tap_home",
+      "split": "holdout",
+      "state_chars": 465,
+      "state_id": "tap_home-008"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 9,
+      "scenario": "tap_home",
+      "split": "holdout",
+      "state_chars": 466,
+      "state_id": "tap_home-009"
+    },
+    {
+      "candidates": 1,
+      "labelled": true,
+      "layers": [
+        "text_exact"
+      ],
+      "note": null,
+      "round": 10,
+      "scenario": "tap_home",
+      "split": "holdout",
+      "state_chars": 466,
+      "state_id": "tap_home-010"
+    },
+    {
+      "candidates": 0,
+      "labelled": false,
+      "layers": [],
+      "note": null,
+      "round": 1,
+      "scenario": "tap_absent",
+      "split": "development",
+      "state_chars": 440,
+      "state_id": "tap_absent-001"
+    },
+    {
+      "candidates": 0,
+      "labelled": false,
+      "layers": [],
+      "note": null,
+      "round": 2,
+      "scenario": "tap_absent",
+      "split": "development",
+      "state_chars": 440,
+      "state_id": "tap_absent-002"
+    },
+    {
+      "candidates": 0,
+      "labelled": false,
+      "layers": [],
+      "note": null,
+      "round": 3,
+      "scenario": "tap_absent",
+      "split": "development",
+      "state_chars": 440,
+      "state_id": "tap_absent-003"
+    },
+    {
+      "candidates": 0,
+      "labelled": false,
+      "layers": [],
+      "note": null,
+      "round": 4,
+      "scenario": "tap_absent",
+      "split": "development",
+      "state_chars": 440,
+      "state_id": "tap_absent-004"
+    },
+    {
+      "candidates": 0,
+      "labelled": false,
+      "layers": [],
+      "note": null,
+      "round": 5,
+      "scenario": "tap_absent",
+      "split": "calibration",
+      "state_chars": 440,
+      "state_id": "tap_absent-005"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 6,
+      "scenario": "tap_absent"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 7,
+      "scenario": "tap_absent"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 8,
+      "scenario": "tap_absent"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 9,
+      "scenario": "tap_absent"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 10,
+      "scenario": "tap_absent"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 1,
+      "scenario": "tap_discover_repeat"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 2,
+      "scenario": "tap_discover_repeat"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 3,
+      "scenario": "tap_discover_repeat"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 4,
+      "scenario": "tap_discover_repeat"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 5,
+      "scenario": "tap_discover_repeat"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 6,
+      "scenario": "tap_discover_repeat"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 7,
+      "scenario": "tap_discover_repeat"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 8,
+      "scenario": "tap_discover_repeat"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 9,
+      "scenario": "tap_discover_repeat"
+    },
+    {
+      "error": "device_unavailable",
+      "message": "Incomplete diagnostic batch",
+      "round": 10,
+      "scenario": "tap_discover_repeat"
+    }
+  ],
+  "dataset": ".runtime/evals/decision/states.jsonl",
+  "dataset_digest": {
+    "sha256": "dae7295ee8e422c34d910774d303e04118c481c1278841df7d997e90ef3d09c7",
+    "splits": {
+      "calibration": 13,
+      "development": 20,
+      "holdout": 12
+    },
+    "total": 45
+  },
+  "generated_at": "2026-09-20T07:56:06+0800",
+  "note": "Labels come from the scenario's intended target and the service's own candidate set; no model produced a label.",
+  "rounds_per_scenario": 10,
+  "schema_version": 1,
+  "states": 45,
+  "status": "ok",
+  "task": "F04 dataset collection"
+}

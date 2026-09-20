@@ -1,0 +1,148 @@
+{
+  "bounded_reobserves": 7,
+  "current_primitive": null,
+  "duration_seconds": 1467.684,
+  "notes": [],
+  "per_primitive": 25,
+  "primitives": {
+    "back": {
+      "attempts": 25,
+      "elapsed_seconds": 397.594,
+      "failure": 1,
+      "failure_codes": [
+        "search_editor_unavailable"
+      ],
+      "failures": [
+        {
+          "code": "search_editor_unavailable",
+          "index": 0,
+          "message": "Search editor could not be reached within the setup budget",
+          "setup_actions": 17
+        }
+      ],
+      "in_progress": false,
+      "max_ms": 5168.745,
+      "p50_ms": 5007.996,
+      "p95_ms": 5125.365,
+      "refusals_before_dispatch": {},
+      "success": 24,
+      "success_rate": 0.96
+    },
+    "input": {
+      "attempts": 25,
+      "elapsed_seconds": 255.211,
+      "failure": 0,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "max_ms": 7971.463,
+      "p50_ms": 7597.714,
+      "p95_ms": 7858.254,
+      "refusals_before_dispatch": {},
+      "success": 25,
+      "success_rate": 1.0
+    },
+    "launch": {
+      "attempts": 25,
+      "elapsed_seconds": 184.772,
+      "failure": 0,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "max_ms": 5159.668,
+      "p50_ms": 5011.658,
+      "p95_ms": 5150.725,
+      "refusals_before_dispatch": {},
+      "success": 25,
+      "success_rate": 1.0
+    },
+    "screenshot": {
+      "attempts": 25,
+      "elapsed_seconds": 94.607,
+      "failure": 1,
+      "failure_codes": [
+        "screenshot_inconsistent"
+      ],
+      "failures": [
+        {
+          "code": "screenshot_inconsistent",
+          "index": 19,
+          "message": "Tree bracket around the screenshot did not match",
+          "setup_actions": 0
+        }
+      ],
+      "in_progress": false,
+      "max_ms": 3911.896,
+      "p50_ms": 3790.253,
+      "p95_ms": 3884.629,
+      "refusals_before_dispatch": {},
+      "success": 24,
+      "success_rate": 0.96
+    },
+    "swipe": {
+      "attempts": 25,
+      "elapsed_seconds": 271.038,
+      "failure": 0,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "max_ms": 5907.771,
+      "p50_ms": 5588.948,
+      "p95_ms": 5787.088,
+      "refusals_before_dispatch": {
+        "stale_observation": 4
+      },
+      "success": 25,
+      "success_rate": 1.0
+    },
+    "tap": {
+      "attempts": 25,
+      "elapsed_seconds": 166.159,
+      "failure": 0,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "max_ms": 4649.07,
+      "p50_ms": 4456.517,
+      "p95_ms": 4635.745,
+      "refusals_before_dispatch": {
+        "stale_observation": 1
+      },
+      "success": 25,
+      "success_rate": 1.0
+    },
+    "tree": {
+      "attempts": 25,
+      "elapsed_seconds": 97.337,
+      "failure": 0,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "max_ms": 4078.222,
+      "p50_ms": 3889.641,
+      "p95_ms": 4041.543,
+      "refusals_before_dispatch": {},
+      "success": 25,
+      "success_rate": 1.0
+    }
+  },
+  "privacy": "metadata only: no UI text, screenshots, or input values",
+  "schema_version": 1,
+  "scope": "M0 primitive matrix on the current authorised device; acceptance app = Weibo",
+  "session": {
+    "controller_epoch": 0,
+    "device_bound": true,
+    "recovery_required": false,
+    "unresolved_actions": 0
+  },
+  "setup_actions": 42,
+  "status": "not_ready",
+  "threshold": {
+    "key_primitives_success_rate": 0.99
+  },
+  "totals": {
+    "attempts": 175,
+    "success": 173,
+    "success_rate": 0.9886
+  }
+}

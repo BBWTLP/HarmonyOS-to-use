@@ -1,0 +1,287 @@
+{
+  "duration_seconds": 128.681,
+  "metrics": {
+    "decisions_with_suggestion": 6,
+    "errors": 0,
+    "fallback_rate": 0.0,
+    "latency_p50_ms": 115.463,
+    "latency_p95_ms": 385.665,
+    "provider_fallbacks": 0,
+    "samples": 12,
+    "shadow_agreement_with_rules": 0.0,
+    "suggestion_rate": 0.5,
+    "zero_dispatch_verified": true
+  },
+  "milestone": "DF3/F05",
+  "rounds_per_scenario": 2,
+  "samples": [
+    {
+      "calibration_version": null,
+      "candidates": 1,
+      "certainty": 0.4345,
+      "confidence": 0.867,
+      "dispatch_permitted": false,
+      "elapsed_ms": 369.342,
+      "fallback_reason": null,
+      "goal": "打开微博发现页",
+      "intent": {
+        "action_kind": "tap",
+        "text": "发现"
+      },
+      "provider": "rules",
+      "reason_code": "single_candidate",
+      "round": 1,
+      "route": "execute",
+      "scenario": "home_tap_discover",
+      "state_kind": "tabs",
+      "suggestion": "cand_none_applicable"
+    },
+    {
+      "calibration_version": null,
+      "candidates": 1,
+      "certainty": 0.4787,
+      "confidence": 0.8828,
+      "dispatch_permitted": false,
+      "elapsed_ms": 364.722,
+      "fallback_reason": null,
+      "goal": "打开微博发现页",
+      "intent": {
+        "action_kind": "tap",
+        "text": "发现"
+      },
+      "provider": "rules",
+      "reason_code": "single_candidate",
+      "round": 2,
+      "route": "execute",
+      "scenario": "home_tap_discover",
+      "state_kind": "tabs",
+      "suggestion": "cand_none_applicable"
+    },
+    {
+      "calibration_version": null,
+      "candidates": 1,
+      "certainty": 0.3735,
+      "confidence": 0.8433,
+      "dispatch_permitted": false,
+      "elapsed_ms": 246.086,
+      "fallback_reason": null,
+      "goal": "打开微博消息页",
+      "intent": {
+        "action_kind": "tap",
+        "text": "消息"
+      },
+      "provider": "rules",
+      "reason_code": "single_candidate",
+      "round": 1,
+      "route": "execute",
+      "scenario": "home_tap_messages",
+      "state_kind": "tabs",
+      "suggestion": "cand_none_applicable"
+    },
+    {
+      "calibration_version": null,
+      "candidates": 1,
+      "certainty": 0.4931,
+      "confidence": 0.8877,
+      "dispatch_permitted": false,
+      "elapsed_ms": 385.665,
+      "fallback_reason": null,
+      "goal": "打开微博消息页",
+      "intent": {
+        "action_kind": "tap",
+        "text": "消息"
+      },
+      "provider": "rules",
+      "reason_code": "single_candidate",
+      "round": 2,
+      "route": "execute",
+      "scenario": "home_tap_messages",
+      "state_kind": "tabs",
+      "suggestion": "cand_none_applicable"
+    },
+    {
+      "calibration_version": null,
+      "candidates": 1,
+      "certainty": 0.3581,
+      "confidence": 0.8368,
+      "dispatch_permitted": false,
+      "elapsed_ms": 362.846,
+      "fallback_reason": null,
+      "goal": "打开微博个人页",
+      "intent": {
+        "action_kind": "tap",
+        "text": "我"
+      },
+      "provider": "rules",
+      "reason_code": "single_candidate",
+      "round": 1,
+      "route": "execute",
+      "scenario": "home_tap_me",
+      "state_kind": "tabs",
+      "suggestion": "cand_none_applicable"
+    },
+    {
+      "calibration_version": null,
+      "candidates": 1,
+      "certainty": 0.4194,
+      "confidence": 0.8614,
+      "dispatch_permitted": false,
+      "elapsed_ms": 227.881,
+      "fallback_reason": null,
+      "goal": "打开微博个人页",
+      "intent": {
+        "action_kind": "tap",
+        "text": "我"
+      },
+      "provider": "rules",
+      "reason_code": "single_candidate",
+      "round": 2,
+      "route": "execute",
+      "scenario": "home_tap_me",
+      "state_kind": "tabs",
+      "suggestion": "cand_none_applicable"
+    },
+    {
+      "calibration_version": null,
+      "candidates": 0,
+      "certainty": null,
+      "confidence": null,
+      "dispatch_permitted": false,
+      "elapsed_ms": 2.814,
+      "fallback_reason": null,
+      "goal": "打开一个不存在的页面",
+      "intent": {
+        "action_kind": "tap",
+        "text": "不存在的入口"
+      },
+      "provider": "rules",
+      "reason_code": "no_choice_question",
+      "round": 1,
+      "route": "reobserve",
+      "scenario": "home_absent_target",
+      "state_kind": "tabs",
+      "suggestion": null
+    },
+    {
+      "calibration_version": null,
+      "candidates": 0,
+      "certainty": null,
+      "confidence": null,
+      "dispatch_permitted": false,
+      "elapsed_ms": 2.738,
+      "fallback_reason": null,
+      "goal": "打开一个不存在的页面",
+      "intent": {
+        "action_kind": "tap",
+        "text": "不存在的入口"
+      },
+      "provider": "rules",
+      "reason_code": "no_choice_question",
+      "round": 2,
+      "route": "reobserve",
+      "scenario": "home_absent_target",
+      "state_kind": "tabs",
+      "suggestion": null
+    },
+    {
+      "calibration_version": null,
+      "candidates": 0,
+      "certainty": null,
+      "confidence": null,
+      "dispatch_permitted": false,
+      "elapsed_ms": 3.044,
+      "fallback_reason": null,
+      "goal": "打开搜索页面",
+      "intent": {
+        "action_kind": "tap",
+        "text": "搜索"
+      },
+      "provider": "rules",
+      "reason_code": "no_choice_question",
+      "round": 1,
+      "route": "reobserve",
+      "scenario": "discover_search_entry",
+      "state_kind": "discover",
+      "suggestion": null
+    },
+    {
+      "calibration_version": null,
+      "candidates": 0,
+      "certainty": null,
+      "confidence": null,
+      "dispatch_permitted": false,
+      "elapsed_ms": 2.77,
+      "fallback_reason": null,
+      "goal": "打开搜索页面",
+      "intent": {
+        "action_kind": "tap",
+        "text": "搜索"
+      },
+      "provider": "rules",
+      "reason_code": "no_choice_question",
+      "round": 2,
+      "route": "reobserve",
+      "scenario": "discover_search_entry",
+      "state_kind": "discover",
+      "suggestion": null
+    },
+    {
+      "calibration_version": null,
+      "candidates": 0,
+      "certainty": null,
+      "confidence": null,
+      "dispatch_permitted": false,
+      "elapsed_ms": 2.545,
+      "fallback_reason": null,
+      "goal": "返回上一层",
+      "intent": {
+        "action_kind": "back"
+      },
+      "provider": "rules",
+      "reason_code": "no_choice_question",
+      "round": 1,
+      "route": "reobserve",
+      "scenario": "home_back",
+      "state_kind": "tabs",
+      "suggestion": null
+    },
+    {
+      "calibration_version": null,
+      "candidates": 0,
+      "certainty": null,
+      "confidence": null,
+      "dispatch_permitted": false,
+      "elapsed_ms": 2.634,
+      "fallback_reason": null,
+      "goal": "返回上一层",
+      "intent": {
+        "action_kind": "back"
+      },
+      "provider": "rules",
+      "reason_code": "no_choice_question",
+      "round": 2,
+      "route": "reobserve",
+      "scenario": "home_back",
+      "state_kind": "tabs",
+      "suggestion": null
+    }
+  ],
+  "schema_version": 1,
+  "scope": "shadow advisory decisions on real Weibo states; zero dispatch",
+  "session": {
+    "controller_epoch": 0,
+    "device_bound": true,
+    "dispatches_issued_by_shadow": 0,
+    "unresolved_actions": 0,
+    "unresolved_before": 0
+  },
+  "status": "ok",
+  "tools": [
+    "mobile_session",
+    "mobile_observe",
+    "mobile_act",
+    "mobile_wait",
+    "mobile_burst",
+    "mobile_history"
+  ]
+}

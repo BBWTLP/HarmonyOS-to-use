@@ -1,6 +1,6 @@
 # HarmonyOS Mobile Agent Runtime
 
-通过通用 Agent 的 MCP 工具控制鸿蒙真机。当前为工程开发版，HAP 暂缓；优先在已连接的 HarmonyOS 6.1 真机验证，不能视为已完成 Artemis 等效能力。
+通过通用 Agent 的 MCP 工具控制鸿蒙真机。当前为工程开发版，HAP 暂缓；开发、适配与首期验收均以用户当前真机及当轮实测系统构建为准（不固定为 6.0 或 6.1），不能视为已完成 Artemis 等效能力。
 
 ## 本地安装（Windows / PowerShell）
 
@@ -38,11 +38,35 @@ MCP 客户端使用本仓库虚拟环境下 `harmony-runtime.exe` 的绝对路�
 .\.venv\Scripts\python.exe tests/smoke_device.py
 ```
 
+### 当前真机只读基线
+
+验收对象是当前连接的真机，不预设必须运行 HarmonyOS 6.0 或 6.1。采集系统和工具白名单字段时使用：
+
+```powershell
+.\.venv\Scripts\python.exe -m harmony_runtime.cli baseline --execute
+```
+
+该命令只读取固定系统参数、`uitest --version` 和主机 HDC 版本；不会启动 UI 驱动、连接 Runtime 会话、唤醒/解锁手机、读取页面或执行动作。当前基线记录见 [device-baseline-20260919-batched.json](docs/acceptance/2026-09-19/device-baseline-20260919-batched.json)，说明见 [设备基准](docs/device-baseline.md)。当前记录设备为 `SGT-AL10`，软件发行版本为 `SGT-AL10 6.1.0.135(SP8C00E120R3P11)`，底层系统字段为 `OpenHarmony-6.1.1.120`；这些是当前真机的事实，不是项目固定版本要求。
+
+### 当前真机 Agent 协议探活
+
+如需执行一次只读设备端 Agent/RPC 探活，显式使用：
+
+```powershell
+.\.venv\Scripts\python.exe -m harmony_runtime.cli protocol --execute
+```
+
+本次当前真机结果为：v2 transport、`localabstract:uitest_socket`、session ID 回显和 HDC port-forward 均成功；但 `Driver.getDeviceInfo` 返回设备端 `exception` 结构，因此总体状态为 `partial`，不能宣称完整 Agent/RPC 语义验收通过。脱敏报告见 [protocol-agent-20260919.md](docs/acceptance/2026-09-19/protocol-agent-20260919.md) 和同目录 JSON。
+
+### 当前真机有限观察
+
+已用真实 stdio MCP → 常驻 Runtime → worker → 真机链路完成每组 3 次的有限观察：优化前 FAST **3/3**、FAST 带图 **2/3**、FULL **3/3**；诊断批处理后 FAST **3/3**、FAST 带图 **2/3**、FULL **2/3**。批处理后的失败样本保留了图树一致性、SoM、前台和图片检查字段；条件未受控，不能据此宣称稳定提速或正式 P95 达标。白名单报告见 [benchmark-observation-20260919.md](docs/acceptance/2026-09-19/benchmark-observation-20260919.md) 及同目录的六个 `benchmark-*.json` 文件。
+
 测试报告和完整计划见 `docs/implementation-status.md`、`docs/development-plan.md`、`docs/development-tasks.csv`。
 
 ## 当前限制
 
-已实现设备进程截止时间与中断隔离，故障测试覆盖初始化、读写和关闭卡住；终止电脑进程不能撤回手机已收到的操作。尚未完成全链路期限保证、持久化隔离、断连恢复、隐私保留与配额、可信人工批准、FULL 复杂场景真机验收、TEMPORAL 动态场景实测、OCR/视觉降级、历史回放、三客户端实测及长任务验收。危险目标目前采用临时拦截规则，不能视为完整安全策略。前台应用验证尚未实现。截图前后树一致只能证明采集期间没有检测到结构变化，不能证明动态画面完全一致，也不能证明锁屏截图可用。
+已实现设备进程截止时间与中断隔离，故障测试覆盖初始化、读写和关闭卡住；终止电脑进程不能撤回手机已收到的操作。尚未完成全链路期限保证、持久化隔离、断连恢复、隐私保留与配额、可信人工批准、FULL 复杂场景真机验收、TEMPORAL 动态场景实测、OCR/视觉降级、历史回放、三客户端实测及长任务验收。危险目标目前采用临时拦截规则，不能视为完整安全策略。已实现保守前台身份识别、bundle 后置条件和 app_changed 等待；缺少可验证前台证据时拒绝相关操作。截图前后树一致只能证明采集期间没有检测到结构变化，不能证明动态画面完全一致，也不能证明锁屏截图可用。
 
 已实现每台设备 FIFO 排队，以及采集前后和执行前的显式屏幕状态检查。检测到熄屏或锁屏时，Runtime 会通过 DevHelmKit 的无凭据唤醒与解锁路径尝试恢复，并重新读取状态；只有确认 `screen_on=true` 且 `screen_locked=false` 才会继续读屏或执行动作。该自动恢复已在 HarmonyOS 6.1 真机上通过休眠→Runtime observe→AWAKE/unlocked 的真实设备路径验证。状态未知、驱动不支持或恢复未确认时仍会拒绝操作。该检查不代表已具备安全窗口或应用防截图检测，也不能消除最后一次状态读取与实际点击之间的系统状态变化。
 
@@ -68,7 +92,7 @@ MCP 客户端使用本仓库虚拟环境下 `harmony-runtime.exe` 的绝对路�
 
 连续执行：`mobile_burst` 接受 1–5 步，整段共享最多 3000ms 的预算，每步必须指定可观察后置条件。点击目标用文字或资源编号，在每步派发前重新定位。结果不确定或验证失败立即停止；重复请求只返回原结果，中断序列不自动续跑。可用 `mobile_session(operation="burst_status", request_id=...)` 查询各子动作持久状态。该能力尚未通过真机跨页面验收。
 
-`mobile_observe(mode="TEMPORAL")` 在 3 秒预算内采集最多五帧历史截图，返回实际采样时刻及末两帧比较。历史帧不能用于动作调用，操作前须重新观察。当前不提供实时 watch，不能依赖此历史序列点击已经消失的控件。
+`mobile_observe(mode="TEMPORAL")` 在 3 秒预算内采集最多五帧历史截图，返回实际采样时刻及末两帧比较。历史帧不能用于动作调用，操作前须重新观察。TEMPORAL 自身不启动实时 watch；burst 已有下文所述有界目标轮询。不能依赖历史序列点击已经消失的控件。
 
 
 ### Bounded local target watch
@@ -100,8 +124,9 @@ Element presence includes disabled catalog nodes; it does not authorize clicking
 Absence only means absence from the observed catalog; inaccessible visual content
 may still be present. Stability means equal sampled tree/display fingerprints,
 not pixel stability or continuous stability between samples. The response labels
-these limits in `evidence`. `app_changed` explicitly returns unsupported until
-foreground app identity is verified. Waits do not dispatch actions.
+these limits in `evidence`. `app_changed` requires a fresh session-bound baseline `observation_id` and
+verified foreground identity. Adapters without foreground support reject it.
+Waits do not dispatch application actions (observation may wake/unlock the screen).
 
 ### Durable action history
 
@@ -146,6 +171,77 @@ If an action completion cannot be saved because of a SQLite or OS storage error,
 
 视频验收：进入微博视频页或主页面后执行 `python scripts/accept_weibo.py --execute --profile video --rounds 10 --report .runtime/weibo-video.json`。每轮验证同一视频的数值进度前进，再上滑并确认内容标识变化。该验证不覆盖音频或画面解码。
 
-Runtime 仅对 back/home/swipe 的过期检查忽略数值 Slider 进度及指定时钟、电量节点的文字变化；点击和输入仍要求完整页面指纹匹配，变化验证也仍使用完整指纹。
+Runtime 的导航页面指纹仅归一化指定时钟/电量文字、数值 Slider/Progress 以及无标签且不可点击的装饰图像边界。目标动作还要求目标目录项与目标子树指纹完全一致；其他页面结构、显示方向和前台身份仍参与检查。变化验证和图树一致性仍使用完整指纹。这不是对任意动态页面的安全保证，不能通过放宽校验强行点击 stale 目标。
 
 2026-09-18 阶段结果及限制见 [真机验收记录](docs/acceptance/2026-09-18/README.md)。同日已补充自动唤醒/无凭据解锁的真机 Runtime 验证，记录见 [自动恢复验收记录](docs/acceptance/2026-09-18/automatic-wake-unlock.md)。微博搜索输入、实际 Agent 客户端、长任务与最终发布门槛仍未完成。
+
+### 2026-09-19 真机进展
+
+无密码锁屏自动唤醒、解锁和 FAST 读屏已连续三轮验证。当前 Runtime 新增前台应用确认和系统应用隐私密码拦截；小红书的独立应用保护仍阻止业务验收。微博启动和发现页导航已验证，动态搜索页及完整 Agent 长任务仍未通过。详细结果、可复现脚本和限制见 [验收记录](docs/acceptance/2026-09-19/foreground-and-authentication.md)。
+
+## 当前设备基准与实现审计
+
+用户于 2026-09-19 明确：**系统与验收均以当前真机为准**。历史 6.1 记录不等于本轮系统探测；不再把 6.0 专项验证作为首期发布的必要条件。设备升级后重新记录基线并复验受影响能力。见 [设备基准](docs/device-baseline.md) 和 [v2 设计对照审计](docs/project-audit-2026-09-19.md)。仓库原 v1 计划保留历史，最新设计来源为用户提供的 harmonyos-design-v2。
+
+## 分段耗时与 MCP 观察基准
+
+先显式启动常驻服务，以下命令不会代为启动它。使用同一虚拟环境，在项目目录运行；自定义状态目录时与服务端保持一致。
+
+
+```powershell
+.\.venv\Scripts\python.exe -m harmony_runtime.cli benchmark --execute --samples 30 --mode FAST
+.\.venv\Scripts\python.exe -m harmony_runtime.cli benchmark --execute --samples 30 --mode FAST --include-image
+.\.venv\Scripts\python.exe -m harmony_runtime.cli benchmark --execute --samples 30 --mode FULL
+```
+
+输出 JSON 仅保留计时和白名单状态，不保留序列号、截图、UI 树或页面文字。建议保存至被 Git 忽略的 `.runtime/` 目录，并单独附上当轮设备基线。此命令不执行应用点击、输入或导航，但观察可能触发自动唤醒和无凭据解锁，所以必须显式传入 `--execute`。
+
+- 样本数 1–500；全部样本成功且会话关闭成功才退出 0，否则退出 1；参数错误退出 2。
+- 失败样本计入 attempted/failed 与总体耗时；未采集样本单列 unattempted。认证、设备、会话及协议异常停止采样；图树不一致仍计失败，可继续下一次采集。
+- FAST 带图和 FULL 必须收到真实 MCP 图片块且图树一致；FULL 还要求 SoM 可用。失败不能因返回图片或 HTTP 成功而算作通过。
+- 总体与成功样本分别给出 nearest-rank P50/P95、最小值、最大值、样本量；空集为 null。first/subsequent 只表示顺序，**不代表受控冷/热启动**。
+- client_ms 是每次 observe 的 MCP 往返，包含工具序列化/传输；不含常驻服务启动和 session open/close。Runtime timing 分解排队、worker 初始化、屏幕/前台检查、树、显示参数、截图、编码及标注；嵌套计时不能简单相加。
+- 动作 timing 分解预检、屏幕守卫、日志准入、派发和后置验证；total_ms 截止到最终 journal.finish 之前，不含最终持久化、worker 清理与客户端传输。拒绝准入等错误不保证携带全部阶段；去重结果保留原执行计时。
+
+本轮已通过真实本地 HTTP 服务和 stdio MCP 完成有限真机观察；但页面、热状态、网络、应用版本和启动条件未受控，**不能替代正式性能验收，也没有证明达到设计性能目标**。正式冷热采样还需受控启动、固定页面、当前真机系统/应用版本、模型与网络条件，以及完整失败分母。
+
+## Agent 任务层与 Decider 接入（v3.1）
+
+在既有 Runtime 之上新增 `src/harmony_agent`：候选登记、分层定位、规则/本机 Decider 路由、
+任务监督、记忆、只读核验与工件存储。Runtime 仍独占设备写入，Agent 层只通过公开会话接口
+提交观察与动作。详见 [Agent 层说明](docs/agent-layer.md) 与 [任务状态台账](docs/agent-status.md)。
+
+启用 v2 工具（未启用时 MCP 客户端仍只看到 v1 六个工具）：
+
+```powershell
+$env:HARMONY_HDC='F:\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe'
+$env:HARMONY_AGENT_TOOLS='1'          # 注册 mobile_run_task / task_* / mobile_decide
+$env:HARMONY_AGENT_PROFILE='local_shadow'   # rules_only | local_off | local_shadow | local_canary
+$env:HARMONY_AGENT_CALIBRATION='decider-cal-2026-09-20'   # 仅 canary 需要
+.\.venv\Scripts\python.exe -m harmony_runtime.cli serve --state-dir .runtime/agent-state
+```
+
+解码器服务与真机验收脚本：
+
+```powershell
+Set-Location .\services\decider; .\Start-Decider.ps1; .\Test-Decider.ps1
+Set-Location ..\..
+.\.venv\Scripts\python.exe .\scripts\check_agent_link.py --report .runtime\link.json
+.\.venv\Scripts\python.exe .\scripts\accept_m0_primitives.py --execute --per-primitive 25 `
+  --report .\docs\acceptance\2026-09-20\m0-primitives.json
+.\.venv\Scripts\python.exe .\scripts\accept_m1_weibo.py --execute --runs 3 `
+  --report .\docs\acceptance\2026-09-20\m1-weibo.json
+.\.venv\Scripts\python.exe .\scripts\decider_shadow.py --execute --rounds 4 `
+  --report .\docs\acceptance\2026-09-20\decider-shadow.json
+.\.venv\Scripts\python.exe .\scripts\evidence_manifest.py      # A01 基线冻结
+.\.venv\Scripts\python.exe .\scripts\reproduce.py              # A03 回归入口
+```
+
+本轮证据、口径与未完成项见 [验收证据索引](docs/acceptance/2026-09-20/README.md)。
+
+## 交付现状与后续计划
+
+本轮实现范围、真机验收结果、剩余开发计划与验收顺序见
+[v3.1 交付现状、剩余开发计划与验收计划](docs/v3.1-progress-and-plan.md)，
+逐任务状态见 [任务状态台账](docs/agent-status.md)，证据索引见
+[2026-09-20 验收目录](docs/acceptance/2026-09-20/README.md)。

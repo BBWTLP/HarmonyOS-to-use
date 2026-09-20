@@ -1,0 +1,1514 @@
+{
+  "app": "com.sina.weibo.stage",
+  "duration_seconds": 2431.394,
+  "false_success_claims": 2,
+  "milestone": "M1",
+  "runs": [
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 151.304,
+      "goal": "打开微博搜索页",
+      "reobserves": 0,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5127.152,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:发现",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 28133.301,
+          "request_id": null,
+          "status": "ok",
+          "step": "action_id:search_bar",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_01_open_search_editor",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s)",
+            "evidence_refs": [
+              "obs:bf50b78e1f2747efa0b63fed3b66156f"
+            ],
+            "id": "editor",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:bf50b78e1f2747efa0b63fed3b66156f"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 77.21,
+      "goal": "打开微博搜索页",
+      "reobserves": 0,
+      "run": 2,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5072.725,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:发现",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 19201.322,
+          "request_id": null,
+          "status": "ok",
+          "step": "action_id:search_bar",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_01_open_search_editor",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s)",
+            "evidence_refs": [
+              "obs:10eb8ea0860c44b2ab80ff4a4fe62d17"
+            ],
+            "id": "editor",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:10eb8ea0860c44b2ab80ff4a4fe62d17"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 137.534,
+      "goal": "打开微博搜索页",
+      "reobserves": 0,
+      "run": 3,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5038.118,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:发现",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 19304.232,
+          "request_id": null,
+          "status": "ok",
+          "step": "action_id:search_bar",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_01_open_search_editor",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s)",
+            "evidence_refs": [
+              "obs:dbe7bf5147024db9a26ee41368a9a0c4"
+            ],
+            "id": "editor",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:dbe7bf5147024db9a26ee41368a9a0c4"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 120.729,
+      "goal": "在搜索框输入中文查询词",
+      "reobserves": 1,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5585.683,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7750.249,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_02_input_chinese",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s) compared",
+            "evidence_refs": [
+              "obs:970d4c62f70849eeaeb15df9ec01e43c"
+            ],
+            "id": "query",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:970d4c62f70849eeaeb15df9ec01e43c"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 97.172,
+      "goal": "在搜索框输入中文查询词",
+      "reobserves": 1,
+      "run": 2,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5700.105,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7829.887,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_02_input_chinese",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s) compared",
+            "evidence_refs": [
+              "obs:b8492d4048d248cd8b9988374071fa14"
+            ],
+            "id": "query",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:b8492d4048d248cd8b9988374071fa14"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 96.117,
+      "goal": "在搜索框输入中文查询词",
+      "reobserves": 1,
+      "run": 3,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5722.118,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7727.138,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_02_input_chinese",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s) compared",
+            "evidence_refs": [
+              "obs:a1d6ea9dad9845ee8e43712c57efc46e"
+            ],
+            "id": "query",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:a1d6ea9dad9845ee8e43712c57efc46e"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 120.429,
+      "goal": "在搜索框输入英文查询词",
+      "reobserves": 1,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5573.105,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7028.778,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:harmony",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_03_input_english",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s) compared",
+            "evidence_refs": [
+              "obs:d617f35bbe0e410eb76f05f4f2b1a407"
+            ],
+            "id": "query",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:d617f35bbe0e410eb76f05f4f2b1a407"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 119.796,
+      "goal": "在搜索框输入英文查询词",
+      "reobserves": 1,
+      "run": 2,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5727.387,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7192.084,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:harmony",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_03_input_english",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s) compared",
+            "evidence_refs": [
+              "obs:c74612e28d3a48ad97512e1810a73bf1"
+            ],
+            "id": "query",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:c74612e28d3a48ad97512e1810a73bf1"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 96.218,
+      "goal": "在搜索框输入英文查询词",
+      "reobserves": 1,
+      "run": 3,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5730.199,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7318.161,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:harmony",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_03_input_english",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s) compared",
+            "evidence_refs": [
+              "obs:3637040d0e2245f5af0b45a38c188b43"
+            ],
+            "id": "query",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:3637040d0e2245f5af0b45a38c188b43"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 3,
+      "elapsed_seconds": 106.71,
+      "goal": "清空已有内容并输入新的中文查询词",
+      "reobserves": 1,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5789.211,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7663.644,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7861.569,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:微博测试",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_04_replace_existing_text",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s) compared",
+            "evidence_refs": [
+              "obs:76c39447aadb45ddbf0cc695ca26053d"
+            ],
+            "id": "query",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:76c39447aadb45ddbf0cc695ca26053d"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 3,
+      "elapsed_seconds": 106.992,
+      "goal": "清空已有内容并输入新的中文查询词",
+      "reobserves": 1,
+      "run": 2,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5734.16,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7848.546,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7860.364,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:微博测试",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_04_replace_existing_text",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s) compared",
+            "evidence_refs": [
+              "obs:bf53c7684d614384a84d88b0597b660f"
+            ],
+            "id": "query",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:bf53c7684d614384a84d88b0597b660f"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 3,
+      "elapsed_seconds": 130.44,
+      "goal": "清空已有内容并输入新的中文查询词",
+      "reobserves": 1,
+      "run": 3,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5638.798,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7649.23,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7723.464,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:微博测试",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_04_replace_existing_text",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s) compared",
+            "evidence_refs": [
+              "obs:1addb567c747427a85b03c956e910210"
+            ],
+            "id": "query",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:1addb567c747427a85b03c956e910210"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "blocked": {
+        "code": "target_missing",
+        "message": "搜索 is not uniquely observable"
+      },
+      "dispatches": 2,
+      "elapsed_seconds": 133.559,
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "reobserves": 1,
+      "run": 1,
+      "status": "blocked",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5622.952,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7684.874,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_05_submit_search",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "text not present",
+            "evidence_refs": [
+              "obs:f8c08ce7d46341119e5e49129c27600e"
+            ],
+            "id": "tab",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:f8c08ce7d46341119e5e49129c27600e"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:f8c08ce7d46341119e5e49129c27600e",
+          "obs:f8c08ce7d46341119e5e49129c27600e"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "blocked": {
+        "code": "target_missing",
+        "message": "搜索 is not uniquely observable"
+      },
+      "dispatches": 2,
+      "elapsed_seconds": 100.797,
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "reobserves": 1,
+      "run": 2,
+      "status": "blocked",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5801.337,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7633.985,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_05_submit_search",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "text not present",
+            "evidence_refs": [
+              "obs:61d7de91d861469987f8d5cc7c41de92"
+            ],
+            "id": "tab",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:61d7de91d861469987f8d5cc7c41de92"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:61d7de91d861469987f8d5cc7c41de92",
+          "obs:61d7de91d861469987f8d5cc7c41de92"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "blocked": {
+        "code": "target_missing",
+        "message": "搜索 is not uniquely observable"
+      },
+      "dispatches": 2,
+      "elapsed_seconds": 156.395,
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "reobserves": 1,
+      "run": 3,
+      "status": "blocked",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5638.5,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7883.61,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_05_submit_search",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "text not present",
+            "evidence_refs": [
+              "obs:eb22aa85ec97433baad2d89f3c02d789"
+            ],
+            "id": "tab",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:eb22aa85ec97433baad2d89f3c02d789"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:eb22aa85ec97433baad2d89f3c02d789",
+          "obs:eb22aa85ec97433baad2d89f3c02d789"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 92.911,
+      "goal": "从搜索页面返回发现页",
+      "reobserves": 0,
+      "run": 1,
+      "status": "failed",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5329.155,
+          "request_id": null,
+          "status": "ok",
+          "step": "back",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_06_back_to_discover",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:b3b45810407c455b8a1cea014963d10b"
+            ],
+            "id": "editor_closed",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:b3b45810407c455b8a1cea014963d10b"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:b3b45810407c455b8a1cea014963d10b",
+          "obs:b3b45810407c455b8a1cea014963d10b"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 70.099,
+      "goal": "从搜索页面返回发现页",
+      "reobserves": 0,
+      "run": 2,
+      "status": "failed",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5447.329,
+          "request_id": null,
+          "status": "ok",
+          "step": "back",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_06_back_to_discover",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:b838abe301b44ff69b4bb9b2061c9fc8"
+            ],
+            "id": "editor_closed",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:b838abe301b44ff69b4bb9b2061c9fc8"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:b838abe301b44ff69b4bb9b2061c9fc8",
+          "obs:b838abe301b44ff69b4bb9b2061c9fc8"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 126.1,
+      "goal": "从搜索页面返回发现页",
+      "reobserves": 0,
+      "run": 3,
+      "status": "failed",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5455.515,
+          "request_id": null,
+          "status": "ok",
+          "step": "back",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_06_back_to_discover",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:bd9f06fc415543c79f4ebba3b6bb06ed"
+            ],
+            "id": "editor_closed",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:bd9f06fc415543c79f4ebba3b6bb06ed"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:bd9f06fc415543c79f4ebba3b6bb06ed",
+          "obs:bd9f06fc415543c79f4ebba3b6bb06ed"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 44.959,
+      "goal": "回到微博首页",
+      "reobserves": 0,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5052.722,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:首页",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_07_open_home_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s)",
+            "evidence_refs": [
+              "obs:1859bb9a01584934b87838c6985e0a9f"
+            ],
+            "id": "feed",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:1859bb9a01584934b87838c6985e0a9f"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 23.695,
+      "goal": "回到微博首页",
+      "reobserves": 0,
+      "run": 2,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5038.732,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:首页",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_07_open_home_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s)",
+            "evidence_refs": [
+              "obs:13fc7eeec3aa4ecf9e53361322806241"
+            ],
+            "id": "feed",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:13fc7eeec3aa4ecf9e53361322806241"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 23.394,
+      "goal": "回到微博首页",
+      "reobserves": 0,
+      "run": 3,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5198.166,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:首页",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_07_open_home_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s)",
+            "evidence_refs": [
+              "obs:af662233534a46dba8c0bfe1e0bd27c1"
+            ],
+            "id": "feed",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:af662233534a46dba8c0bfe1e0bd27c1"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 23.281,
+      "goal": "打开消息页并确认已离开首页信息流",
+      "reobserves": 0,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5031.022,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:消息",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_08_open_messages_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:a86083843fa944449f4cc1ca2d52505c"
+            ],
+            "id": "left_feed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:a86083843fa944449f4cc1ca2d52505c"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:a86083843fa944449f4cc1ca2d52505c",
+          "obs:a86083843fa944449f4cc1ca2d52505c"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "blocked": {
+        "code": "target_missing",
+        "message": "消息 is not uniquely observable"
+      },
+      "dispatches": 0,
+      "elapsed_seconds": 13.282,
+      "goal": "打开消息页并确认已离开首页信息流",
+      "reobserves": 0,
+      "run": 2,
+      "status": "blocked",
+      "steps": [],
+      "task_id": "m1_08_open_messages_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:dd255add67264f18b23fce9d34b2bbeb"
+            ],
+            "id": "left_feed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:dd255add67264f18b23fce9d34b2bbeb"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:dd255add67264f18b23fce9d34b2bbeb",
+          "obs:dd255add67264f18b23fce9d34b2bbeb"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "blocked": {
+        "code": "target_missing",
+        "message": "消息 is not uniquely observable"
+      },
+      "dispatches": 0,
+      "elapsed_seconds": 13.238,
+      "goal": "打开消息页并确认已离开首页信息流",
+      "reobserves": 0,
+      "run": 3,
+      "status": "blocked",
+      "steps": [],
+      "task_id": "m1_08_open_messages_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:a53d1a4aa92942eb91225ee82bf00885"
+            ],
+            "id": "left_feed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:a53d1a4aa92942eb91225ee82bf00885"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:a53d1a4aa92942eb91225ee82bf00885",
+          "obs:a53d1a4aa92942eb91225ee82bf00885"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 32.611,
+      "goal": "在首页信息流上滑动并确认页面内容发生变化",
+      "reobserves": 0,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 4927.584,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:首页",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 10599.202,
+          "request_id": null,
+          "status": "ok",
+          "step": "swipe:up",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_09_swipe_feed",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "fingerprint comparison",
+            "evidence_refs": [
+              "obs:8338936495ff437390b4d7262cff22ad"
+            ],
+            "id": "changed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:8338936495ff437390b4d7262cff22ad"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:8338936495ff437390b4d7262cff22ad",
+          "obs:8338936495ff437390b4d7262cff22ad"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 40.646,
+      "goal": "在首页信息流上滑动并确认页面内容发生变化",
+      "reobserves": 1,
+      "run": 2,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 4733.025,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:首页",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 10808.801,
+          "request_id": null,
+          "status": "ok",
+          "step": "swipe:up",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_09_swipe_feed",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "fingerprint comparison",
+            "evidence_refs": [
+              "obs:fd34090d606c460d921c54d287849e03"
+            ],
+            "id": "changed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:fd34090d606c460d921c54d287849e03"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:fd34090d606c460d921c54d287849e03",
+          "obs:fd34090d606c460d921c54d287849e03"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 41.248,
+      "goal": "在首页信息流上滑动并确认页面内容发生变化",
+      "reobserves": 1,
+      "run": 3,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 4791.707,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:首页",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 10741.93,
+          "request_id": null,
+          "status": "ok",
+          "step": "swipe:up",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_09_swipe_feed",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "fingerprint comparison",
+            "evidence_refs": [
+              "obs:e9dd3960e88744f7a183a1a79ea35838"
+            ],
+            "id": "changed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:e9dd3960e88744f7a183a1a79ea35838"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:e9dd3960e88744f7a183a1a79ea35838",
+          "obs:e9dd3960e88744f7a183a1a79ea35838"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 41.58,
+      "goal": "在发现与首页之间切换并回到首页",
+      "reobserves": 0,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 4624.158,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:发现",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 21015.013,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:首页",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_10_tab_round_trip",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s)",
+            "evidence_refs": [
+              "obs:fef582b6a6aa48e3b2979d6999659533"
+            ],
+            "id": "feed",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:fef582b6a6aa48e3b2979d6999659533"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 46.157,
+      "goal": "在发现与首页之间切换并回到首页",
+      "reobserves": 0,
+      "run": 2,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 4909.391,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:发现",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 21680.273,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:首页",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_10_tab_round_trip",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s)",
+            "evidence_refs": [
+              "obs:9e15e463065445b39e460d45be889c53"
+            ],
+            "id": "feed",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:9e15e463065445b39e460d45be889c53"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 2,
+      "elapsed_seconds": 46.577,
+      "goal": "在发现与首页之间切换并回到首页",
+      "reobserves": 0,
+      "run": 3,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 4974.93,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:发现",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 21826.207,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap:首页",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_10_tab_round_trip",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "1 node(s)",
+            "evidence_refs": [
+              "obs:a4567084e33f4cd6935fee4da6458378"
+            ],
+            "id": "feed",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:a4567084e33f4cd6935fee4da6458378"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    }
+  ],
+  "runs_per_task": 3,
+  "schema_version": 1,
+  "scope": "10 low-risk Weibo tasks, 3 runs each, real device",
+  "session": {
+    "controller_epoch": 0,
+    "device_bound": true,
+    "recovery_required": false,
+    "unresolved_actions": 0
+  },
+  "status": "not_ready",
+  "threshold": {
+    "required_successes": 27,
+    "total": 30
+  },
+  "totals": {
+    "blocked": 5,
+    "dispatches": 52,
+    "failed": 3,
+    "inconclusive": 0,
+    "runs": 30,
+    "succeeded": 22
+  }
+}

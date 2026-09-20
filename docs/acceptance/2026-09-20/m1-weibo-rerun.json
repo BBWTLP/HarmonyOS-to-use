@@ -1,0 +1,497 @@
+{
+  "app": "com.sina.weibo.stage",
+  "duration_seconds": 601.888,
+  "false_success_claims": 2,
+  "milestone": "M1",
+  "runs": [
+    {
+      "blocked": {
+        "code": "submit_ambiguous",
+        "message": "0 submit candidates in the top band"
+      },
+      "dispatches": 2,
+      "elapsed_seconds": 77.181,
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "reobserves": 1,
+      "run": 1,
+      "status": "blocked",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5477.351,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7592.776,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_05_submit_search",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "text not present",
+            "evidence_refs": [
+              "obs:621a5d4e5a0e411e908520b760f591bb"
+            ],
+            "id": "tab",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:621a5d4e5a0e411e908520b760f591bb"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:621a5d4e5a0e411e908520b760f591bb",
+          "obs:621a5d4e5a0e411e908520b760f591bb"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "blocked": {
+        "code": "submit_ambiguous",
+        "message": "0 submit candidates in the top band"
+      },
+      "dispatches": 2,
+      "elapsed_seconds": 92.746,
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "reobserves": 1,
+      "run": 2,
+      "status": "blocked",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5379.52,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7007.518,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_05_submit_search",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "text not present",
+            "evidence_refs": [
+              "obs:39fc887cff2b4e92bc4da664423ac8b2"
+            ],
+            "id": "tab",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:39fc887cff2b4e92bc4da664423ac8b2"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:39fc887cff2b4e92bc4da664423ac8b2",
+          "obs:39fc887cff2b4e92bc4da664423ac8b2"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "blocked": {
+        "code": "submit_ambiguous",
+        "message": "0 submit candidates in the top band"
+      },
+      "dispatches": 2,
+      "elapsed_seconds": 113.48,
+      "goal": "提交搜索并确认结果页的综合标签出现",
+      "reobserves": 1,
+      "run": 3,
+      "status": "blocked",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5551.762,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_focused_input",
+          "verification_status": "verified"
+        },
+        {
+          "execution_status": "executed",
+          "ms": 7634.965,
+          "request_id": null,
+          "status": "ok",
+          "step": "replace_text:鸿蒙",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_05_submit_search",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "text not present",
+            "evidence_refs": [
+              "obs:ec9f740ddfbd4161b9e95bf1bdd5ae5d"
+            ],
+            "id": "tab",
+            "verdict": "fail"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:ec9f740ddfbd4161b9e95bf1bdd5ae5d"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:ec9f740ddfbd4161b9e95bf1bdd5ae5d",
+          "obs:ec9f740ddfbd4161b9e95bf1bdd5ae5d"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 80.476,
+      "goal": "从搜索页面返回发现页",
+      "reobserves": 0,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5305.839,
+          "request_id": null,
+          "status": "ok",
+          "step": "back",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_06_back_to_discover",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "fingerprint comparison",
+            "evidence_refs": [
+              "obs:d6cba7e4c08d4d6799c1cd296f6fd229"
+            ],
+            "id": "left_editor",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:d6cba7e4c08d4d6799c1cd296f6fd229"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:d6cba7e4c08d4d6799c1cd296f6fd229",
+          "obs:d6cba7e4c08d4d6799c1cd296f6fd229"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 94.469,
+      "goal": "从搜索页面返回发现页",
+      "reobserves": 0,
+      "run": 2,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5310.06,
+          "request_id": null,
+          "status": "ok",
+          "step": "back",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_06_back_to_discover",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "fingerprint comparison",
+            "evidence_refs": [
+              "obs:c7831a6c3e4c4b8bbdc9d8ceb9184955"
+            ],
+            "id": "left_editor",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:c7831a6c3e4c4b8bbdc9d8ceb9184955"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:c7831a6c3e4c4b8bbdc9d8ceb9184955",
+          "obs:c7831a6c3e4c4b8bbdc9d8ceb9184955"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 70.618,
+      "goal": "从搜索页面返回发现页",
+      "reobserves": 0,
+      "run": 3,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5395.007,
+          "request_id": null,
+          "status": "ok",
+          "step": "back",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_06_back_to_discover",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "fingerprint comparison",
+            "evidence_refs": [
+              "obs:b8a655ea5ef04550b1192e5ab167edbf"
+            ],
+            "id": "left_editor",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:b8a655ea5ef04550b1192e5ab167edbf"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:b8a655ea5ef04550b1192e5ab167edbf",
+          "obs:b8a655ea5ef04550b1192e5ab167edbf"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "dispatches": 1,
+      "elapsed_seconds": 45.237,
+      "goal": "打开消息页并确认已离开首页信息流",
+      "reobserves": 0,
+      "run": 1,
+      "status": "succeeded",
+      "steps": [
+        {
+          "execution_status": "executed",
+          "ms": 5337.755,
+          "request_id": null,
+          "status": "ok",
+          "step": "tap_tab:消息",
+          "verification_status": "verified"
+        }
+      ],
+      "task_id": "m1_08_open_messages_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:3fb378be73c04add8d4295e8fda60904"
+            ],
+            "id": "left_feed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:3fb378be73c04add8d4295e8fda60904"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:3fb378be73c04add8d4295e8fda60904",
+          "obs:3fb378be73c04add8d4295e8fda60904"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "blocked": {
+        "code": "tab_ambiguous",
+        "message": "2 clickable ancestors for 消息"
+      },
+      "dispatches": 0,
+      "elapsed_seconds": 13.745,
+      "goal": "打开消息页并确认已离开首页信息流",
+      "reobserves": 0,
+      "run": 2,
+      "status": "blocked",
+      "steps": [],
+      "task_id": "m1_08_open_messages_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:e44ad73817274ed18a40fd571e771538"
+            ],
+            "id": "left_feed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:e44ad73817274ed18a40fd571e771538"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:e44ad73817274ed18a40fd571e771538",
+          "obs:e44ad73817274ed18a40fd571e771538"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    },
+    {
+      "blocked": {
+        "code": "tab_ambiguous",
+        "message": "2 clickable ancestors for 消息"
+      },
+      "dispatches": 0,
+      "elapsed_seconds": 13.758,
+      "goal": "打开消息页并确认已离开首页信息流",
+      "reobserves": 0,
+      "run": 3,
+      "status": "blocked",
+      "steps": [],
+      "task_id": "m1_08_open_messages_tab",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "absence describes the observable catalog only",
+            "evidence_refs": [
+              "obs:3fed6b25a37d4836b1697397c58437ed"
+            ],
+            "id": "left_feed",
+            "verdict": "pass"
+          },
+          {
+            "decided_by": "code",
+            "detail": "foreground=com.sina.weibo.stage",
+            "evidence_refs": [
+              "obs:3fed6b25a37d4836b1697397c58437ed"
+            ],
+            "id": "app",
+            "verdict": "pass"
+          }
+        ],
+        "evidence_refs": [
+          "obs:3fed6b25a37d4836b1697397c58437ed",
+          "obs:3fed6b25a37d4836b1697397c58437ed"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "pass"
+      }
+    }
+  ],
+  "runs_per_task": 3,
+  "schema_version": 1,
+  "scope": "10 low-risk Weibo tasks, 3 runs each, real device",
+  "session": {
+    "controller_epoch": 0,
+    "device_bound": true,
+    "recovery_required": false,
+    "unresolved_actions": 0
+  },
+  "status": "not_ready",
+  "threshold": {
+    "required_successes": 27,
+    "total": 30
+  },
+  "totals": {
+    "blocked": 5,
+    "dispatches": 10,
+    "failed": 0,
+    "inconclusive": 0,
+    "runs": 9,
+    "succeeded": 4
+  }
+}
