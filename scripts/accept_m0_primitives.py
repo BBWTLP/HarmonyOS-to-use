@@ -510,7 +510,12 @@ async def main(args) -> int:
             "controller_epoch": status.get("controller_epoch"),
             "unresolved_actions": len(status.get("unresolved_actions", [])),
             "recovery_required": bool(status.get("recovery_required")),
+            "target_match_counts": dict(status.get("target_match_counts") or {}),
         }
+    counts = report.get("session", {}).get("target_match_counts") or {}
+    report["target_match"] = {name: int(counts.get(name, 0))
+                              for name in ("exact", "stable_rebind", "ambiguous",
+                                           "missing", "changed")}
     report["duration_seconds"] = round(time.time() - started, 3)
     requested = tuple(args.only or PRIMITIVES)
     report["gate"] = evaluate_gate(report, requested)

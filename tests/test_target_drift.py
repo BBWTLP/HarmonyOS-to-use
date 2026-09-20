@@ -146,37 +146,46 @@ class DispatchStalenessTests(unittest.TestCase):
                 entry = next(item for item in observation["catalog"]
                              if item.get("resource_id") == "search_entry")
                 try:
-                    runtime.act("owner", {
+                    result = runtime.act("owner", {
                         "session_id": session, "request_id": "r1",
                         "observation_id": observation["observation_id"],
                         "action": {"kind": "tap",
                                    "target": {"action_id": entry["action_id"]}}})
-                    return None
+                    return None, result.get("target_match")
                 except RuntimeFault as fault:
-                    return fault.code
+                    return fault.code, None
             finally:
                 runtime.close()
 
-    def test_an_animated_decorative_descendant_refuses_the_tap(self):
-        self.assertEqual(self.attempt(decorative), "stale_observation")
+    def test_an_animated_decorative_descendant_no_longer_blocks_the_tap(self):
+        """RC4-A: an unrelated descendant animation is not target identity.
+
+        Before RC4-A the whole-subtree hash was compared for equality, so this
+        animation made the runtime refuse a control that had not changed at all.
+        """
+        code, match = self.attempt(decorative)
+        self.assertIsNone(code)
+        self.assertIsNotNone(match)
+        self.assertEqual(match["outcome"], "stable_rebind")
 
     def test_a_moved_control_is_refused(self):
-        self.assertEqual(self.attempt(moved), "stale_observation")
+        self.assertEqual(self.attempt(moved)[0], "stale_observation")
 
     def test_a_relabelled_control_is_refused(self):
-        self.assertEqual(self.attempt(relabelled), "stale_observation")
+        self.assertEqual(self.attempt(relabelled)[0], "stale_observation")
 
     def test_a_disabled_control_is_refused(self):
-        self.assertEqual(self.attempt(disabled), "stale_observation")
+        self.assertEqual(self.attempt(disabled)[0], "stale_observation")
 
     def test_a_replaced_control_is_refused(self):
-        self.assertEqual(self.attempt(replaced), "stale_observation")
+        self.assertEqual(self.attempt(replaced)[0], "stale_observation")
 
     def test_a_changed_page_is_refused(self):
-        self.assertEqual(self.attempt(new_page), "stale_observation")
+        self.assertEqual(self.attempt(new_page)[0], "stale_observation")
 
     def test_a_control_that_never_changes_is_dispatched(self):
-        self.assertIsNone(self.attempt(None))
+        code, _ = self.attempt(None)
+        self.assertIsNone(code)
 
 
 if __name__ == "__main__":

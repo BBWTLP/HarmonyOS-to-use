@@ -12,6 +12,7 @@ from .device_queue import DeviceQueue
 from .device_worker import ProcessDevice
 from .journal import Journal
 from .observation import canonical, matches, resolve, snapshot, input_value_matches
+from .target_identity import AMBIGUOUS, StableTargetMatcher
 from .risk import is_sensitive, label_of, scan
 from .visual import encode_image, mark_targets
 from .timing import Timings
@@ -27,6 +28,8 @@ class Session:
     observations: dict = field(default_factory=dict)
     generation: int = 0
     closed: bool = False
+    #: Cross-observation target re-identification outcomes (RC4-A diagnostics).
+    target_match_counts: dict = field(default_factory=dict)
 
 
 class Runtime:
@@ -39,6 +42,7 @@ class Runtime:
         self.factory = ProcessDevice if factory is HarmonyDevice else factory
         self.discover = discover or HarmonyDevice.discover
         self.lease_seconds = lease_seconds
+        self.matcher = StableTargetMatcher()
         self.guard = threading.RLock()
         self.shutdown = threading.Condition(self.guard)
         self.resources_closed = False
@@ -125,7 +129,7 @@ class Runtime:
     def _session_result(self, s):
         unresolved = self.journal.unresolved(s.serial)
         device_state = self._device_state(s.serial)
-        return {"status":"paused" if s.paused.is_set() else "open", "session_id":s.id, "device_id":s.serial, "controller_epoch":s.generation, "device_state":device_state, "worker_quarantined":device_state == "quarantined", "lease_remaining_seconds":max(0,round(s.expires-time.monotonic())), "recovery_required":bool(unresolved), "unresolved_actions":unresolved, "incidents":self.journal.incidents(s.serial), "capabilities":{"tree":True,"screenshot":True,"full":True,"som":True,"burst":True,"foreground_bundle":self.supports_foreground,"ocr":False,"webview":False,"temporal":True,"temporal_watch":True,"grounded_target":True,"pro":False}}
+        return {"status":"paused" if s.paused.is_set() else "open", "session_id":s.id, "device_id":s.serial, "controller_epoch":s.generation, "device_state":device_state, "worker_quarantined":device_state == "quarantined", "lease_remaining_seconds":max(0,round(s.expires-time.monotonic())), "recovery_required":bool(unresolved), "unresolved_actions":unresolved, "incidents":self.journal.incidents(s.serial), "capabilities":{"tree":True,"screenshot":True,"full":True,"som":True,"burst":True,"foreground_bundle":self.supports_foreground,"ocr":False,"webview":False,"temporal":True,"temporal_watch":True,"grounded_target":True,"pro":False}, "target_match_counts":dict(s.target_match_counts)}
 
     def _device_state(self, serial):
         """Expose worker quarantine so a client can recover instead of retrying.
@@ -464,6 +468,7 @@ class Runtime:
         # Even back/home must remain bound to the observed page. A targeted
         # action additionally requires its entire target subtree to be unchanged.
         target = None
+        target_match_note = None
         if req.action.target is not None and not before.get("navigation_fingerprint"):
             raise RuntimeFault("stale_observation", "Observation lacks a page identity")
         if req.action.target is not None and req.action.target.visual is not None:
@@ -478,10 +483,24 @@ class Runtime:
             if not same_page or not allowed:
                 raise RuntimeFault("stale_observation", "Page changed since the referenced observation")
             if req.action.target is not None:
-                target = resolve(current, req.action.target)
                 previous_target = resolve(before, req.action.target)
-                if (not previous_target.get("target_fingerprint") or previous_target != target):
-                    raise RuntimeFault("stale_observation", "Target changed since the referenced observation")
+                # Re-identify the control by its own evidence. The catalog is
+                # rebuilt every read, so `action_id`/`parent_action_id` are
+                # observation-local handles, the device may report a volatile
+                # accessibilityId, and the subtree hash moves with any animated
+                # descendant - none of those decide identity (RC4-A).
+                match = self.matcher.match(previous_target, current.get("catalog") or [])
+                self._record_match(s, match)
+                target_match_note = match.as_dict()
+                if match.outcome == AMBIGUOUS:
+                    raise RuntimeFault(
+                        "target_ambiguous",
+                        "Two or more targets match equally well; observe again and pick one")
+                if not match.resolved:
+                    raise RuntimeFault(
+                        "stale_observation",
+                        f"Target {match.outcome} since the referenced observation: {match.reason}")
+                target = match.entry
         target = target or (resolve(current, req.action.target) if req.action.target else None)
         self._policy(req.action,target)
         timing.call("screen_guard", self._ready_screen, s)
@@ -495,6 +514,10 @@ class Runtime:
             recovery_expected = req.expected.model_dump() if req.expected and req.action.kind != "replace_text" else None
             timing.call("journal_begin", self.journal.begin, req.request_id,digest,s.serial, expected=recovery_expected, before_fingerprint=before["fingerprint"])
         result={"status":"ok","execution_status":"not_dispatched","verification_status":"inconclusive","before_observation_id":req.observation_id,"after_observation_id":None,"timing":{},"evidence_refs":[],"incident_id":None}
+        if target_match_note is not None:
+            # Sanitized diagnostic: how the target was re-identified, and with
+            # which evidence. Never UI text.
+            result["target_match"] = target_match_note
         try:
             timing.call("dispatch", self._device(s).dispatch, req.action,target)
             result["execution_status"]="executed"
@@ -531,6 +554,12 @@ class Runtime:
         result["timing"]["verification_ms"] = round((time.monotonic()-verification_started)*1000, 3)
         result["timing"]["total_ms"]=round((time.monotonic()-started)*1000, 3)
         return self._finish_action(req.request_id, result)
+
+    def _record_match(self, session, match):
+        """Count cross-observation target re-identification outcomes (RC4-A)."""
+        with self.guard:
+            counts = session.target_match_counts
+            counts[match.outcome] = counts.get(match.outcome, 0) + 1
 
     def _finish_action(self, request_id, result):
         try:
