@@ -17,7 +17,8 @@ import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from agent_fakes import WEIBO, FakeTransportProvider, FakeWeiboDevice, weibo_home
+from agent_fakes import (WEIBO, FakeTransportProvider, FakeWeiboDevice, calibration,
+                         weibo_home)
 from harmony_agent.candidates import CandidateError, CandidateRegistry
 from harmony_agent.contracts import Predicate
 from harmony_agent.decision.factory import (ProviderConfig, build_fast_provider,
@@ -255,9 +256,10 @@ class ProviderFailureIsolationTests(unittest.TestCase):
         self.selected = self.candidates.candidates[0].candidate.candidate_id
 
     def decide(self, provider, *, profile="local_canary",
-               calibration="cal-2026-09-20", confidence=0.0, certainty=0.0):
+               calibrated=True, confidence=0.0, certainty=0.0):
         router = Router(fast_provider=provider, profile=profile,
-                        calibration_version=calibration,
+                        calibration=calibration() if calibrated else None,
+                        calibration_version="cal-2026-09-20" if calibrated else None,
                         confidence_threshold=confidence,
                         certainty_threshold=certainty)
         return asyncio.run(router.decide(
@@ -394,6 +396,7 @@ class ProviderFailureIsolationTests(unittest.TestCase):
         chosen = candidates.candidates[0].candidate.candidate_id
         provider = FakeTransportProvider(decider_answer(chosen))
         outcome = asyncio.run(Router(fast_provider=provider, profile="local_canary",
+                                     calibration=calibration(),
                                      calibration_version="cal-1").decide(
             task_id="t", subgoal_id="s", scope_id="sc", observation=expired,
             candidate_set=candidates, controller_epoch=0, goal="g"))
@@ -406,7 +409,7 @@ class ProviderFailureIsolationTests(unittest.TestCase):
     def test_decision_records_the_epoch_it_was_computed_under(self):
         provider = FakeTransportProvider(decider_answer(self.selected))
         router = Router(fast_provider=provider, profile="local_canary",
-                        calibration_version="cal-1")
+                        calibration=calibration(), calibration_version="cal-1")
         outcome = asyncio.run(router.decide(
             task_id="t", subgoal_id="s", scope_id="sc", observation=self.obs,
             candidate_set=self.candidates, controller_epoch=7, goal="g"))
@@ -416,7 +419,7 @@ class ProviderFailureIsolationTests(unittest.TestCase):
 
     def test_shadow_records_a_late_answer_without_executing_it(self):
         provider = FakeTransportProvider(decider_answer(self.selected))
-        outcome = self.decide(provider, profile="local_shadow", calibration=None)
+        outcome = self.decide(provider, profile="local_shadow", calibrated=False)
         self.assertEqual(outcome.decision.provider, "rules")
         self.assertEqual(outcome.shadow.route, "escalate")
         self.assertEqual(outcome.shadow.reason_code, "shadow_only")

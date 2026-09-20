@@ -116,10 +116,52 @@ display 几何变化                     -> target_geometry_changed
 ```text
 不允许 OCR/VLM 直接 dispatch
 不允许 VLM 返回 raw HDC 或屏幕坐标动作
-不允许未登记候选执行
 不允许按比例换算坐标以适配旋转
 不允许视觉区域接收 input_text / replace_text
+不允许 Autonomous Agent 层执行未登记候选
+不允许把 proposer 自报的 label 当作唯一风险证据
 ```
+
+## 谁可以提议 target（v3.2 Gate B 结论）
+
+原文写的"不允许未登记候选执行"过于笼统，与 Direct Runtime 的真实语义不符。
+2026-09-20 的 Pre-Device Gate 审计确认并修正如下：
+
+```text
+Autonomous Agent 层（mobile_run_task / task_*）
+  模型不能签发 candidate_id；执行目标必须先经 CandidateRegistry 登记，
+  并且 supervisor 在派发前再次 registry.resolve()
+  → 未登记 / 过期 / 旧 observation / 旧 epoch 一律 not_dispatched
+
+Direct Runtime（mobile_act 等 v1/v2 调用）
+  认证过的本地调用方本来就有权选择目标（v1 就允许按 action_id / text 指定）。
+  因此调用方也可以提议一个视觉区域，但：
+    - 区域必须携带 observation_id，且必须与本次请求引用的观察一致
+    - 区域必须携带 crop_digest，Runtime 会用当前截图重新计算并比对
+    - display 尺寸与旋转必须一致，越界区域直接拒绝
+    - 风险判定同时使用调用方 label 与*设备侧*重叠文本（见下）
+  → Runtime 复核 + Guard 才是权威，不是调用方的声明
+```
+
+### 风险证据不是只有 proposer 的 label
+
+`_resolve_visual` 会读取当前 UI-tree 中与该区域重叠的节点文本、描述、资源 id，
+写入 `visual_evidence`，并被 `harmony_runtime.risk.label_of` 纳入敏感词判定。
+因此：
+
+```text
+label="继续" 但区域实际压在 "立即支付" 上 → approval_required，不派发
+label 本身敏感 → approval_required，不派发
+区域与任何 UI-tree 文本都不重叠 → 无独立语义证据（记录为空），
+  此时仍只允许 tap/long_press 且受 blocking_dialog 与敏感词约束；
+  这是已知边界，见 pre-device-gate.md 的剩余风险
+```
+
+### crop revalidation 证明什么
+
+它证明的是"这块像素没有变"，**不是**"这个目标获得了授权"。授权来自：
+观察句柄有效 + 几何一致 + 像素摘要一致 + 该区域没有命中风险策略 + journal 准入。
+两者在实现里是分开的两步，ADR 不再把它们混为一谈。
 
 ## 后果
 

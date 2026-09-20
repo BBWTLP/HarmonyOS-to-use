@@ -442,6 +442,15 @@ class Runtime:
         if old is None or time.monotonic()-old[0]>15:
             raise RuntimeFault("stale_observation", "Observe again before acting")
         before=old[1]
+        # A v2 grounded handle is bound to the observation it was grounded on.
+        # Copying a handle onto a different observation is refused before any
+        # target resolution, even when the current page looks the same.
+        handle_observation = (req.action.target.observation_id
+                              if req.action.target is not None else None)
+        if handle_observation is not None and handle_observation != req.observation_id:
+            raise RuntimeFault(
+                "stale_observation",
+                "Grounded target belongs to another observation; observe again")
         # A visual target is revalidated against the current pixels, so the
         # preflight observation must carry an image for those targets only.
         needs_image = bool(req.action.target is not None

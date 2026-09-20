@@ -179,8 +179,13 @@ class ContractTests(unittest.TestCase):
 
     def test_a_valid_visual_handle_is_accepted(self):
         target = Target(target_ref="gt_" + "a" * 32, local_fingerprint="a" * 64,
-                        visual=self.visual())
+                        observation_id="obs_1", visual=self.visual())
         self.assertEqual(target.visual.source, "ocr")
+
+    def test_a_visual_region_must_name_the_observation_it_came_from(self):
+        with self.assertRaises(Exception):
+            Target(target_ref="gt_" + "a" * 32, local_fingerprint="a" * 64,
+                   visual=self.visual())
 
 
 class RuntimeVisualDispatchTests(unittest.TestCase):

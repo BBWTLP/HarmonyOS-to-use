@@ -9,6 +9,7 @@ from typing import Any
 from ..candidates import CONTROL_ROUTES, CandidateSet
 from ..contracts import DecisionResult
 from ..state_builder import build_questions, build_state, predicate_propositions
+from .calibration import Calibration
 from .factory import PROFILES
 from .providers.base import DecisionProvider, ProviderUnavailable
 from .providers.rules import RulesProvider
@@ -20,6 +21,9 @@ class RouterOutcome:
     shadow: DecisionResult | None = None
     fallback_reason: str | None = None
     provider_available: bool = True
+    #: Fast-provider invocations issued by this router. A failed attempt still
+    #: costs a call: the task budget must not be bypassable by timeouts.
+    provider_calls: int = 0
     notes: list[str] = field(default_factory=list)
 
 
@@ -31,6 +35,8 @@ class Router:
                  decider: DecisionProvider | None = None,
                  profile: str = "local_shadow",
                  calibration_version: str | None = None,
+                 calibration: Calibration | None = None,
+                 calibration_status: str | None = None,
                  confidence_threshold: float = 0.0,
                  certainty_threshold: float = 0.0,
                  noul_threshold: float = 0.5):
@@ -42,8 +48,15 @@ class Router:
         self.fast_provider = fast_provider if fast_provider is not None else decider
         self.profile = profile
         self.calibration_version = calibration_version
-        self.confidence_threshold = confidence_threshold
-        self.certainty_threshold = certainty_threshold
+        self.calibration = calibration
+        self.calibration_status = calibration_status or (
+            "ready" if calibration is not None else "artifact_missing")
+        # Threshold provenance: a loaded calibration artifact owns the
+        # thresholds when present; otherwise the deployment configuration does.
+        self.confidence_threshold = (calibration.confidence_threshold
+                                     if calibration is not None else confidence_threshold)
+        self.certainty_threshold = (calibration.certainty_threshold
+                                    if calibration is not None else certainty_threshold)
         self.noul_threshold = noul_threshold
 
     @property
@@ -56,10 +69,14 @@ class Router:
                 and self.fast_provider is not None)
 
     def may_execute(self) -> bool:
-        """Only a calibrated canary profile may route a model answer to execute."""
+        """Only a canary with a *validated* calibration artifact may execute.
+
+        A bare non-empty calibration string is not evidence: without a complete
+        artifact the canary fails closed and the rules decision stands.
+        """
         return (self.profile == "local_canary"
                 and self.fast_provider is not None
-                and bool(self.calibration_version))
+                and self.calibration is not None)
 
     async def decide(self, *, task_id: str, subgoal_id: str, scope_id: str,
                      observation: dict[str, Any], candidate_set: CandidateSet,
@@ -73,6 +90,13 @@ class Router:
         if self.profile in ("rules_only", "local_off") or self.fast_provider is None:
             base.reason_code = f"profile_{self.profile}"
             return RouterOutcome(decision=base)
+        if remaining_model_calls is not None and remaining_model_calls <= 0:
+            # The budget belongs to the task, so the router refuses before the
+            # provider is invoked at all: no request is issued and none is billed.
+            base.reason_code = "fallback_budget_exhausted"
+            return RouterOutcome(decision=base, fallback_reason="budget_exhausted",
+                                 provider_available=False, provider_calls=0,
+                                 notes=["model-call budget exhausted"])
 
         state = build_state(observation, candidate_set, goal=goal,
                             facts=facts or [], recent=recent or [])
@@ -96,7 +120,7 @@ class Router:
         except ProviderUnavailable as error:
             base.reason_code = f"fallback_{error.code}"
             return RouterOutcome(decision=base, fallback_reason=error.code,
-                                 provider_available=False)
+                                 provider_available=False, provider_calls=1)
         except asyncio.CancelledError:
             raise
         except Exception as error:
@@ -105,23 +129,25 @@ class Router:
             code = f"provider_error:{type(error).__name__}"
             base.reason_code = "fallback_provider_error"
             return RouterOutcome(decision=base, fallback_reason=code,
-                                 provider_available=False)
+                                 provider_available=False, provider_calls=1)
         if not _is_provider_result(result):
             # A malformed provider result is a provider failure, not a decision.
             base.reason_code = "fallback_malformed_result"
             return RouterOutcome(decision=base, fallback_reason="malformed_result",
-                                 provider_available=False)
+                                 provider_available=False, provider_calls=1)
 
         # The epoch is re-read by the caller immediately before dispatch; a
         # suggestion that arrives after a control transition is discarded there.
         shadow = self._decider_decision(task_id, subgoal_id, observation, candidate_set,
                                         epoch, result, allow_execute=self.may_execute())
         if self.may_execute() and shadow.route == "execute":
-            return RouterOutcome(decision=shadow, shadow=None, provider_available=True)
+            return RouterOutcome(decision=shadow, shadow=None, provider_available=True,
+                                 provider_calls=1)
         shadow.route = "escalate"
         shadow.selected_candidate_id = None
         shadow.reason_code = "shadow_only" if self.profile == "local_shadow" else shadow.reason_code
         return RouterOutcome(decision=base, shadow=shadow, provider_available=True,
+                             provider_calls=1,
                              notes=["fast provider suggestion recorded without dispatch"])
 
     async def _rules_decision(self, task_id, subgoal_id, observation, candidate_set,

@@ -157,3 +157,12 @@ def decider_choice(candidate_id, probabilities=None):
                        "certainty": 0.8,
                        "probabilities": probabilities or {candidate_id: 0.9,
                                                           "cand_none_applicable": 0.1}}}
+
+
+def calibration(calibration_id="cal-2026-09-20", *, revision="fake-revision",
+                confidence=0.5, certainty=0.5):
+    """A validated calibration record, as a canary deployment would load one."""
+    from harmony_agent.decision.calibration import Calibration
+    return Calibration(calibration_id=calibration_id, provider_revision=revision,
+                       confidence_threshold=confidence,
+                       certainty_threshold=certainty, dataset_sha256="a" * 64)

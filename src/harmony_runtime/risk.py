@@ -88,8 +88,15 @@ def risk_class_for(label: str | None) -> str:
 
 
 def label_of(target: dict | None, *,
-             keys: Iterable[str] = ("text", "hint", "description", "resource_id", "type")) -> str:
-    """Join the inspectable fields of a resolved target into one label."""
+             keys: Iterable[str] = ("text", "hint", "description", "resource_id", "type",
+                                    "visual_evidence")) -> str:
+    """Join the inspectable fields of a resolved target into one label.
+
+    `visual_evidence` carries the *device-derived* text that overlaps a visual
+    region. It is part of the label on purpose: a visual proposal's own label is
+    supplied by the proposer, so the risk decision must see independent evidence
+    as well and take the union of both.
+    """
     if not target:
         return ""
     return " ".join(str(target.get(key, "")) for key in keys).lower()

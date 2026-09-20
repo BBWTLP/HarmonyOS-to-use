@@ -15,6 +15,7 @@ from .artifacts import ArtifactStore, Retention
 from .candidates import CandidateRegistry
 from .checker import ReadOnlyChecker
 from .contracts import Predicate, TaskSubmit
+from .decision.calibration import load_calibration
 from .decision.factory import PROFILES, ProviderConfig, config_from_env, resolve_fast_provider
 from .decision.providers.base import DecisionProvider, provider_health
 from .decision.router import Router
@@ -23,15 +24,40 @@ from .memory import Memory
 from .planner import plan_from_task
 from .supervisor import (RuntimeFacade, TaskError, TaskRun, TaskStore, TaskSupervisor,
                          safety_code)
+from harmony_runtime.contracts import RuntimeFault
 
 
 #: The development default: rules only, no Decider construction, no model call.
 DEFAULT_PROFILE = "local_off"
 
+#: Deployment-level profile privilege. A task may not raise this.
+PROFILE_RANK = {"rules_only": 0, "local_off": 0, "local_shadow": 1, "local_canary": 2}
+
+#: Values a task may send to mean "use the deployment profile".
+INHERIT_PROFILES = ("", "inherit", "default", "host")
+
+
+def effective_profile(host_profile: str, task_profile: str | None) -> tuple[str, str | None]:
+    """Resolve the profile a task actually runs under.
+
+    The deployment profile (`HARMONY_AGENT_PROFILE`) is the authority. A task may
+    inherit it or ask for a *stricter* one; it may never ask for more provider
+    privilege than the deployment granted. Returns ``(profile, error_code)``.
+    """
+    requested = str(task_profile or "").strip().lower()
+    if requested in INHERIT_PROFILES:
+        return host_profile, None
+    if requested not in PROFILES:
+        return host_profile, "profile_unknown"
+    if PROFILE_RANK[requested] > PROFILE_RANK[host_profile]:
+        return host_profile, "profile_escalation_denied"
+    return requested, None
+
 
 class AgentHost:
     def __init__(self, runtime, root: str | Path, *, profile: str = DEFAULT_PROFILE,
                  calibration_version: str | None = None,
+                 calibration_file: str | Path | None = None,
                  fast_provider: DecisionProvider | None = None,
                  decider: DecisionProvider | None = None,
                  confidence_threshold: float = 0.0,
@@ -43,6 +69,7 @@ class AgentHost:
         self.root = Path(root)
         self.profile = profile if profile in PROFILES else DEFAULT_PROFILE
         self.calibration_version = calibration_version
+        self.calibration, self.calibration_status = self._resolve_calibration(calibration_file)
         self.confidence_threshold = confidence_threshold
         self.certainty_threshold = certainty_threshold
         self.repo_root = Path(repo_root) if repo_root else Path.cwd()
@@ -71,6 +98,16 @@ class AgentHost:
         build = resolve_fast_provider(self.profile, config)
         return build.provider, build.provider_name, build.status, build.reason
 
+    def _resolve_calibration(self, calibration_file: str | Path | None):
+        """Load the calibration artifact; a missing artifact keeps canary closed."""
+        import os
+        path = calibration_file or os.environ.get("HARMONY_AGENT_CALIBRATION_FILE")
+        expected = os.environ.get("HARMONY_DECIDER_REVISION") or None
+        record, status = load_calibration(path, expected_revision=expected)
+        if record is not None and self.calibration_version is None:
+            self.calibration_version = record.calibration_id
+        return record, status
+
     @property
     def decider(self) -> DecisionProvider | None:
         """Deprecated read-only alias for :attr:`fast_provider`.
@@ -81,9 +118,11 @@ class AgentHost:
         return self.fast_provider
 
     # -- router ------------------------------------------------------------
-    def _router(self) -> Router:
-        return Router(fast_provider=self.fast_provider, profile=self.profile,
+    def _router(self, profile: str | None = None) -> Router:
+        return Router(fast_provider=self.fast_provider, profile=profile or self.profile,
                       calibration_version=self.calibration_version,
+                      calibration=self.calibration,
+                      calibration_status=self.calibration_status,
                       confidence_threshold=self.confidence_threshold,
                       certainty_threshold=self.certainty_threshold)
 
@@ -91,6 +130,19 @@ class AgentHost:
     def run_task(self, owner: str, *, session_id: str, task: dict[str, Any]) -> dict[str, Any]:
         payload = task.get("task") if isinstance(task.get("task"), dict) else task
         model = TaskSubmit.model_validate(payload)
+        profile, error = effective_profile(self.profile, model.model_profile)
+        if error == "profile_unknown":
+            raise RuntimeFault(
+                "profile_unknown",
+                f"Unknown model_profile {model.model_profile!r}; the deployment profile stands")
+        if error == "profile_escalation_denied":
+            raise RuntimeFault(
+                "profile_escalation_denied",
+                "A task cannot request more provider privilege than the deployment profile")
+        # Garbage-collect candidates whose TTL has passed. This only removes
+        # entries the dispatch gateway would already refuse, and it keeps a
+        # long-lived host from accumulating every candidate it ever issued.
+        self.registry.prune()
         scope_epoch = self.runtime.session(owner, "status", session_id=session_id)["controller_epoch"]
         created = self.supervisor.submit(model.model_dump(), controller_epoch=scope_epoch,
                                          session_id=session_id)
@@ -103,7 +155,7 @@ class AgentHost:
                           constraints=[f"allowed_apps={model.scope.allowed_apps}",
                                        f"allowed_actions={model.scope.allowed_actions}"]),
             facade=RuntimeFacade(self.runtime, owner, session_id),
-            registry=self.registry, router=self._router(), checker=self.checker,
+            registry=self.registry, router=self._router(profile), checker=self.checker,
             store=self.store, artifacts=self.artifacts, ocr=self.ocr, matcher=self.matcher,
             arguments=dict(plan.parameters),
         )
@@ -215,6 +267,9 @@ class AgentHost:
         report = provider_health(self.fast_provider)
         return {"profile": self.profile,
                 "calibration_version": self.calibration_version,
+                "calibration_status": self.calibration_status,
+                "calibration_ready": self.calibration is not None,
+                "task_profile_policy": "deployment_profile_is_authority",
                 # Generic provider view: no concrete adapter internals leak here.
                 "provider_name": self.provider_name,
                 "provider_available": self.fast_provider is not None,

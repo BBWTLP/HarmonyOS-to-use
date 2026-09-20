@@ -38,6 +38,7 @@ deferred        明确推迟，不阻塞发布
 | 13 | 安装 / 迁移 / 回滚 | **verified_offline** | 9 项；干净环境安装与跨版本回滚仍待真机/新环境复跑 |
 | — | 真机 Acceptance Sprint | **blocked_device** | 见 `blocked-device.md` |
 | — | 三客户端对照（Codex/OpenCode/DeepSeek） | **deferred** | 非发布阻塞；Runtime 保持 client-agnostic |
+| — | Pre-Device Release Gate（Gate A–G） | **verified_offline** | `pre-device-gate.md`；6 个真实缺陷已闭环，测试 562 → 607 |
 
 ## 2. Phase 0 — Offline Baseline
 
@@ -186,7 +187,24 @@ Grounding 限制：输入框 placeholder（hint）不参与文本匹配，必须
 Phase 13：干净环境安装与跨版本回滚只在离线状态目录层面验证
 ```
 
-## 7. 下一步
+## 7. Pre-Device Release Gate（2026-09-20）
+
+在进入真机测试前做了一次反向审计，6 个 Gate 中 6 个都确认是**真实缺陷**并已闭环：
+
+```text
+A 派发前从不 registry.resolve()      → 现在派发关口复核签发/观察/epoch/TTL
+B ADR 承诺与 Direct 真实语义不一致    → 分层契约写清，视觉句柄绑定 observation
+C 视觉风险只信 proposer label         → 并入设备侧重叠文本证据（取并集）
+D task.model_profile 被静默忽略       → 部署 profile 为权威，禁止任务提权
+E provider 失败调用不计数             → RouterOutcome.provider_calls 显式计费
+F OCR/VLM 无 deadline 所有权          → 有界调用 + 超时隔离 + 生产要求声明
+G 任意 calibration 字符串即开 canary  → 必须完整 artifact，否则 fail closed
+```
+
+详见 [pre-device-gate.md](pre-device-gate.md) 与 [device-test-handoff.md](device-test-handoff.md)。
+测试数 562 → 607（新增 adversarial 38 项 + soak 5 项 + 契约收紧 2 项）。
+
+## 8. 下一步
 
 离线部分已按计划推进到 Phase 13。真机恢复后按 `blocked-device.md` 顺序执行
 Device Acceptance Sprint；在此之前不因缺少真机而跳到 Decider 优化

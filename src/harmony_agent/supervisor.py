@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .candidates import CandidateRegistry, RegisteredCandidate
+from .candidates import CandidateError, CandidateRegistry, RegisteredCandidate
 from .checker import CheckReport, ReadOnlyChecker
 from .contracts import Predicate, TaskSubmit
 from .decision.router import Router, RouterOutcome
@@ -468,8 +468,11 @@ class TaskRunner:
             candidate_set=candidate_set, controller_epoch=run.facade.controller_epoch(),
             remaining_model_calls=run.remaining()["model_calls"],
             goal=run.task.goal, facts=run.memory.context_facts()))
-        if outcome.decision.provider != "rules" or outcome.shadow is not None:
-            run.model_calls += 1
+        # Charge the budget for every provider invocation the router issued,
+        # including attempts that timed out, crashed or returned garbage and
+        # therefore fell back to rules. Inferring this from the *final* decision
+        # provider would let a failing provider be called for free.
+        run.model_calls += outcome.provider_calls
         return outcome
 
     # -- dispatch -----------------------------------------------------------
@@ -483,6 +486,23 @@ class TaskRunner:
                 "candidate_epoch": selected.candidate.controller_epoch,
                 "current_epoch": epoch})
             return {"status": "epoch_mismatch", "execution_status": "not_dispatched",
+                    "verification_status": "inconclusive"}
+        # Gateway authority: the selected candidate must still be one this
+        # registry issued for *this* observation and epoch, and must not have
+        # expired between the decision and the dispatch. Membership is checked
+        # against the registry itself, not against the candidate set, so pruning
+        # or a foreign candidate set cannot authorise a write. A failure is a
+        # refusal, never a re-issued candidate that continues the click.
+        try:
+            run.registry.resolve(selected.candidate.candidate_id,
+                                 observation_id=observation["observation_id"],
+                                 controller_epoch=epoch)
+        except CandidateError as error:
+            run.event("candidate_rejected", {
+                "subgoal_id": subgoal.subgoal_id,
+                "code": error.code,
+                "candidate_id": selected.candidate.candidate_id})
+            return {"status": error.code, "execution_status": "not_dispatched",
                     "verification_status": "inconclusive"}
         action = _action_payload(subgoal, selected)
         expected = _expected_payload(criteria, run.arguments)

@@ -5,7 +5,8 @@ import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from agent_fakes import WEIBO, FakeTransportProvider, weibo_home, weibo_results
+from agent_fakes import (WEIBO, FakeTransportProvider, calibration, weibo_home,
+                         weibo_results)
 from harmony_agent.candidates import CandidateRegistry
 from harmony_agent.contracts import Predicate
 from harmony_agent.decision.providers.decider import (CircuitBreaker, DeciderProvider,
@@ -103,8 +104,11 @@ class RouterShadowTests(unittest.TestCase):
         self.candidates = candidate_set(self.registry, self.obs)
         self.selected = self.candidates.candidates[0].candidate.candidate_id
 
-    def decide(self, provider, profile="local_shadow", calibration=None):
-        router = Router(decider=provider, profile=profile, calibration_version=calibration)
+    def decide(self, provider, profile="local_shadow", calibration_record=None,
+               calibration_version=None):
+        router = Router(decider=provider, profile=profile,
+                        calibration=calibration_record,
+                        calibration_version=calibration_version)
         return asyncio.run(router.decide(
             task_id="t", subgoal_id="s", scope_id="sc", observation=self.obs,
             candidate_set=self.candidates, controller_epoch=0, goal="搜索鸿蒙"))
@@ -142,11 +146,32 @@ class RouterShadowTests(unittest.TestCase):
                                                      "confidence": 0.99, "certainty": 0.99,
                                                      "probabilities": {self.selected: 0.99,
                                                                        "cand_none_applicable": 0.01}}})
-        outcome = self.decide(provider, profile="local_canary", calibration="cal-2026-09-20")
+        outcome = self.decide(provider, profile="local_canary",
+                              calibration_record=calibration(),
+                              calibration_version="cal-2026-09-20")
         self.assertEqual(outcome.decision.route, "execute")
         self.assertEqual(outcome.decision.provider, "decider")
         self.assertEqual(outcome.decision.calibration_version, "cal-2026-09-20")
         self.assertEqual(outcome.decision.selected_candidate_id, self.selected)
+
+    def test_a_bare_calibration_string_cannot_enable_the_canary(self):
+        """v3.2 Gate G: a string is metadata, never proof of calibration."""
+        provider = FakeTransportProvider({"action": {"type": "choice",
+                                                     "choice": self.selected,
+                                                     "confidence": 0.99,
+                                                     "certainty": 0.99,
+                                                     "probabilities": {
+                                                         self.selected: 0.99,
+                                                         "cand_none_applicable": 0.01}}})
+        router = Router(decider=provider, profile="local_canary",
+                        calibration_version="cal-anything")
+        self.assertFalse(router.may_execute())
+        outcome = asyncio.run(router.decide(
+            task_id="t", subgoal_id="s", scope_id="sc", observation=self.obs,
+            candidate_set=self.candidates, controller_epoch=0, goal="g"))
+        self.assertEqual(outcome.decision.provider, "rules")
+        self.assertIsNotNone(outcome.shadow)
+        self.assertIsNone(outcome.shadow.selected_candidate_id)
 
     def test_provider_failure_falls_back_to_the_baseline(self):
         class Broken:

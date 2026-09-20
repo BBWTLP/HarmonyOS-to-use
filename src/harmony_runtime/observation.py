@@ -204,6 +204,7 @@ def _resolve_visual(observation, target):
             "target_not_revalidated",
             "Visual region content changed since it was proposed; observe again")
     hit_bounds = clip_region(visual.region, (visual.display_width, visual.display_height))
+    evidence = _visual_overlap_evidence(observation, hit_bounds)
     return {
         "action_id": None,
         "text": visual.label,
@@ -227,7 +228,36 @@ def _resolve_visual(observation, target):
         # Runtime-side provenance: the dispatch path must not have to trust the proposer.
         "visual_source": visual.source,
         "visual_region": list(visual.region),
+        # Independent, device-derived evidence that overlaps the region. The risk
+        # policy reads this together with the proposer's label, so a benign label
+        # cannot hide sensitive on-screen text underneath the region.
+        "visual_evidence": evidence,
     }
+
+
+def _visual_overlap_evidence(observation, hit_bounds) -> str:
+    """Text of every observed node that overlaps the proposed region.
+
+    This is the runtime's own reading of the current UI tree, so it cannot be
+    supplied or suppressed by whoever proposed the region.
+    """
+    if not hit_bounds:
+        return ""
+    left, top, right, bottom = hit_bounds
+    parts: list[str] = []
+    for node in observation.get("catalog") or []:
+        bounds = node.get("hit_bounds")
+        if not bounds or len(bounds) != 4:
+            continue
+        overlap_x = min(right, bounds[2]) - max(left, bounds[0])
+        overlap_y = min(bottom, bounds[3]) - max(top, bounds[1])
+        if overlap_x <= 0 or overlap_y <= 0:
+            continue
+        for key in ("text", "description", "hint", "resource_id", "accessibility_id"):
+            value = str(node.get(key) or "").strip()
+            if value:
+                parts.append(value)
+    return " ".join(dict.fromkeys(parts))
 
 
 def matches(obs, expected, before=None):

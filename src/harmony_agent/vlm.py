@@ -5,6 +5,12 @@ screenshot, the display geometry, a tree summary and the existing candidates,
 and it may only answer with regions. Regions are validated here; anything that
 looks like an action, a raw coordinate pair or a device call is discarded, and a
 timeout or a malformed answer becomes an explicit "no VLM evidence" result.
+
+Deadline ownership matches the OCR adapter: a production backend declares
+``deadline_bounded = True`` and enforces the deadline in its own transport;
+otherwise the call is bounded here and the provider is quarantined on the first
+timeout, so a hung model costs at most one worker thread and fails fast after
+that.
 """
 from __future__ import annotations
 
@@ -12,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from .grounding import GroundingUnavailable
+from .provider_deadline import BoundedCaller, DeadlineExceeded
 from .visual_regions import normalize_regions
 
 #: A VLM answer below this score is not offered as a candidate.
@@ -22,6 +29,8 @@ class VlmBackend(Protocol):
     """A concrete VLM (local server, hosted API, on-device model)."""
 
     available: bool
+    #: Set True only when the transport itself enforces the deadline.
+    deadline_bounded: bool
 
     def locate(self, request: dict[str, Any], image_bytes: bytes) -> list[dict[str, Any]]: ...
 
@@ -41,7 +50,8 @@ class VlmGroundingProvider:
                  display: dict[str, Any] | None = None, rotation: int = 0,
                  min_score: float = DEFAULT_MIN_SCORE, max_regions: int = 8,
                  timeout_seconds: float = 15.0,
-                 context: VlmContext | None = None):
+                 context: VlmContext | None = None,
+                 caller: BoundedCaller | None = None):
         self.backend = backend
         self.display = display
         self.rotation = rotation
@@ -49,6 +59,7 @@ class VlmGroundingProvider:
         self.max_regions = max_regions
         self.timeout_seconds = timeout_seconds
         self.context = context or VlmContext()
+        self._caller = caller or BoundedCaller("vlm", timeout_seconds)
         self.last_error: str | None = None
 
     @property
@@ -56,11 +67,25 @@ class VlmGroundingProvider:
         return bool(self.backend is not None and getattr(self.backend, "available", False))
 
     @property
+    def deadline_bounded(self) -> bool:
+        return bool(getattr(self.backend, "deadline_bounded", False))
+
+    @property
+    def production_ready(self) -> bool:
+        return self.available and self.deadline_bounded and not self._caller.quarantined
+
+    @property
+    def quarantined(self) -> bool:
+        return self._caller.quarantined
+
+    @property
     def reason(self) -> str:
         if self.backend is None:
             return "no_vlm_backend_configured"
         if not getattr(self.backend, "available", False):
             return getattr(self.backend, "reason", "vlm_backend_unavailable")
+        if self._caller.quarantined:
+            return self._caller.reason
         return self.last_error or "ready"
 
     def with_context(self, *, goal: str = "", subgoal: str = "",
@@ -73,7 +98,8 @@ class VlmGroundingProvider:
             timeout_seconds=self.timeout_seconds,
             context=VlmContext(goal=goal, subgoal=subgoal,
                                tree_summary=list(tree_summary or []),
-                               existing_candidates=list(existing_candidates or [])))
+                               existing_candidates=list(existing_candidates or [])),
+            caller=self._caller)
 
     def with_observation(self, observation: dict[str, Any]) -> "VlmGroundingProvider":
         display = observation.get("display") or {}
@@ -82,7 +108,8 @@ class VlmGroundingProvider:
             self.backend, display=display,
             rotation=rotation if isinstance(rotation, int) else 0,
             min_score=self.min_score, max_regions=self.max_regions,
-            timeout_seconds=self.timeout_seconds, context=self.context)
+            timeout_seconds=self.timeout_seconds, context=self.context,
+            caller=self._caller)
         return provider
 
     def build_request(self, description: str) -> dict[str, Any]:
@@ -102,9 +129,17 @@ class VlmGroundingProvider:
         """Return normalised regions; never a coordinate action."""
         if not self.available:
             return []
+        if self._caller.quarantined:
+            self.last_error = self._caller.reason
+            raise GroundingUnavailable("vlm_quarantined",
+                                       "The VLM provider is quarantined after a timeout")
         request = self.build_request(description)
         try:
-            raw = self.backend.locate(request, image_bytes)
+            raw = self._invoke(request, image_bytes)
+        except DeadlineExceeded as error:
+            raise GroundingUnavailable(
+                "vlm_timeout",
+                "The VLM did not answer within its deadline") from error
         except TimeoutError as error:
             raise GroundingUnavailable("vlm_timeout",
                                        "The VLM did not answer within its deadline") from error
@@ -131,6 +166,11 @@ class VlmGroundingProvider:
                 "vlm_low_confidence",
                 "The VLM answer had no usable region above the score floor")
         return regions[:self.max_regions]
+
+    def _invoke(self, request: dict[str, Any], image_bytes: bytes):
+        if self.deadline_bounded:
+            return self.backend.locate(request, image_bytes)
+        return self._caller.call(lambda: self.backend.locate(request, image_bytes))
 
 
 def build_vlm_provider(backend: VlmBackend | None = None, *,

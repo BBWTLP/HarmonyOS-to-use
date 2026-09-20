@@ -45,6 +45,8 @@ class Target(Contract):
                 raise ValueError("target_ref requires the grounded local_fingerprint")
             if self.visual is not None and self.visual.crop_digest != self.local_fingerprint:
                 raise ValueError("A visual target must carry the same crop digest as its handle")
+            if self.visual is not None and self.observation_id is None:
+                raise ValueError("A visual target must carry the observation it was grounded on")
             return self
         if self.visual is not None:
             raise ValueError("A visual region is only valid together with a target_ref")
