@@ -15,6 +15,7 @@ from typing import Any
 from .contracts import Candidate, Predicate, candidate_set_hash, iso, utc_now
 from .grounding import (DEFAULT_TTL_SECONDS, GroundedTarget, GroundingIntent,
                         GroundingResult, filter_for_intent, ground)
+from harmony_runtime.risk import risk_class_for as _shared_risk_class
 
 #: Non-action routing exits. They are control options, never phone actions.
 NONE_APPLICABLE = "cand_none_applicable"
@@ -31,13 +32,6 @@ CONTROL_ROUTES = {
     STOP: "stop",
 }
 
-HIGH_RISK_TERMS = (
-    "支付", "付款", "转账", "购买", "下单", "删除", "卸载", "清空", "发送",
-    "提交", "允许", "授权", "密码", "验证码", "退出登录", "注销",
-    "pay", "purchase", "delete", "send", "submit", "password", "permission",
-)
-
-
 class CandidateError(RuntimeError):
     def __init__(self, code: str, message: str):
         self.code = code
@@ -45,8 +39,12 @@ class CandidateError(RuntimeError):
 
 
 def risk_class_for(label: str) -> str:
-    lowered = label.lower()
-    return "high" if any(term in label or term in lowered for term in HIGH_RISK_TERMS) else "low"
+    """Routing hint only. The Runtime Guard remains the dispatch authority.
+
+    This reads the shared taxonomy in `harmony_runtime.risk`, so the agent can
+    never classify a target as safer than the runtime does.
+    """
+    return _shared_risk_class(label)
 
 
 @dataclass

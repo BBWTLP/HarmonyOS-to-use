@@ -155,6 +155,8 @@ def snapshot(tree, display, foreground=None):
 
 
 def resolve(observation, target):
+    if getattr(target, "visual", None) is not None:
+        return _resolve_visual(observation, target)
     if getattr(target, "target_ref", None) is not None:
         # v2: the service registered this grounded target against one observed node.
         # Match the local fingerprint so duplicate labels cannot be confused.
@@ -171,6 +173,61 @@ def resolve(observation, target):
     if not candidates: raise RuntimeFault("target_not_found", "No enabled target matches")
     if len(candidates) != 1: raise RuntimeFault("target_ambiguous", f"{len(candidates)} targets match; choose a current action_id")
     return candidates[0]
+
+
+def _resolve_visual(observation, target):
+    """Revalidate a visual region against the current image before dispatch.
+
+    A visual target is a proposal from OCR/VLM, so the runtime re-derives the
+    crop digest itself. Geometry, rotation, bounds and pixels must all still
+    match, otherwise the region is refused instead of tapped.
+    """
+    from .visual import clip_region, decode_image, region_digest
+    visual = target.visual
+    display = observation.get("display") or {}
+    geometry = (display.get("width"), display.get("height"), display.get("rotation"))
+    if geometry != (visual.display_width, visual.display_height, visual.rotation):
+        raise RuntimeFault(
+            "target_geometry_changed",
+            "Display size or rotation changed since the region was proposed; observe again")
+    raw = decode_image(observation.get("image"))
+    if raw is None:
+        raise RuntimeFault(
+            "target_not_revalidated",
+            "A visual target needs screenshot evidence; observe again with an image")
+    digest = region_digest(raw, visual.region, (visual.display_width, visual.display_height))
+    if digest is None:
+        raise RuntimeFault("target_out_of_bounds",
+                           "Visual region has no area inside the display")
+    if digest != visual.crop_digest:
+        raise RuntimeFault(
+            "target_not_revalidated",
+            "Visual region content changed since it was proposed; observe again")
+    hit_bounds = clip_region(visual.region, (visual.display_width, visual.display_height))
+    return {
+        "action_id": None,
+        "text": visual.label,
+        "hint": "",
+        "description": visual.label,
+        "accessibility_id": "",
+        "host_window_id": "",
+        "hierarchy": "",
+        "resource_id": "",
+        "type": "visual_region",
+        "bounds": list(visual.region),
+        "hit_bounds": list(hit_bounds),
+        "enabled": True,
+        "clickable": True,
+        "focused": False,
+        "parent_action_id": None,
+        "target_fingerprint": visual.crop_digest,
+        "checked": None,
+        "selected": None,
+        "bundle": observation.get("foreground_bundle"),
+        # Runtime-side provenance: the dispatch path must not have to trust the proposer.
+        "visual_source": visual.source,
+        "visual_region": list(visual.region),
+    }
 
 
 def matches(obs, expected, before=None):

@@ -6,6 +6,23 @@ class Contract(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class VisualRegion(Contract):
+    """A visual target proposal. Never a device write; always revalidated first.
+
+    `crop_digest` is the runtime's own content digest of `region`, produced by
+    `harmony_runtime.visual.region_digest`. The label is what the visual layer
+    matched, kept so the runtime policy can inspect it before dispatching.
+    """
+
+    region: tuple[int, int, int, int]
+    crop_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source: Literal["ocr", "image", "vlm"]
+    label: str = Field(min_length=1, max_length=512)
+    display_width: int = Field(gt=0)
+    display_height: int = Field(gt=0)
+    rotation: int
+
+
 class Target(Contract):
     action_id: str | None = None
     text: str | None = None
@@ -14,6 +31,9 @@ class Target(Contract):
     target_ref: str | None = Field(default=None, pattern=r"^gt_[0-9a-f]{16,64}$")
     observation_id: str | None = None
     local_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    # v3.2 visual region handle: only valid next to a target_ref, and only after
+    # the runtime re-derives the same crop digest from the pre-dispatch image.
+    visual: VisualRegion | None = None
 
     @model_validator(mode="after")
     def one_selector(self):
@@ -23,7 +43,11 @@ class Target(Contract):
                 raise ValueError("Provide either a v1 selector or a v2 target_ref, not both")
             if self.local_fingerprint is None:
                 raise ValueError("target_ref requires the grounded local_fingerprint")
+            if self.visual is not None and self.visual.crop_digest != self.local_fingerprint:
+                raise ValueError("A visual target must carry the same crop digest as its handle")
             return self
+        if self.visual is not None:
+            raise ValueError("A visual region is only valid together with a target_ref")
         if self.local_fingerprint is not None:
             raise ValueError("local_fingerprint is only valid together with target_ref")
         if sum(v is not None for v in legacy) != 1:

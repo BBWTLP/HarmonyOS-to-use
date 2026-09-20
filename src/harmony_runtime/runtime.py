@@ -12,6 +12,7 @@ from .device_queue import DeviceQueue
 from .device_worker import ProcessDevice
 from .journal import Journal
 from .observation import canonical, matches, resolve, snapshot, input_value_matches
+from .risk import is_sensitive, label_of, scan
 from .visual import encode_image, mark_targets
 from .timing import Timings
 
@@ -400,9 +401,17 @@ class Runtime:
     @staticmethod
     def _policy(action,target):
         # Initial conservative deny rules; this is not the complete M3 safety gate.
-        danger=("支付","付款","转账","购买","下单","删除","卸载","清空","发送","提交","允许","授权","密码","验证码","pay","purchase","delete","send","submit","password","permission")
-        label = " ".join(str(target.get(k,"")) for k in ("text","hint","description","resource_id","type")) .lower() if target else ""
-        if action.kind in ("tap","long_press","input_text","replace_text") and any(x in label for x in danger):
+        # The term list is shared with the agent layer (`harmony_runtime.risk`),
+        # so a candidate classification can never be more permissive than this.
+        label = label_of(target)
+        if target and target.get("visual_source"):
+            # A visual region is a proposed point, not an observed widget: it can
+            # only carry the spatial gestures, and it can never receive input.
+            if action.kind not in ("tap", "long_press"):
+                raise RuntimeFault("unsupported_capability",
+                                   "Visual regions support tap and long_press only; "
+                                   "input requires an observed text field")
+        if action.kind in ("tap","long_press","input_text","replace_text") and is_sensitive(label):
             raise RuntimeFault("approval_required", "Sensitive target blocked. Trusted approval flow is not implemented in this build.")
         if action.kind in ("input_text", "replace_text") and not target.get("focused"):
             raise RuntimeFault("focus_required", "Tap the field and observe its focus before input")
@@ -433,7 +442,11 @@ class Runtime:
         if old is None or time.monotonic()-old[0]>15:
             raise RuntimeFault("stale_observation", "Observe again before acting")
         before=old[1]
-        current=timing.call("preflight_observe", self._observe, s)
+        # A visual target is revalidated against the current pixels, so the
+        # preflight observation must carry an image for those targets only.
+        needs_image = bool(req.action.target is not None
+                           and req.action.target.visual is not None)
+        current=timing.call("preflight_observe", self._observe, s, needs_image)
         if not current["actionable"]:
             raise RuntimeFault("stale_observation", "Foreground changed during capture; observe again")
         if current.get("blocking_dialog") and req.action.kind not in ("back", "home", "launch"):
@@ -444,6 +457,11 @@ class Runtime:
         target = None
         if req.action.target is not None and not before.get("navigation_fingerprint"):
             raise RuntimeFault("stale_observation", "Observation lacks a page identity")
+        if req.action.target is not None and req.action.target.visual is not None:
+            # Revalidate the proposed region (geometry + pixels) before the page
+            # identity comparison, so the refusal reason is exact instead of a
+            # generic stale page. The comparison below still runs afterwards.
+            target = resolve(current, req.action.target)
         if current["fingerprint"] != before["fingerprint"]:
             projection = before.get("navigation_fingerprint")
             same_page = bool(projection) and projection == current.get("navigation_fingerprint")

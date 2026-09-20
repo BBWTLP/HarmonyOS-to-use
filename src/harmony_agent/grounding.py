@@ -15,6 +15,7 @@ from datetime import timedelta
 from typing import Any, Literal, Protocol
 
 from .contracts import iso, utc_now
+from harmony_runtime.visual import region_digest
 
 GROUNDING_SOURCES = ("ui_tree", "ocr", "image", "vlm")
 
@@ -87,7 +88,7 @@ class GroundedTarget:
 
     def to_ref(self) -> dict[str, Any]:
         """Reference payload handed to the runtime guard (no raw coordinates)."""
-        return {
+        ref = {
             "target_ref": self.target_ref,
             "observation_id": self.observation_id,
             "controller_epoch": self.controller_epoch,
@@ -100,6 +101,35 @@ class GroundedTarget:
             "role": self.role,
             "expires_at": self.expires_at,
         }
+        visual = self.visual_ref()
+        if visual is not None:
+            ref["visual"] = visual
+        return ref
+
+    def visual_ref(self) -> dict[str, Any] | None:
+        """The runtime `VisualRegion` block, or None for a UI-tree target.
+
+        The digest is the runtime's own crop digest, so the handle cannot claim
+        a region the runtime will not be able to re-derive before dispatch.
+        """
+        if self.source == "ui_tree" or not self.geometry:
+            return None
+        display = self.geometry.get("display") or {}
+        width, height, rotation = (display.get("width"), display.get("height"),
+                                   display.get("rotation"))
+        label = str(self.geometry.get("label") or self.text or "").strip()
+        if not (self.geometry.get("crop_digest") and label
+                and isinstance(width, int) and width > 0
+                and isinstance(height, int) and height > 0
+                and isinstance(rotation, int)):
+            return None
+        return {"region": list(self.geometry["crop"]),
+                "crop_digest": self.geometry["crop_digest"],
+                "source": self.source,
+                "label": label[:512],
+                "display_width": width,
+                "display_height": height,
+                "rotation": rotation}
 
 
 @dataclass
@@ -295,14 +325,22 @@ def _image_bytes(observation: dict[str, Any]) -> bytes | None:
 
 def _visual_target(observation: dict[str, Any], bounds: tuple[int, int, int, int],
                    source: str, intent: GroundingIntent, ttl_seconds: int,
-                   confidence: float, method: str) -> GroundedTarget:
-    import base64
-    image = observation.get("image") or {}
-    raw = base64.b64decode(image["base64"], validate=True) if image.get("base64") else b""
-    crop_hash = _digest(observation["observation_id"], bounds, method, len(raw))
+                   confidence: float, method: str) -> GroundedTarget | None:
+    """Build a visual proposal, or None when it could not be revalidated later."""
+    from harmony_runtime.visual import decode_image
+
+    raw = decode_image(observation.get("image")) or b""
     display = observation.get("display") or {}
+    size = (display.get("width"), display.get("height"))
+    crop_digest = region_digest(raw, bounds, size) if raw else None
+    label = str(intent.text or intent.description or "").strip()
+    if crop_digest is None or not label:
+        # Without image evidence and a label there is nothing the runtime could
+        # later revalidate, so no visual candidate is registered at all.
+        return None
+    target_ref = "gt_" + _digest(observation["observation_id"], bounds, crop_digest)[:32]
     return GroundedTarget(
-        target_ref="gt_" + crop_hash[:32],
+        target_ref=target_ref,
         observation_id=observation["observation_id"],
         controller_epoch=int(observation.get("controller_epoch", 0)),
         source=source,
@@ -310,9 +348,9 @@ def _visual_target(observation: dict[str, Any], bounds: tuple[int, int, int, int
         bounds=bounds,
         hit_bounds=bounds,
         role="visual_region",
-        text=intent.text or intent.description or "",
+        text=label,
         identity={"method": method},
-        local_fingerprint=crop_hash,
+        local_fingerprint=crop_digest,
         enabled=True,
         visible=True,
         clickable=intent.action_kind in ("tap", "long_press"),
@@ -330,6 +368,9 @@ def _visual_target(observation: dict[str, Any], bounds: tuple[int, int, int, int
             "image_captured_at": observation.get("image_captured_at"),
             "tree_captured_at": observation.get("tree_captured_at"),
             "transform": "identity",
+            "crop_digest": crop_digest,
+            "label": label,
+            "method": method,
         },
         revalidate="visual_region_identity_and_geometry",
         expires_at=_expiry(ttl_seconds),
@@ -341,6 +382,9 @@ def _ocr_layer(observation: dict[str, Any], intent: GroundingIntent, ttl_seconds
     if intent.text is None:
         return result
     engine = ocr or UnavailableOcr()
+    if hasattr(engine, "with_observation"):
+        # Adapters normalise geometry against this observation's display.
+        engine = engine.with_observation(observation)
     if not getattr(engine, "available", False):
         result.notes.append(f"ocr_layer_skipped:{getattr(engine, 'reason', 'unavailable')}")
         return result
@@ -353,13 +397,26 @@ def _ocr_layer(observation: dict[str, Any], intent: GroundingIntent, ttl_seconds
     except GroundingUnavailable as error:
         result.notes.append(f"ocr_layer_failed:{error.code}")
         return result
+    except Exception as error:
+        # OCR is optional infrastructure; a crash is no evidence, not a failure
+        # of the runtime.
+        result.notes.append(f"ocr_layer_failed:{type(error).__name__}")
+        return result
     matched = [r for r in regions if r.get("text") == intent.text]
     if matched:
-        result.layers_used.append("ocr_region")
+        produced = False
         for region in matched:
-            result.targets.append(_visual_target(
+            target = _visual_target(
                 observation, tuple(region["bounds"]), "ocr", intent, ttl_seconds,
-                float(region.get("confidence", 0.5)), "ocr_text_region"))
+                float(region.get("confidence", 0.5)), "ocr_text_region")
+            if target is None:
+                result.rejected.append({"text": region.get("text"),
+                                        "reason": "region_not_revalidatable"})
+                continue
+            result.targets.append(target)
+            produced = True
+        if produced:
+            result.layers_used.append("ocr_region")
     return result
 
 
@@ -369,6 +426,9 @@ def _image_layer(observation: dict[str, Any], intent: GroundingIntent, ttl_secon
     if not description:
         return result
     engine = matcher or UnavailableMatcher()
+    if hasattr(engine, "with_observation"):
+        # Adapters normalise geometry against this observation's display.
+        engine = engine.with_observation(observation)
     if not getattr(engine, "available", False):
         result.notes.append(f"image_layer_skipped:{getattr(engine, 'reason', 'unavailable')}")
         return result
@@ -381,12 +441,24 @@ def _image_layer(observation: dict[str, Any], intent: GroundingIntent, ttl_secon
     except GroundingUnavailable as error:
         result.notes.append(f"image_layer_failed:{error.code}")
         return result
+    except Exception as error:
+        # A visual provider is optional infrastructure; a crash is no evidence.
+        result.notes.append(f"image_layer_failed:{type(error).__name__}")
+        return result
     if regions:
-        result.layers_used.append("image_region")
+        produced = False
         for region in sorted(regions, key=lambda r: -float(r.get("score", 0))):
-            result.targets.append(_visual_target(
+            target = _visual_target(
                 observation, tuple(region["bounds"]), "image", intent, ttl_seconds,
-                float(region.get("score", 0.4)), str(region.get("method", "template"))))
+                float(region.get("score", 0.4)), str(region.get("method", "template")))
+            if target is None:
+                result.rejected.append({"bounds": list(region.get("bounds") or []),
+                                        "reason": "region_not_revalidatable"})
+                continue
+            result.targets.append(target)
+            produced = True
+        if produced:
+            result.layers_used.append("image_region")
     return result
 
 

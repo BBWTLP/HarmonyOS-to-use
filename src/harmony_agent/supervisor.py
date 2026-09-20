@@ -732,11 +732,17 @@ def _action_payload(subgoal: Subgoal, selected: RegisteredCandidate) -> dict[str
     target = selected.target
     action: dict[str, Any] = {"kind": subgoal.action_kind}
     if subgoal.action_kind in ACTION_NEEDS_TARGET:
-        action["target"] = {
+        target_payload = {
             "target_ref": target.target_ref,
             "observation_id": target.observation_id,
             "local_fingerprint": target.local_fingerprint,
         }
+        # A visual proposal travels with its region digest; the runtime still
+        # revalidates it against the pre-dispatch image before dispatching.
+        visual = target.visual_ref()
+        if visual is not None:
+            target_payload["visual"] = visual
+        action["target"] = target_payload
         if subgoal.action_kind in ("input_text", "replace_text"):
             value = selected.argument_values.get("text")
             if value is None:
