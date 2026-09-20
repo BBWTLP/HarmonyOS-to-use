@@ -111,7 +111,11 @@ class FakeHarness:
             self.fail_first[key] -= 1
             raise HarnessError("stale_observation", "scripted refusal")
         if key in self.plan:
-            self.surface = self.plan[key]
+            move = self.plan[key]
+            if isinstance(move, list):          # a scripted sequence of surfaces
+                self.surface = move.pop(0) if len(move) > 1 else move[0]
+            else:
+                self.surface = move
         return dict(OK)
 
 
@@ -173,9 +177,11 @@ class SetupStateMachineTests(unittest.TestCase):
         runner = result["runner"]
         self.assertGreaterEqual(runner.setup.no_progress, 3)
         self.assertTrue(all(step["state_changed"] is False
-                            for step in runner.setup.trace))
-        # The same action is never retried more than the bound allows.
-        self.assertLessEqual(len(runner.setup.trace), runner.setup_budget.max_no_progress + 1)
+                            for step in runner.setup.trace
+                            if not step.get("recovery")))
+        # The machine terminates inside a small, finite bound: the no-progress
+        # budget plus at most one recovery transition per state.
+        self.assertLessEqual(len(runner.setup.trace), 10)
 
     def test_an_unknown_surface_recovers_with_one_back(self):
         result = drive("unknown", {
@@ -240,6 +246,37 @@ class SetupStateMachineTests(unittest.TestCase):
         self.assertEqual([session["outcome"] for session in runner.setup.sessions],
                          ["ok", "ok", "ok", "ok"])
         self.assertEqual(runner.setup.attempts, 4)     # one action per session
+
+    def test_no_progress_triggers_one_declared_recovery_transition(self):
+        """No-progress is answered by an explicit recovery transition.
+
+        The first three taps verify but leave the surface on `discover`; the
+        state machine then performs one `back_to_known`, comes back and reaches
+        the editor instead of failing the setup session.
+        """
+        result = drive("discover", {
+            "tap_id:discover:sb": ["discover", "discover", "discover", "discover",
+                                   "editor"],
+            "back": "tabs",
+            "tap_text:发现": "discover",
+        })
+        self.assertEqual(result["outcome"], "ok")
+        recoveries = [step for step in result["runner"].setup.trace
+                      if step.get("recovery")]
+        self.assertEqual(len(recoveries), 1)
+        self.assertEqual(recoveries[0]["transition"], "back_to_known")
+        self.assertEqual(result["runner"].setup.sessions[-1]["outcome"], "ok")
+
+    def test_recovery_is_used_at_most_once_per_session(self):
+        result = drive("discover", {
+            "tap_id:discover:sb": "discover",
+            "back": "tabs",
+            "tap_text:发现": "discover",
+        })
+        self.assertEqual(result["outcome"], "setup_no_progress")
+        recoveries = [step for step in result["runner"].setup.trace
+                      if step.get("recovery")]
+        self.assertEqual(len(recoveries), 1)
 
 
 if __name__ == "__main__":

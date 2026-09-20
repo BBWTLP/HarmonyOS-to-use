@@ -81,6 +81,16 @@ TRANSITION_TARGETS = {
     "focus_editor": (SURFACE_EDITOR, SURFACE_SEARCH, SURFACE_TABS),
 }
 
+#: One explicit recovery transition per (state, session) when a transition
+#: verifies but the surface does not move - `no_progress` is bounded by this
+#: rather than by a larger `max_actions`.
+RECOVERY_TRANSITIONS = {
+    SURFACE_DISCOVER: "back_to_known",
+    SURFACE_SEARCH: "back_to_known",
+    SURFACE_TABS: "open_discover",
+    SURFACE_UNKNOWN: "back_to_known",
+}
+
 #: How many re-observations a single transition may wait for the surface to
 #: change. Observations are the only clock we have (each costs ~3-4.5 s), so the
 #: wait is condition-based with a deadline rather than a fixed sleep.
@@ -293,6 +303,7 @@ class PrimitiveRunner:
         self.setup.begin_session()
         repeats: dict[str, int] = {}
         last_state: str | None = None
+        recovery_used: set[str] = set()
         no_progress = 0
 
         def finish(outcome: str, code: str | None = None) -> None:
@@ -371,6 +382,36 @@ class PrimitiveRunner:
             session["no_progress"] += 1
             self.setup.no_progress += 1
             if no_progress > self.setup_budget.max_no_progress:
+                recovery = RECOVERY_TRANSITIONS.get(state)
+                if recovery is not None and recovery not in recovery_used:
+                    # One declared recovery transition per state and session,
+                    # instead of repeating the same action again.
+                    recovery_used.add(recovery)
+                    session["steps"] += 1
+                    entry = {"step": session["steps"],
+                             "elapsed_ms": round((time.monotonic() - started) * 1000, 1),
+                             "surface_before": state,
+                             "evidence_before": search_editor_evidence(observation),
+                             "transition": recovery, "recovery": True,
+                             "target_found": self._transition_possible(recovery,
+                                                                       observation)}
+                    status, code, stale = await self._execute_transition(recovery)
+                    entry.update({"act_status": status, "act_error_code": code,
+                                  "stale_refusal": stale})
+                    self.setup.transition_counts[recovery] = \
+                        self.setup.transition_counts.get(recovery, 0) + 1
+                    session["transitions"][recovery] = \
+                        session["transitions"].get(recovery, 0) + 1
+                    observation, state_after, changed = await self._settle_surface(state)
+                    entry.update({"surface_after": state_after,
+                                  "evidence_after": search_editor_evidence(observation)
+                                  if observation else {},
+                                  "state_changed": changed, "progress": bool(changed),
+                                  "unexpected_transition": False})
+                    self.setup.trace.append(entry)
+                    no_progress = 0
+                    last_state = None
+                    continue
                 finish("failed", "setup_no_progress")
                 raise self._setup_fail(
                     "setup_no_progress",
