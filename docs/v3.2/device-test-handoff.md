@@ -7,11 +7,11 @@
 ```text
 repository   https://github.com/BBWTLP/HarmonyOS-to-use
 branch       feat/runtime-foundation
-RC SHA       b4049f50b851241817e0be577e080bcbcf8519a8
+RC SHA       ef2731a6c1052781922d5386e9535ef3d678a86a
 Python       3.11+（本轮已在 3.11.16 与 3.13.14 上验证）
 OS           Windows（脚本为 PowerShell）
-test count   618 offline（0 failed / 0 error / 0 skip）
-gate         Pre-Device Gate 第二轮全绿（见 pre-device-gate.md 第 9 节）
+test count   643 offline（0 failed / 0 error / 0 skip）
+gate         Pre-Device Gate 第三轮全绿（见 pre-device-gate.md 第 10 节）
 lock          requirements.lock（sha256 18a991d5…a126055）
 ```
 
@@ -21,9 +21,15 @@ lock          requirements.lock（sha256 18a991d5…a126055）
 被替换的上一轮 RC（**不要再测**）：
 
 ```text
+b4049f50b851241817e0be577e080bcbcf8519a8
+状态：Stage 3–7 GREEN，但 M0 smoke 判定 NOT_READY（back 0/3、input 1/3）。
+原因：acceptance harness 把 setup 失败计成原语失败；桌面被误判成微博发现页；
+      微博发现页搜索入口的 accessibilityId 是自增计数器、子树哈希每次变化。
+      已在本轮修复（见 pre-device-gate.md 第 10 节）。
+
+再上一轮 RC：
 80e28988c98e4f8cb75c3f4d976d637eaa31c22a
-状态：DEVICE_BASELINE_READY，但因 Stage 3 离线回归无法 fresh-clone 复现而被拒绝继续验收。
-原因：OFFLINE-1 / OFFLINE-2，已在本轮修复（见 pre-device-gate.md 第 9 节）。
+状态：DEVICE_BASELINE_READY，因 Stage 3 离线回归无法 fresh-clone 复现而被拒绝。
 ```
 
 ## 0.1 Python 兼容性（本轮实测）
@@ -74,7 +80,7 @@ $env:HARMONY_AGENT_PROFILE = "local_off" # 主测试固定值；不要设 canary
 .\.venv\Scripts\python.exe -m pip check
 ```
 
-期望：`Ran 618 tests` 且 `OK`。不通过就不要继续真机测试，先报告。
+期望：`Ran 643 tests` 且 `OK`。不通过就不要继续真机测试，先报告。
 
 本步必须在**全新 clone**（无 `services/decider/.runtime/api-token`、无 `.runtime/`）上通过；
 如果它只在开发机上通过，说明测试又依赖了机器本地状态。
@@ -106,6 +112,7 @@ $stateDir = ".runtime\acceptance-$stamp"
 
 ```text
 D1 设备基线
+D2a M0 专项：--only back input --per-primitive 3（先跑这个）
 D2 M0 每原语 100 次
 D3 C01 受控冷/热基准
 D4 C03 1/2/3 步 burst 仲裁
@@ -115,6 +122,31 @@ D7 M2 30 任务 × 10 = 300 次（规格：evals/tasks/m2-30.json）
 D8 100 步稳定性
 D9 真机故障矩阵（USB/HDC 断连、重启、锁屏、worker hang）
 ```
+
+M0 专项命令（先确认 back/input 的 setup 健康，再放大样本）：
+
+```powershell
+$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$stateDir = ".runtime\acceptance-$stamp"
+.\.venv\Scripts\python.exe .\scripts\accept_m0_primitives.py --execute `
+  --only back input --per-primitive 3 `
+  --state-dir $stateDir --report "$stateDir\m0-back-input.json"
+# 通过后再跑全量 3/primitive，最后才是 25 / 100
+```
+
+M0 正式门槛（报告 `schema_version=2`）：
+
+```text
+valid_attempts == requested_samples
+AND 每原语 success_rate >= 0.99
+AND unresolved_actions == 0 / recovery_required == false
+setup 单独报告：setup_attempts / success / failures / stale_refusals / elapsed_ms
+```
+
+注意：`back` / `input` 的 setup 依赖微博「发现」页的搜索入口，该入口在本机微博构建上
+`accessibilityId` 是自增计数器（31985 → 31995 → 32000），子树哈希每次采样都变。
+若 setup 被反复拒绝导致 `valid_attempts` 不足，结论是
+`M0 = NOT_READY / insufficient_valid_samples`，不要用「只算测到的样本」的方式宣称通过。
 
 ## 6. 本轮明确不要做的事
 

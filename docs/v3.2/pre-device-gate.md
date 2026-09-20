@@ -199,6 +199,79 @@ date/time        2026-09-20（Asia/Shanghai）
 ALLOW_DEVICE_TEST = YES
 ```
 
+---
+
+# 10. RC 重新冻结（第三轮，2026-09-20）：M0 动态页面 / acceptance harness
+
+## 10.1 触发原因
+
+第二轮 RC `b4049f5` 的真机结果：Stage 3–7 GREEN，M0 smoke NOT_READY
+（launch/tree/screenshot/swipe/tap 各 3/3，input 1/3，back 0/3，
+失败码全是 `search_editor_unavailable`，即 setup 没到达搜索编辑页）。
+安全侧干净：36 条 journal 全 executed、incidents 0、unresolved 0。
+
+## 10.2 根因（真机实测，不是推断）
+
+```text
+confirmed  setup 会计错误：ensure_search_editor() 的失败被计成 back/input 原语失败，
+           样本从未被测量却进了成功率分母
+confirmed  桌面误判：foreground_bundle=null 时，旧 surface_kind() 只用
+           「顶部一个可点击 Flex」就把桌面（com.ohos.sceneboard）判成 discover
+confirmed  目标子树漂移：target_fingerprint 对整棵子树取哈希，
+           装饰性后代动画即改变它（fixture 已固化）
+confirmed  选择器不稳定（主导）：微博「发现」页搜索入口的 accessibilityId
+           是自增计数器（31985 → 31995 → 32000，同一节点、同一 bounds/hierarchy），
+           目标比较包含该字段，故派发前被 stale_observation 拒绝
+rejected   「动态 feed 让整页指纹变化」这一笼统解释不足以解释全部拒绝：
+           navigation_fingerprint 在装饰性动画下并未改变（fixture 已证明）
+```
+
+## 10.3 本轮修改（只改 harness，Runtime 安全语义零改动）
+
+| 文件 | 修改 |
+|---|---|
+| `scripts/agent_harness.py` | 新增 `SetupUnavailable`、`SetupBudget(max_actions/max_elapsed_ms/max_stale_refusals)`、`SetupStats`、`setup_act()`（拒绝后重新 observe + **重新定位**，绝不复用旧 `action_id`）、`has_weibo_evidence()`、`drift_metadata()`（只输出哈希/存在性）；`surface_kind()` 无 App 证据时返回 `unknown` |
+| `scripts/accept_m0_primitives.py` | 会计改为 `requested_samples / valid_attempts / success / primitive_failures / insufficient_valid_samples` + 独立 `setup_*`；新增 `evaluate_gate()`；报告 `schema_version=2`；`MAX_SETUP_FAILURES` 上限；setup 失败不计入原语分母 |
+| `tests/test_m0_setup_accounting.py` | Case 1–4 + stale 预算 + locator 缺失 |
+| `tests/test_surface_classification.py` | 桌面/未知 surfaces → unknown；Weibo 三态分类；证据规则 |
+| `tests/test_target_drift.py` | 子树漂移 fixture + 6 项对抗（位置/标签/禁用/替换/换页仍 stale）+ 未变化时正常派发 |
+
+## 10.4 安全影响
+
+```text
+放宽 stale Guard？            否
+改变 observation TTL？        否（仍 15s）
+改变 journal / unknown-write？ 否
+新增 allow_stale 之类开关？     否
+```
+
+`stale_observation` 行为完全未变；变的只是 harness「如何到达被测页面、如何计分、
+如何报告 setup 健康度」。
+
+## 10.5 本轮 Gate 结果
+
+```text
+fresh clone  Python 3.13.14 与 3.11.16 各 Ran 643 tests，OK（pip check clean）
+新增测试      25 项（7 会计 + 8 分类 + 10 漂移/对抗）
+旧测试        未删除
+工作树        clean
+```
+
+## 10.6 RC 冻结（第三轮）
+
+```text
+branch           feat/runtime-foundation
+NEW RC SHA       ef2731a6c1052781922d5386e9535ef3d678a86a
+test count       643（0 failed / 0 error / 0 skip）
+Python           3.11.16 与 3.13.14，均在 fresh clone 上全绿
+date/time        2026-09-20（Asia/Shanghai）
+```
+
+真机验证顺序（下一阶段执行）：Stage 3 → Stage 5–7 → observe 稳定性采样
+→ **M0 专项 back/input ×3** → 全量 M0 ×3 → 通过后才 25 / 100。
+`back`/`input` 的 setup 若因上述自增 ID 目标而长期不足，正确结论是
+`M0 = NOT_READY / insufficient_valid_samples`，不是把 setup 排除后宣称通过。
+
 ## 9. 剩余风险
 
 ```text

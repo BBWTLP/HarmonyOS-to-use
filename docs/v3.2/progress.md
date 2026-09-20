@@ -250,3 +250,26 @@ ALLOW_DEVICE_TEST = YES
 ```
 
 真机正式证据必须从 **Stage 3 Offline Regression** 重新开始，用新 RC，不要复用旧 RC 的数据。
+
+## 10. RC 重新冻结（第三轮）：M0 动态页面 / acceptance harness
+
+第二轮 RC `b4049f5` 的真机 M0 smoke 判 `NOT_READY`（back 0/3、input 1/3），
+失败码全是 `search_editor_unavailable`。第三轮只修 harness，不动 Runtime 安全语义：
+
+```text
+根因      ① setup 失败被计成原语失败（分母被污染）
+          ② foreground_bundle=null 时桌面被 surface_kind 判成 discover
+          ③ target_fingerprint 对整棵子树取哈希（装饰性动画即漂移）
+          ④ 主导：微博发现页搜索入口的 accessibilityId 是自增计数器
+             （31985 → 31995 → 32000），目标比较命中它 → 派发前 stale
+修改      agent_harness.py：SetupUnavailable / SetupBudget / SetupStats /
+          setup_act()（拒绝后重新 observe + 重新定位）/ has_weibo_evidence /
+          drift_metadata；surface_kind 无 App 证据时返回 unknown
+          accept_m0_primitives.py：valid_attempts 与 setup_* 分离、
+          evaluate_gate()、schema_version=2、setup 失败上限
+测试      643（618 + 25）
+newrc     ef2731a6c1052781922d5386e9535ef3d678a86a
+```
+
+安全侧：stale Guard / TTL / journal / unknown-write 语义全部未改。
+下一阶段的真机顺序：Stage 3 → 5–7 → M0 专项 back/input ×3 → 全量 M0 ×3 → 25 → 100。

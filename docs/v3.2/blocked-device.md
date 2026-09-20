@@ -31,12 +31,30 @@ uitest 版本
 
 ```text
 每个原语 100 次：launch / tree / screenshot / swipe / tap / back / input
-记录 attempted / failed / 失败分类
-门槛：单原语成功率与失败原因均可解释
+
+有效样本 valid_attempts = 前置条件已建立、且真正开始测量该原语的样本
+门槛（三项必须同时成立）：
+  valid_attempts == requested_samples
+  AND 单原语 success_rate >= 0.99
+  AND unresolved_actions == 0
+
+setup（为到达被测页面所做的导航）单独统计，不进入成功率分母，也不得隐藏：
+  setup_attempts / setup_success / setup_failures / setup_stale_refusals
+  setup_elapsed_ms / setup budget（max_actions / max_elapsed_ms / max_stale_refusals）
+
+setup 不稳定导致 valid_attempts 不足时，结论是
+`M0 = NOT_READY，insufficient_valid_samples`，
+不允许用「只算测到的样本」的方式宣称通过。
 ```
 
-入口：`scripts/accept_m0_primitives.py`。当前仅有小样本（每原语 25 次），
-样本量不足以证明 99%。
+入口：`scripts/accept_m0_primitives.py`（报告 `schema_version=2`）。
+先跑专项 `--only back input --per-primitive 3`，再跑全量 smoke 3/primitive，
+通过后才放大到 25 / 100。
+
+已知 setup 风险（2026-09-20 真机实测）：微博「发现」页的搜索入口是普通 `Flex`，
+其 `accessibilityId` 是自增计数器（31985 → 31995 → 32000），子树哈希每次采样都变，
+因此 `back`/`input` 的 setup 可能被 `stale_observation` 反复拒绝。
+这不是 Runtime 缺陷（拒绝都发生在派发前），但会让这两个原语的有效样本不足。
 
 ## 2. M1 冻结版本单批验收
 
