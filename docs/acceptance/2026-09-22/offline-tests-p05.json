@@ -1,0 +1,12 @@
+{
+  "command": "D:\\music mv\\HarmonyOS-to-use\\.venv\\Scripts\\python.exe -m unittest discover -s tests -p test*.py -v",
+  "duration_seconds": 116.312,
+  "exit_code": 0,
+  "generated_at": "2026-09-22T01:05:36+0800",
+  "head": "a1ed8f2ac6ed619acab2c6fe47be6e94bca7486d",
+  "log": ".runtime\\p05\\tests-final.log",
+  "log_sha256": "186a7e85219ce9473670adb393cf559722b21440c5f7aa22ab7773b54caad975",
+  "python": "3.11.9",
+  "schema_version": 1,
+  "summary": "Ran 774 tests in 115.249s"
+}
