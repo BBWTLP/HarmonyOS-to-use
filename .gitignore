@@ -7,3 +7,5 @@ build/
 dist/
 .runtime/
 .env
+# Local Codex/agent session state (not project source)
+.codex/
