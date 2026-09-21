@@ -30,7 +30,8 @@ from agent_harness import (AgentHarness, HarnessError, SURFACE_DISCOVER, SURFACE
                            SURFACE_UNKNOWN, SetupBudget, SetupStats, SetupUnavailable,
                            WEIBO, classify_surface, editor_input, find_node,
                            find_search_bar, focused_input, has_weibo_evidence,
-                           search_editor_evidence, setup_act, surface_kind, top_band_inputs)
+                           post_observation, search_editor_evidence, setup_act,
+                           surface_kind, top_band_inputs)
 
 #: Ordered cheap-first so partial evidence is still useful if a run is stopped.
 PRIMITIVES = ("launch", "tree", "screenshot", "swipe", "tap", "back", "input")
@@ -150,15 +151,20 @@ class PrimitiveRunner:
         await asyncio.sleep(SETTLE_SECONDS)
 
     async def _setup_step(self, *, selector: str, locate, action_for,
-                          expected=None, timeout_ms: int = 10000) -> dict:
-        """One bounded setup action: observe, locate, act, re-locate on refusal."""
+                          expected=None, timeout_ms: int = 10000) -> tuple[dict, dict | None]:
+        """One bounded setup action: observe, locate, act, re-locate on refusal.
+
+        Returns ``(result, post_observation)``: the capture the runtime made to
+        verify the action is handed back so the caller does not observe the same
+        page a second time.
+        """
         observation, result = await setup_act(
             self.harness, selector=selector, locate=locate, action_for=action_for,
             expected=expected if expected is not None else {"changed": True},
             timeout_ms=timeout_ms, budget=self.setup_budget, stats=self.setup)
         self.setup_actions = self.setup.attempts
         await self.settle()
-        return result
+        return result, post_observation(result)
 
     def _setup_fail(self, code: str, message: str) -> SetupUnavailable:
         self.setup.failures += 1
@@ -184,7 +190,7 @@ class PrimitiveRunner:
 
     async def _launch_and_settle(self) -> dict:
         """Launch Weibo, then wait for evidence **and** a known surface."""
-        result = await self._setup_step(
+        result, post = await self._setup_step(
             selector="launch_weibo",
             locate=lambda obs: {"launch": WEIBO},
             action_for=lambda node: {"kind": "launch", "bundle": WEIBO},
@@ -193,7 +199,8 @@ class PrimitiveRunner:
             raise self._setup_fail("weibo_launch_unverified", str(result.get("status")))
         deadline = time.monotonic() + SETTLE_DEADLINE_MS / 1000
         for _ in range(3):
-            observation = await self.harness.observe(mode="FAST")
+            observation = post or await self.harness.observe(mode="FAST")
+            post = None
             if has_weibo_evidence(observation) and classify_surface(observation) \
                     != SURFACE_UNKNOWN:
                 return observation
@@ -203,15 +210,18 @@ class PrimitiveRunner:
             "setup_app_not_stable",
             "Weibo launched but no stable known surface appeared within the deadline")
 
-    async def _settle_surface(self, state_before: str):
+    async def _settle_surface(self, state_before: str, post: dict | None = None):
         """Bounded, condition-based wait for the surface to change.
 
-        Observations are the only clock available (each costs ~3-4.5 s), so this
-        waits for "surface != state_before" with a deadline instead of sleeping a
-        fixed amount.
+        Observations are the only clock available, so this waits for
+        "surface != state_before" with a deadline instead of sleeping a fixed
+        amount. The runtime's own post-dispatch capture is consumed first: when
+        it already shows a different surface there is nothing left to wait for.
         """
         deadline = time.monotonic() + SETTLE_DEADLINE_MS / 1000
         observation = None
+        if post is not None and classify_surface(post) != state_before:
+            return post, classify_surface(post), True
         for _ in range(SETTLE_OBSERVATIONS):
             observation = await self.harness.observe(mode="FAST")
             if classify_surface(observation) != state_before:
@@ -221,33 +231,39 @@ class PrimitiveRunner:
         state = classify_surface(observation) if observation else SURFACE_UNKNOWN
         return observation, state, False
 
-    async def _execute_transition(self, transition: str) -> tuple[str, str | None, bool]:
-        """Perform exactly one transition. Returns (status, error_code, stale?)."""
+    async def _execute_transition(self, transition: str) -> tuple[str, str | None, bool, dict | None]:
+        """Perform exactly one transition.
+
+        Returns ``(status, error_code, stale, post_observation)``. The post
+        observation is the runtime's own verification capture of this
+        transition, or None when the transition never reached the device.
+        """
         stale_before = self.setup.stale_refusals
+        post = None
         try:
             if transition == "launch_weibo":
-                await self._launch_and_settle()
+                post = await self._launch_and_settle()
             elif transition == "back_to_known":
-                await self._setup_step(selector="back_to_known",
-                                       locate=lambda obs: {"back": True},
-                                       action_for=lambda node: {"kind": "back"})
+                _, post = await self._setup_step(selector="back_to_known",
+                                                 locate=lambda obs: {"back": True},
+                                                 action_for=lambda node: {"kind": "back"})
             elif transition == "open_discover":
-                await self._setup_step(
+                _, post = await self._setup_step(
                     selector="open_discover",
                     locate=lambda obs: find_node(obs, text=DISCOVER_TAB),
                     action_for=lambda node: {"kind": "tap", "target": {"text": DISCOVER_TAB}})
             elif transition == "open_home":
-                await self._setup_step(
+                _, post = await self._setup_step(
                     selector="open_home",
                     locate=lambda obs: find_node(obs, text=TAB_A),
                     action_for=lambda node: {"kind": "tap", "target": {"text": TAB_A}})
             elif transition == "open_search":
-                await self._setup_step(
+                _, post = await self._setup_step(
                     selector="open_search", locate=find_search_bar,
                     action_for=lambda node: {"kind": "tap",
                                              "target": {"action_id": node["action_id"]}})
             elif transition == "focus_editor":
-                await self._setup_step(
+                _, post = await self._setup_step(
                     selector="focus_editor",
                     locate=lambda obs: (top_band_inputs(obs) or [None])[0],
                     action_for=lambda node: {"kind": "tap",
@@ -255,10 +271,10 @@ class PrimitiveRunner:
             else:
                 raise SetupUnavailable("setup_unknown_transition", transition)
         except SetupUnavailable as error:
-            return "refused", error.code, self.setup.stale_refusals > stale_before
+            return "refused", error.code, self.setup.stale_refusals > stale_before, post
         except HarnessError as error:
-            return "error", error.code, self.setup.stale_refusals > stale_before
-        return "ok", None, self.setup.stale_refusals > stale_before
+            return "error", error.code, self.setup.stale_refusals > stale_before, post
+        return "ok", None, self.setup.stale_refusals > stale_before, post
 
     def _transition_possible(self, transition: str, observation: dict) -> bool:
         """Is the locator for this transition present in this observation?"""
@@ -359,13 +375,13 @@ class PrimitiveRunner:
                      "evidence_before": search_editor_evidence(observation),
                      "transition": transition,
                      "target_found": True}
-            act_status, error_code, stale = await self._execute_transition(transition)
+            act_status, error_code, stale, post = await self._execute_transition(transition)
             entry.update({"act_status": act_status, "act_error_code": error_code,
                           "stale_refusal": stale})
             self.setup.transition_counts[transition] = \
                 self.setup.transition_counts.get(transition, 0) + 1
             session["transitions"][transition] = session["transitions"].get(transition, 0) + 1
-            observation, state_after, changed = await self._settle_surface(state)
+            observation, state_after, changed = await self._settle_surface(state, post)
             entry.update({"surface_after": state_after,
                           "evidence_after": search_editor_evidence(observation)
                           if observation else {},
@@ -407,14 +423,14 @@ class PrimitiveRunner:
                              "transition": recovery, "recovery": True,
                              "target_found": self._transition_possible(recovery,
                                                                        observation)}
-                    status, code, stale = await self._execute_transition(recovery)
+                    status, code, stale, post = await self._execute_transition(recovery)
                     entry.update({"act_status": status, "act_error_code": code,
                                   "stale_refusal": stale})
                     self.setup.transition_counts[recovery] = \
                         self.setup.transition_counts.get(recovery, 0) + 1
                     session["transitions"][recovery] = \
                         session["transitions"].get(recovery, 0) + 1
-                    observation, state_after, changed = await self._settle_surface(state)
+                    observation, state_after, changed = await self._settle_surface(state, post)
                     entry.update({"surface_after": state_after,
                                   "evidence_after": search_editor_evidence(observation)
                                   if observation else {},

@@ -106,6 +106,11 @@ class RunContext:
     #: The last observation dict of this run, used only to build a bounded,
     #: redacted request for an actor. Never handed to a model verbatim.
     last_observation: dict[str, Any] | None = None
+    #: The runtime's own post-dispatch capture of the last dispatched action.
+    #: It is the freshest device fact the run holds, so the next step consumes
+    #: it instead of paying for a second look at the same page. The guard still
+    #: re-reads the device before every write.
+    post_observation: dict[str, Any] | None = None
     limit: int = 16
 
     def note_evidence(self, refs: list[str] | tuple[str, ...] | None) -> None:
@@ -131,6 +136,28 @@ def safety_code(error: BaseException) -> str:
     code = getattr(error, "code", None)
     if isinstance(code, str) and code:
         return code
+    return type(error).__name__
+
+
+def post_observation(result: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The runtime's own fresh verification capture of a dispatched action.
+
+    It is a current device fact (the runtime took it after the write, to verify
+    the postcondition) and it stays a live handle under the runtime's normal
+    freshness rule. Reusing it saves a second look at the same page; it never
+    replaces the guard, which re-reads the device before every write.
+    """
+    if not isinstance(result, dict):
+        return None
+    observation = result.get("observation")
+    if not isinstance(observation, dict) or observation.get("actionable") is not True:
+        return None
+    observation_id = observation.get("observation_id")
+    if not observation_id or observation_id == result.get("before_observation_id"):
+        return None
+    if result.get("execution_status") not in ("executed", None):
+        return None
+    return observation
     return type(error).__name__
 
 
@@ -552,6 +579,7 @@ class TaskRunner:
         run = self.run
         run.memory.add_subgoal(subgoal.subgoal_id, subgoal.description)
         reobserve_budget = 2
+        post = self._take_post_observation()
         for attempt in range(1, 4):
             if run.cancel.is_set():
                 return "cancel"
@@ -565,7 +593,11 @@ class TaskRunner:
                 run.event("budget_exhausted", {"subgoal_id": subgoal.subgoal_id, **remaining})
                 return "stop"
             subgoal.attempts = attempt
-            observation = run.facade.observe(mode="FULL" if attempt == 1 else "FAST")
+            # The runtime already captured the device to verify the previous
+            # action. Reuse that capture as this step's input; only ask for a
+            # new capture when there is none or it is not actionable.
+            observation = post or run.facade.observe(mode="FULL" if attempt == 1 else "FAST")
+            post = None
             run.observations += 1
             run.memory.record_state(observation)
             self._compress_context_if_needed()
@@ -779,6 +811,21 @@ class TaskRunner:
             return None
         if self.run.observations > 0 and subgoal.attempts > 0:
             return None
+        reused = self._take_post_observation()
+        if reused is not None:
+            report = self.run.check_conditions(criteria, reused).report
+            if report.verdict == "pass":
+                subgoal.status = "verified"
+                self.run.event("subgoal_already_satisfied",
+                               {"subgoal_id": subgoal.subgoal_id,
+                                "evidence": report.evidence_refs[:4],
+                                "post_observation_reused": True})
+                self.run.context.note_evidence(report.evidence_refs)
+                return True
+            # The freshest capture says the step is still needed. Keep it for
+            # the attempt below instead of discarding a live device fact.
+            self.run.context.post_observation = reused
+            return False
         try:
             observation = self.run.facade.observe(mode="FAST")
         except Exception:
@@ -795,6 +842,16 @@ class TaskRunner:
             self.run.context.note_evidence(report.evidence_refs)
             return True
         return False
+
+    def _take_post_observation(self) -> dict[str, Any] | None:
+        """Consume the runtime's last verification capture, if it is usable."""
+        observation = self.run.context.post_observation
+        self.run.context.post_observation = None
+        if not isinstance(observation, dict) or observation.get("actionable") is not True:
+            return None
+        if not observation.get("observation_id"):
+            return None
+        return observation
 
     # -- decision -----------------------------------------------------------
     def _decide(self, subgoal: Subgoal, observation: dict[str, Any],
@@ -892,6 +949,8 @@ class TaskRunner:
         run.context.controller_epoch = guarded.controller_epoch
         run.context.note_evidence(guarded.evidence_refs)
         result = run.facade.act(payload)
+        # Hold the runtime's own verification capture for the next step.
+        run.context.post_observation = post_observation(result)
         run.event("dispatch", {
             "subgoal_id": subgoal.subgoal_id,
             "request_id": request_id,
@@ -907,6 +966,7 @@ class TaskRunner:
             "execution_status": result.get("execution_status"),
             "verification_status": result.get("verification_status"),
             "status": result.get("status"),
+            "post_observation_reused": run.context.post_observation is not None,
         })
         if run.artifacts is not None and result.get("observation"):
             try:

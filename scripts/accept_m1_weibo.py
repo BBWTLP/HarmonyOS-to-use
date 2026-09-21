@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from agent_harness import (AgentHarness, HarnessError, ServiceClientHarness, WEIBO,
                            editor_input, find_node, find_search_bar, focused_input,
-                           surface_kind)
+                           post_observation, surface_kind)
 from harmony_agent.checker import check
 from harmony_agent.contracts import Predicate
 
@@ -88,13 +88,18 @@ async def settle() -> None:
 async def goto_tabs(harness: AgentHarness) -> dict:
     """Reset helper: return to a page showing the bottom navigation."""
     last: dict | None = None
+    fresh: dict | None = None
     for _ in range(8):
-        observation = await harness.stable_observation()
+        # The runtime already captured the device to verify the last action;
+        # consume that capture instead of buying a second look at the same page.
+        observation = fresh or await harness.stable_observation()
+        fresh = None
         last = observation
         if observation.get("foreground_bundle") != WEIBO:
-            await harness.act(observation_id=observation["observation_id"],
-                              action={"kind": "launch", "bundle": WEIBO},
-                              expected={"bundle": WEIBO}, timeout_ms=15000)
+            result = await harness.act(observation_id=observation["observation_id"],
+                                       action={"kind": "launch", "bundle": WEIBO},
+                                       expected={"bundle": WEIBO}, timeout_ms=15000)
+            fresh = post_observation(result)
             continue
         kind = surface_kind(observation)
         if kind == "tabs":
@@ -102,17 +107,19 @@ async def goto_tabs(harness: AgentHarness) -> dict:
         node = find_node(observation, text=HOME_TAB)
         try:
             if node is not None:
-                await harness.act(observation_id=observation["observation_id"],
-                                  action={"kind": "tap", "target": {"text": HOME_TAB}},
-                                  expected={"changed": True}, timeout_ms=10000)
+                result = await harness.act(observation_id=observation["observation_id"],
+                                           action={"kind": "tap", "target": {"text": HOME_TAB}},
+                                           expected={"changed": True}, timeout_ms=10000)
             else:
-                await harness.act(observation_id=observation["observation_id"],
-                                  action={"kind": "back"},
-                                  expected={"changed": True}, timeout_ms=10000)
+                result = await harness.act(observation_id=observation["observation_id"],
+                                           action={"kind": "back"},
+                                           expected={"changed": True}, timeout_ms=10000)
+            fresh = post_observation(result)
         except HarnessError:
             await asyncio.sleep(0.8)
             continue
-        await asyncio.sleep(0.5)
+        if fresh is None:
+            await asyncio.sleep(0.5)
     if last is not None and last.get("foreground_bundle") == WEIBO:
         return last
     raise TaskBlocked("home_unavailable", "Could not reach a Weibo tab page")
@@ -172,10 +179,17 @@ async def setup_entry(harness: AgentHarness, entry: str) -> dict:
 
 # -- steps -------------------------------------------------------------------
 
-async def run_step(harness: AgentHarness, step: str, observable: dict) -> dict:
-    """Execute one semantic step, re-grounding the target from a fresh observation."""
+async def run_step(harness: AgentHarness, step: str,
+                   observable: dict) -> tuple[dict, dict | None]:
+    """Execute one semantic step, re-grounding the target from a fresh observation.
+
+    Returns ``(record, post_observation)``. ``post_observation`` is the capture
+    the runtime itself made to verify this step; when it is present the caller
+    uses it as the next step's input instead of observing the same page again.
+    """
     kind, _, payload = step.partition(":")
     started = time.perf_counter()
+    post: dict | None = None
     if kind == "tap":
         observation = observable
         if surface_kind(observation) != "tabs":
@@ -203,13 +217,14 @@ async def run_step(harness: AgentHarness, step: str, observable: dict) -> dict:
                     raise TaskBlocked("discover_unavailable", "Discover tab is not observable")
                 try:
                     await settle()
-                    await harness.act(
+                    moved = await harness.act(
                         observation_id=observation["observation_id"],
                         action={"kind": "tap", "target": {"text": DISCOVER_TAB}},
                         expected={"changed": True}, timeout_ms=10000)
                 except HarnessError as error:
+                    moved = None
                     last_error = error
-                observable = await harness.observe(mode="FAST")
+                observable = post_observation(moved) or await harness.observe(mode="FAST")
                 continue
             node = find_search_bar(observation)
             if node is None:
@@ -343,11 +358,13 @@ async def run_step(harness: AgentHarness, step: str, observable: dict) -> dict:
             expected={"changed": True}, timeout_ms=10000)
     else:
         raise TaskBlocked("unknown_step", f"Unsupported step {step!r}")
+    post = post_observation(result)
     elapsed = round((time.perf_counter() - started) * 1000, 3)
-    return {"step": step, "ms": elapsed, "status": result.get("status"),
-            "execution_status": result.get("execution_status"),
-            "verification_status": result.get("verification_status"),
-            "request_id": result.get("request_id")}
+    return ({"step": step, "ms": elapsed, "status": result.get("status"),
+             "execution_status": result.get("execution_status"),
+             "verification_status": result.get("verification_status"),
+             "request_id": result.get("request_id"),
+             "post_observation_reused": post is not None}, post)
 
 
 # -- judging -----------------------------------------------------------------
@@ -374,7 +391,7 @@ async def run_once(harness: AgentHarness, task: dict) -> dict:
             record = None
             for attempt in range(MAX_STEP_REOBSERVES + 1):
                 try:
-                    record = await run_step(harness, step, observable)
+                    record, post = await run_step(harness, step, observable)
                     break
                 except HarnessError as error:
                     # A staleness refusal happens before dispatch, so a bounded
@@ -389,7 +406,9 @@ async def run_once(harness: AgentHarness, task: dict) -> dict:
                 outcome["dispatches"] += 1
             if record.get("execution_status") == "unknown":
                 raise TaskBlocked("execution_unknown", "A dispatch has unknown execution")
-            observable = await harness.observe(mode="FAST")
+            # The runtime already captured the device after the dispatch; reuse
+            # that capture instead of a second look at the same page.
+            observable = post or await harness.observe(mode="FAST")
     except HarnessError as error:
         outcome["blocked"] = {"code": error.code, "message": str(error)[:200]}
     final = await harness.observe(mode="FAST")

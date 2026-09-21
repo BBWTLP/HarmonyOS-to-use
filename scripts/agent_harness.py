@@ -137,6 +137,35 @@ def _percentile(values: list[float], fraction: float) -> float:
     return round(ordered[index], 3)
 
 
+def post_observation(result: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The runtime's own fresh post-dispatch capture, when it produced one.
+
+    The safe-action path already observes the device to verify the dispatched
+    action. That capture is a *current* device fact, not a cache: the runtime
+    returns it together with the action result and keeps it as a live handle
+    until its normal freshness TTL. When it is present and actionable it can be
+    the next step's input, so the caller does not pay for a second look at the
+    same page.
+
+    It is never a substitute for the guard: every dispatch still re-reads the
+    device before it writes. A missing, stale, non-actionable or identical
+    capture returns None and the caller must observe again.
+    """
+    if not isinstance(result, dict):
+        return None
+    observation = result.get("observation")
+    if not isinstance(observation, dict):
+        return None
+    if observation.get("actionable") is not True:
+        return None
+    observation_id = observation.get("observation_id")
+    if not observation_id or observation_id == result.get("before_observation_id"):
+        return None
+    if result.get("execution_status") not in ("executed", None):
+        return None
+    return observation
+
+
 def _structured(result) -> dict[str, Any]:
     value = getattr(result, "structured_content", None)
     if not isinstance(value, dict):
@@ -417,22 +446,45 @@ class AgentHarness:
 
     async def stable_observation(self, *, mode: str = "FAST", tries: int = 3,
                                  interval: float = 0.5) -> dict[str, Any]:
-        """Observe until two consecutive samples share a page identity.
+        """One internally consistent capture, with bounded re-sampling on doubt.
 
-        Live pages (auto-playing video, animated feeds) otherwise change between
-        the referenced observation and the guard's pre-dispatch check, which the
-        runtime correctly refuses as stale. Two equal navigation fingerprints
-        mean the structure settled; it is not a guarantee of pixel stability.
+        A batched capture already samples the screen and the foreground identity
+        on both sides of the tree, so a capture that is reported consistent has
+        proved its own window: it is accepted on the first attempt. Only a
+        capture that reports itself inconsistent (or non-actionable) is sampled
+        again, at most ``tries`` times, and the attempt count and last
+        inconsistency reason travel with the observation.
+
+        Adapters that cannot report internal consistency keep the previous rule
+        of two consecutive equal navigation fingerprints.
         """
+        attempts = 0
         previous = None
         observation = None
-        for _ in range(max(2, tries)):
+        last_reason = None
+        for _ in range(max(1, tries)):
+            attempts += 1
             observation = await self.observe(mode=mode)
+            consistent = observation.get("snapshot_consistent")
+            if consistent is False or observation.get("actionable") is False:
+                last_reason = observation.get("consistency_reason") or "capture_unverified"
+                await asyncio.sleep(interval)
+                continue
+            if consistent is True:
+                break
             fingerprint = observation.get("navigation_fingerprint")
             if previous is not None and fingerprint and fingerprint == previous:
-                return observation
+                break
             previous = fingerprint
             await asyncio.sleep(interval)
+        if observation is not None:
+            observation["stability"] = {
+                "stable_attempts": attempts,
+                "stable_reason": ("internally_consistent"
+                                  if observation.get("snapshot_consistent") is True
+                                  else "consecutive_equal_fingerprint"),
+                "last_inconsistency_reason": last_reason,
+            }
         return observation
 
 
@@ -570,15 +622,37 @@ class ServiceClientHarness:
 
     async def stable_observation(self, *, mode: str = "FAST", tries: int = 3,
                                  interval: float = 0.5) -> dict[str, Any]:
+        # Identical policy to AgentHarness.stable_observation: one internally
+        # consistent capture is accepted, doubt is answered by bounded
+        # re-sampling. Kept in sync deliberately - both transports must report
+        # the same stability accounting.
+        attempts = 0
         previous = None
         observation = None
-        for _ in range(max(2, tries)):
+        last_reason = None
+        for _ in range(max(1, tries)):
+            attempts += 1
             observation = await self.observe(mode=mode)
+            consistent = observation.get("snapshot_consistent")
+            if consistent is False or observation.get("actionable") is False:
+                last_reason = observation.get("consistency_reason") or "capture_unverified"
+                await asyncio.sleep(interval)
+                continue
+            if consistent is True:
+                break
             fingerprint = observation.get("navigation_fingerprint")
             if previous is not None and fingerprint and fingerprint == previous:
-                return observation
+                break
             previous = fingerprint
             await asyncio.sleep(interval)
+        if observation is not None:
+            observation["stability"] = {
+                "stable_attempts": attempts,
+                "stable_reason": ("internally_consistent"
+                                  if observation.get("snapshot_consistent") is True
+                                  else "consecutive_equal_fingerprint"),
+                "last_inconsistency_reason": last_reason,
+            }
         return observation
 
 
