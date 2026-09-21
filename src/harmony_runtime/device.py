@@ -109,6 +109,19 @@ class HarmonyDevice:
             raise RuntimeFault("device_unavailable", "Driver returned an empty or invalid hierarchy")
         return result
 
+    def batch_probe(self, script):
+        """Run one read-only device-side transaction over a single HDC round trip.
+
+        The script is assembled by ``harmony_runtime.snapshot`` from a fixed
+        command vocabulary plus a random marker and derived temp paths; it never
+        contains caller-supplied shell text. The call performs no write.
+        """
+        started = time.monotonic()
+        raw = self.driver.shell(script)
+        if not isinstance(raw, str):
+            raise RuntimeFault("device_unavailable", "Device transaction returned no text")
+        return {"raw": raw, "device_ms": round((time.monotonic() - started) * 1000, 3)}
+
     def screenshot(self):
         return self.driver.screenshot()
 

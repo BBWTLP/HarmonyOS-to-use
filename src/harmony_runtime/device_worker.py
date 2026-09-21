@@ -17,7 +17,7 @@ _MAX_REPLY = 32 * 1024 * 1024
 _METHODS = frozenset((
     "tree", "display", "screen_state", "screenshot", "foreground",
     "screen_on", "wake_up_display", "unlock",
-    "dispatch", "close",
+    "batch_probe", "dispatch", "close",
 ))
 
 
@@ -176,6 +176,7 @@ class ProcessDevice:
     def wake_up_display(self): return self._call("wake_up_display")
     def unlock(self): return self._call("unlock")
     def dispatch(self, action, target): return self._call("dispatch", action, target)
+    def batch_probe(self, script): return self._call("batch_probe", script)
     def screenshot(self):
         from PIL import Image
         image = Image.open(io.BytesIO(self._call("screenshot")))

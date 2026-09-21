@@ -12,6 +12,7 @@ from .device_queue import DeviceQueue
 from .device_worker import ProcessDevice
 from .journal import Journal
 from .observation import canonical, matches, resolve, snapshot, input_value_matches
+from .snapshot import ProviderState, capture_snapshot
 from .target_identity import AMBIGUOUS, StableTargetMatcher
 from .risk import is_sensitive, label_of, scan
 from .visual import encode_image, mark_targets
@@ -30,6 +31,9 @@ class Session:
     closed: bool = False
     #: Cross-observation target re-identification outcomes (RC4-A diagnostics).
     target_match_counts: dict = field(default_factory=dict)
+    #: Bounded, metadata-only stale accounting for the current run.
+    stale_streak: int = 0
+    last_stale_reason: str | None = None
 
 
 class Runtime:
@@ -52,6 +56,8 @@ class Runtime:
         self.device_locks = {}
         self.active = {}
         self.stopped = False
+        #: Batched/legacy capture selection and its (bounded) fallback record.
+        self.provider_state = ProviderState()
 
     def session(self, owner, operation, session_id=None, device_id=None, request_id=None,
                 evidence_kind=None, attestation=None):
@@ -139,7 +145,10 @@ class Runtime:
     def _session_result(self, s):
         unresolved = self.journal.unresolved(s.serial)
         device_state = self._device_state(s.serial)
-        return {"status":"paused" if s.paused.is_set() else "open", "session_id":s.id, "device_id":s.serial, "controller_epoch":s.generation, "device_state":device_state, "worker_quarantined":device_state == "quarantined", "lease_remaining_seconds":max(0,round(s.expires-time.monotonic())), "recovery_required":bool(unresolved), "unresolved_actions":unresolved, "incidents":self.journal.incidents(s.serial), "capabilities":{"tree":True,"screenshot":True,"full":True,"som":True,"burst":True,"foreground_bundle":self.supports_foreground,"ocr":False,"webview":False,"temporal":True,"temporal_watch":True,"grounded_target":True,"pro":False}, "target_match_counts":dict(s.target_match_counts)}
+        return {"status":"paused" if s.paused.is_set() else "open", "session_id":s.id, "device_id":s.serial, "controller_epoch":s.generation, "device_state":device_state, "worker_quarantined":device_state == "quarantined", "lease_remaining_seconds":max(0,round(s.expires-time.monotonic())), "recovery_required":bool(unresolved), "unresolved_actions":unresolved, "incidents":self.journal.incidents(s.serial), "capabilities":{"tree":True,"screenshot":True,"full":True,"som":True,"burst":True,"foreground_bundle":self.supports_foreground,"ocr":False,"webview":False,"temporal":True,"temporal_watch":True,"grounded_target":True,"pro":False}, "target_match_counts":dict(s.target_match_counts),
+                "capture": {**self.provider_state.as_dict(),
+                            "stale_consecutive_count": s.stale_streak,
+                            "last_stale_reason": s.last_stale_reason}}
 
     def _device_state(self, serial):
         """Expose worker quarantine so a client can recover instead of retrying.
@@ -297,44 +306,105 @@ class Runtime:
             raise RuntimeFault(code, "A confirmed awake, unlocked screen is required; automatic wake/unlock did not confirm readiness")
         return state
 
+    @staticmethod
+    def _screen_ready(state) -> bool:
+        return state.get("screen_on") is True and state.get("screen_locked") is False
+
+    @staticmethod
+    def _screen_fault_code(state) -> str:
+        if state.get("screen_locked") is True:
+            return "screen_locked"
+        if state.get("screen_on") is False:
+            return "screen_off"
+        return "screen_state_unknown"
+
+    def _capture_snapshot(self, s, include_image, timing, ready=None):
+        """One live capture, with the legacy screen-readiness policy applied.
+
+        The legacy sequence reads the screen through ``ready`` first, so a
+        locked or dark screen is still refused before the hierarchy is read.
+        A batched transaction samples the screen inside the same device-side
+        transaction, so its readiness is evaluated afterwards: an unconfirmed
+        screen drops every existing observation handle, discards the capture and
+        is answered by exactly one credential-free wake/unlock recovery before
+        the snapshot is read again. A capture that stays unconfirmed raises the
+        same fault the previous single-read path raised.
+        """
+        device = self._device(s)
+        for _ in range(3):
+            captured = capture_snapshot(
+                device, include_image=include_image,
+                supports_foreground=self.supports_foreground,
+                state=self.provider_state, timing=timing, ready=ready)
+            if captured["provider"] != "batched":
+                return captured
+            unready = [captured[key] for key in ("screen_before", "screen_after")
+                       if not self._screen_ready(captured[key])]
+            if not unready:
+                return captured
+            state = unready[0]
+            s.observations.clear()
+            if not (state.get("screen_on") is False or state.get("screen_locked") is True):
+                raise RuntimeFault(
+                    self._screen_fault_code(state),
+                    "A confirmed awake, unlocked screen is required; "
+                    "automatic wake/unlock did not confirm readiness")
+            # Keep the sequence explicit so each physical recovery step stays
+            # visible to the audit trail and to fake devices in tests.
+            if all(hasattr(device, name) for name in ("screen_on", "wake_up_display", "unlock")):
+                timing.call("screen_recovery", self._wake_unlock, device)
+            time.sleep(0.05)
+        s.observations.clear()
+        raise RuntimeFault(
+            self._screen_fault_code(captured.get("screen_after") or {}),
+            "A confirmed awake, unlocked screen is required; "
+            "automatic wake/unlock did not confirm readiness")
+
+    @staticmethod
+    def _wake_unlock(device):
+        device.screen_on()
+        device.wake_up_display()
+        device.unlock()
+
     def _observe(self, s, include_image=False, mode="FAST", cache=True):
         include_image = include_image or mode == "FULL"
         start = time.monotonic()
         timing = Timings()
         with self.guard:
             generation = s.generation
-        d = self._device(s)
-        timing.call("screen_ready_before", self._ready_screen, s)
-        foreground = timing.call("foreground_before", d.foreground) if self.supports_foreground else None
-        tree = timing.call("tree", d.tree)
-        display = timing.call("display", d.display)
+        captured = self._capture_snapshot(s, include_image, timing,
+                                          ready=lambda: self._ready_screen(s))
+        tree = captured["tree"]
+        display = captured["display"]
+        foreground = captured["foreground_before"]
         obs = timing.call("snapshot", snapshot, tree, display, foreground)
         obs["controller_epoch"] = generation
         obs["tree_captured_at"] = obs["captured_at"]
         obs["image_captured_at"] = None
+        obs["image_tree_consistent"] = None
         if include_image:
-            image = timing.call("screenshot", d.screenshot)
             obs["image_captured_at"] = time.time()
-            obs["image"] = timing.call("encode_image", encode_image, image)
-            obs["image_dimensions_match"] = image.size == (obs["display"]["width"], obs["display"]["height"])
-            obs["image_tree_skew_ms"]=round((obs["image_captured_at"]-obs["tree_captured_at"])*1000)
+            obs["image"] = timing.call("encode_image", encode_image, captured["image"])
+            obs["image_dimensions_match"] = (
+                captured["image_dimensions"] == (obs["display"]["width"], obs["display"]["height"]))
+            obs["image_tree_skew_ms"] = captured["image_tree_skew_ms"]
             # A short time gap is not evidence that the page stayed unchanged.
-            # Bracket the image with hierarchy/display reads; expose uncertainty
-            # and never retain an unstable capture as an actionable observation.
-            after_tree = timing.call("tree_after", d.tree)
-            after_display = timing.call("display_after", d.display)
-            after = timing.call("snapshot_after", snapshot, after_tree, after_display, foreground)
-            obs["image_tree_consistent"] = (
-                obs["fingerprint"] == after["fingerprint"]
-                and 0 <= obs["image_tree_skew_ms"] <= 1000
+            # The bracket around the image is checked against the capture's own
+            # tree/display reads; uncertainty is exposed and never retained as
+            # an actionable observation.
+            obs["image_tree_consistent"] = bool(
+                captured["tree_after_fingerprint"] == captured["tree_fingerprint"]
+                and captured["display_after"] == captured["display"]
+                and captured["image_dimensions"] == (obs["display"]["width"], obs["display"]["height"])
+                and captured["image_tree_skew_ms"] is not None
+                and 0 <= captured["image_tree_skew_ms"] <= 1000
                 and obs["image_dimensions_match"]
             )
             obs["capture_consistency"] = (
                 "tree_bracket_matched" if obs["image_tree_consistent"] else "unverified"
             )
-        final_foreground = timing.call("foreground_after", d.foreground) if self.supports_foreground else None
         obs["foreground_consistent"] = (
-            foreground == final_foreground
+            foreground == captured["foreground_after"]
             and (foreground is None or foreground.get("status") != "unstable")
         )
         if not obs["foreground_consistent"]:
@@ -342,7 +412,7 @@ class Runtime:
             if include_image:
                 obs["image_tree_consistent"] = False
                 obs["capture_consistency"] = "foreground_changed"
-        obs["screen_state"] = timing.call("screen_ready_after", self._ready_screen, s)
+        obs["screen_state"] = captured["screen_after"]
         obs["mode"] = mode
         if mode == "FULL":
             obs["tree"] = tree
@@ -350,21 +420,79 @@ class Runtime:
             obs["som"] = {"available": False, "target_count": 0,
                           "reason": "capture_unverified"}
             if obs["image_tree_consistent"]:
-                marked, labels = timing.call("annotation", mark_targets, image, obs["catalog"])
+                marked, labels = timing.call("annotation", mark_targets,
+                                             captured["image"], obs["catalog"])
                 obs["annotated_image"] = timing.call("encode_annotation", encode_image, marked)
                 obs["som"] = {"available": True, "target_count": len(labels),
                               "observation_id": obs["observation_id"],
                               "labels": labels, "source": "ui_tree"}
+        obs["snapshot_capture"] = self._capture_metadata(captured)
+        consistency_started = time.monotonic()
+        obs["snapshot_consistent"] = bool(captured["consistent"])
+        obs["consistency_reason"] = captured["consistency"]
         obs["timing"] = timing.milliseconds()
+        obs["timing"]["consistency_check_ms"] = round(
+            (time.monotonic() - consistency_started) * 1000, 3)
         obs["capture_ms"]=round((time.monotonic()-start)*1000)
         obs["max_age_ms"]=15000
         obs["actionable"] = obs["foreground_consistent"] and (not include_image or obs["image_tree_consistent"])
+        obs["perf"] = self._observe_perf(obs, captured, mode, include_image, start)
         with self.guard:
             self._check_generation(s.owner, s, generation)
             if cache and obs["actionable"]:
                 s.observations[obs["observation_id"]] = (time.monotonic(),obs)
             while len(s.observations)>8: del s.observations[next(iter(s.observations))]
         return obs
+
+    @staticmethod
+    def _capture_metadata(captured):
+        """Redacted capture provenance: counts, enums and hashes only."""
+        return {
+            "provider": captured["provider"],
+            "version": captured["version"],
+            "round_trips": captured["round_trips"],
+            "span_ms": captured["span_ms"],
+            "device_ms": captured["device_ms"],
+            "consistent": bool(captured["consistent"]),
+            "reason": captured["consistency"],
+            "component_errors": list(captured["component_errors"]),
+            "fallback_reason": captured.get("fallback_reason"),
+            "tree_fingerprint": captured["tree_fingerprint"][:16],
+        }
+
+    def _observe_perf(self, obs, captured, mode, include_image, start):
+        """The observation's performance record, in the documented metric names.
+
+        Durations, counts and enums only: no UI text, no input values, no
+        screenshot content and no device identity.
+        """
+        section = captured.get("section_ms") or {}
+        timing = obs["timing"]
+        perf = {
+            "observe.mode": mode,
+            "observe.wall_ms": round((time.monotonic() - start) * 1000, 3),
+            "observe.device_ms": captured["span_ms"],
+            "observe.hdc_round_trips": captured["round_trips"],
+            "observe.provider": captured["provider"],
+            "observe.snapshot_span_ms": captured["span_ms"],
+            "observe.consistency_check_ms": timing.get("consistency_check_ms"),
+            "observe.consistent": bool(captured["consistent"]),
+            "observe.consistency_reason": captured["consistency"],
+        }
+        for name, metric in (("screen_before", "observe.screen_ms"),
+                             ("foreground_before", "observe.foreground_ms"),
+                             ("display", "observe.display_ms"),
+                             ("tree", "observe.tree_ms"),
+                             ("image", "observe.screenshot_ms"),
+                             ("tree_after", "observe.tree_after_ms"),
+                             ("display_after", "observe.display_after_ms"),
+                             ("foreground_after", "observe.foreground_after_ms"),
+                             ("screen_after", "observe.screen_after_ms")):
+            if section.get(name) is not None:
+                perf[metric] = section[name]
+        if "encode_image_ms" in timing:
+            perf["observe.encode_ms"] = timing["encode_image_ms"]
+        return {key: value for key, value in perf.items() if value is not None}
 
     def observe(self, owner, session_id, include_image=False, mode="FAST"):
         if mode == "TEMPORAL":
@@ -466,7 +594,45 @@ class Runtime:
         deadline=started+req.timeout_ms/1000
         timing = Timings()
         with self._worker(owner, s, deadline, generation, timing) as check:
-            return self._act_locked(s, req, digest, started, deadline, check, timing)
+            try:
+                result = self._act_locked(s, req, digest, started, deadline, check, timing)
+            except RuntimeFault as error:
+                if error.code in ("stale_observation", "target_not_found", "target_ambiguous"):
+                    self._note_stale(s, error.code)
+                raise
+        return self._with_action_perf(result, s, timing, started)
+
+    def _note_stale(self, s, reason):
+        """Count consecutive pre-dispatch refusals; a dispatch clears the streak."""
+        with self.guard:
+            s.stale_streak += 1
+            s.last_stale_reason = reason
+
+    def _with_action_perf(self, result, s, timing, started):
+        """Attach the documented act-path metrics to one action result."""
+        if not isinstance(result, dict) or result.get("deduplicated"):
+            return result
+        measured = timing.milliseconds()
+        with self.guard:
+            streak, reason = s.stale_streak, s.last_stale_reason
+            if result.get("execution_status") == "executed":
+                s.stale_streak = 0
+                s.last_stale_reason = None
+        timings = result.get("timing") or {}
+        result["perf"] = {
+            "act.preflight_ms": measured.get("preflight_observe_ms"),
+            "act.dispatch_ms": measured.get("dispatch_ms"),
+            "act.post_observe_ms": measured.get("post_observe_ms", timings.get("verification_ms")),
+            "act.total_ms": timings.get("total_ms", round((time.monotonic() - started) * 1000, 3)),
+            "act.execution_status": result.get("execution_status"),
+            "act.verification_status": result.get("verification_status"),
+            "stale.consecutive_count": streak,
+            "stale.reason": reason,
+            "act.preflight_round_trips": (result.get("preflight_capture") or {}).get("round_trips"),
+            "act.preflight_provider": (result.get("preflight_capture") or {}).get("provider"),
+            "act.post_observation_id": result.get("after_observation_id"),
+        }
+        return result
 
     def _act_locked(self, s, req, digest, started, deadline, check, timing=None):
         """Single dispatch path; caller owns the FIFO slot and the device budget."""
@@ -494,6 +660,7 @@ class Runtime:
         needs_image = bool(req.action.target is not None
                            and req.action.target.visual is not None)
         current=timing.call("preflight_observe", self._observe, s, needs_image)
+        preflight_capture = current.get("snapshot_capture")
         if not current["actionable"]:
             raise RuntimeFault("stale_observation", "Foreground changed during capture; observe again")
         if current.get("blocking_dialog") and req.action.kind not in ("back", "home", "launch"):
@@ -554,7 +721,7 @@ class Runtime:
                 if condition is not None:
                     recovery_expected = condition.model_dump()
             timing.call("journal_begin", self.journal.begin, req.request_id,digest,s.serial, expected=recovery_expected, before_fingerprint=before["fingerprint"])
-        result={"status":"ok","execution_status":"not_dispatched","verification_status":"inconclusive","before_observation_id":req.observation_id,"after_observation_id":None,"timing":{},"evidence_refs":[],"incident_id":None}
+        result={"status":"ok","execution_status":"not_dispatched","verification_status":"inconclusive","before_observation_id":req.observation_id,"after_observation_id":None,"timing":{},"evidence_refs":[],"incident_id":None,"preflight_capture":preflight_capture}
         if target_match_note is not None:
             # Sanitized diagnostic: how the target was re-identified, and with
             # which evidence. Never UI text.
@@ -573,7 +740,7 @@ class Runtime:
         try:
             while True:
                 check()
-                after=self._observe(s)
+                after=timing.call("post_observe", self._observe, s)
                 check()
                 result["after_observation_id"]=after["observation_id"]
                 result["observation"]=after
