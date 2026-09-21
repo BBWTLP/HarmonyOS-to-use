@@ -16,6 +16,20 @@ from .decision.tokens import estimate_tokens
 
 DEFAULT_WINDOW_TOKENS = 3000
 
+#: Questions the runner must still be able to answer after a compression: the
+#: task's own constraints, its unresolved incidents and the goal itself. The plan
+#: requires compression to preserve exactly these, so they are checked, not
+#: assumed.
+def compression_questions(*, goal: str, constraints: Iterable[str],
+                          incident_codes: Iterable[str]) -> list[str]:
+    return list(dict.fromkeys([goal, *constraints, *incident_codes]))
+
+
+def missing_after_compression(memory: "Memory", questions: Iterable[str]) -> list[str]:
+    """Which required questions the compressed context can no longer answer."""
+    answers = memory.can_answer(questions)
+    return [question for question, ok in answers.items() if not ok]
+
 
 @dataclass
 class Fact:
@@ -144,6 +158,14 @@ class Memory:
         return lines
 
     # -- compression --------------------------------------------------------
+    def window_used_tokens(self) -> int:
+        """Estimated tokens held by the raw recent states."""
+        return sum(estimate_tokens(json.dumps(state, ensure_ascii=False))
+                   for state in self.states)
+
+    def over_window(self) -> bool:
+        return self.window_used_tokens() > self.window_tokens
+
     def compress(self, *, reason: str = "window") -> dict[str, Any]:
         """Drop raw states first; keep constraints, facts and unresolved events."""
         before = len(self.states)

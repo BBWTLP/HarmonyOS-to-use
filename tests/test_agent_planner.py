@@ -88,6 +88,41 @@ class StepPlanTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.plan("delete_all:everything")
 
+    # -- terminal postcondition binding (P1-04 reconciliation evidence) -----
+    def test_only_the_last_step_carries_the_terminal_semantic_condition(self):
+        """The terminal goal condition must not gate intermediate steps.
+
+        Binding it to every step would make a step retry whenever the *goal* is
+        not yet reached, which is how a single tap turned into a second,
+        unrelated dispatch. Only the final step declares it, and only as
+        recovery evidence.
+        """
+        plan = plan_from_task(task(
+            success_criteria=[{"id": "results", "type": "text_equals",
+                               "value": "鸿蒙 的相关结果"}],
+            arguments={"steps": "tap:发现|tap:搜索"}))
+        self.assertEqual(plan.subgoals[0].recovery_expected, [])
+        self.assertEqual([item.id for item in plan.subgoals[-1].recovery_expected],
+                         ["results"])
+        listed = plan.to_dict()["subgoals"][-1]
+        self.assertEqual(listed["recovery_expected"], ["results"])
+        self.assertEqual(listed["expected"], [])
+
+    def test_a_non_semantic_criterion_binds_nothing(self):
+        plan = plan_from_task(task(success_criteria=[
+            {"id": "editor", "type": "element_present", "target_key": "搜索"}],
+            arguments={"steps": "tap:搜索"}))
+        self.assertEqual(plan.subgoals[-1].recovery_expected, [])
+
+    def test_the_bound_condition_keeps_its_argument_reference(self):
+        plan = plan_from_task(task(
+            success_criteria=[{"id": "results", "type": "text_equals",
+                               "value_ref": "query"}],
+            arguments={"query": "鸿蒙", "steps": "tap:搜索"}))
+        condition = plan.subgoals[-1].recovery_expected[0]
+        self.assertEqual(condition.type, "text_equals")
+        self.assertEqual(condition.value_ref, "query")
+
     def test_empty_step_list_is_rejected(self):
         with self.assertRaises(ValueError):
             self.plan("   ")

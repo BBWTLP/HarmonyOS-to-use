@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import sqlite3
 import threading
 import time
@@ -22,12 +23,17 @@ from pathlib import Path
 from typing import Any
 
 from .candidates import CandidateError, CandidateRegistry, RegisteredCandidate
+from .actor import (ActorObservation, ActorRequest, ActorUnavailable, ControlProposal,
+                    SubgoalProposal, subgoal_from_proposal)
 from .checker import CheckReport, ReadOnlyChecker
-from .contracts import Predicate, TaskSubmit
+from .contracts import (EventEnvelope, GuardedAction, Predicate, PROTOCOL_VERSION,
+                        ProtocolError, TaskSubmit, canonical)
 from .decision.router import Router, RouterOutcome
 from .grounding import GroundingIntent, GroundingUnavailable
-from .memory import Memory
-from .planner import LoopDetector, Plan, Subgoal, plan_from_task
+from .memory import Memory, compression_questions, missing_after_compression
+from .planner import LoopDetector, Plan, Subgoal, plan_from_task, replan
+from .verifier import (CodeVerifier, VerificationOutcome, VerificationRequest,
+                       VerifierProvider, verify_once)
 
 TERMINAL = ("SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED")
 #: States that carry a final result. Once one of these is readable through
@@ -54,6 +60,7 @@ CREATE TABLE IF NOT EXISTS task_events (
   sequence INTEGER NOT NULL,
   type TEXT NOT NULL,
   payload TEXT NOT NULL,
+  envelope TEXT,
   created REAL NOT NULL,
   PRIMARY KEY (task_id, sequence)
 );
@@ -77,6 +84,49 @@ def _digest(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+@dataclass
+class RunContext:
+    """Provenance in force while a run writes its event log (P2-02).
+
+    The runner updates this as it observes, grounds and decides. Every event gets
+    a snapshot, so the event log answers "which observation, epoch, candidate set,
+    model revision and calibration was this written under?" without replaying the
+    run. `model_revision`/`calibration_version` are the most recent decision
+    provenance the run has seen; decision events also carry their own exact values
+    in the payload.
+    """
+
+    observation_id: str | None = None
+    candidate_set_hash: str | None = None
+    controller_epoch: int | None = None
+    model_revision: str | None = None
+    calibration_version: str | None = None
+    decision_provider: str | None = None
+    evidence_refs: list[str] = field(default_factory=list)
+    #: The last observation dict of this run, used only to build a bounded,
+    #: redacted request for an actor. Never handed to a model verbatim.
+    last_observation: dict[str, Any] | None = None
+    limit: int = 16
+
+    def note_evidence(self, refs: list[str] | tuple[str, ...] | None) -> None:
+        for ref in refs or []:
+            if ref and ref not in self.evidence_refs:
+                self.evidence_refs.append(ref)
+        if len(self.evidence_refs) > self.limit:
+            self.evidence_refs = self.evidence_refs[-self.limit:]
+
+    def snapshot(self) -> dict[str, Any]:
+        return {
+            "observation_id": self.observation_id,
+            "candidate_set_hash": self.candidate_set_hash,
+            "controller_epoch": self.controller_epoch,
+            "model_revision": self.model_revision,
+            "calibration_version": self.calibration_version,
+            "decision_provider": self.decision_provider,
+            "evidence_refs": list(self.evidence_refs),
+        }
+
+
 def safety_code(error: BaseException) -> str:
     code = getattr(error, "code", None)
     if isinstance(code, str) and code:
@@ -95,10 +145,18 @@ class TaskStore:
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.executescript(SCHEMA)
+        self._migrate()
         # A task that was running when the process died is never resumed.
         self.db.execute("UPDATE tasks SET state='PAUSED'"
                         " WHERE state IN ('RUNNING','VERIFYING','RECOVERING')")
         self.db.commit()
+
+    def _migrate(self) -> None:
+        """Add the P2-02 event envelope column to a database written before it."""
+        columns = {row[1] for row in
+                   self.db.execute("PRAGMA table_info(task_events)").fetchall()}
+        if "envelope" not in columns:
+            self.db.execute("ALTER TABLE task_events ADD COLUMN envelope TEXT")
 
     def close(self) -> None:
         with self.lock:
@@ -142,17 +200,20 @@ class TaskStore:
             row = self.db.execute("SELECT state FROM tasks WHERE task_id=?", (task_id,)).fetchone()
         return row[0] if row else None
 
-    def add_event(self, task_id: str, event_type: str, payload: dict[str, Any]) -> int:
+    def add_event(self, task_id: str, event_type: str, payload: dict[str, Any],
+                  envelope: dict[str, Any] | None = None) -> int:
         with self.lock:
             row = self.db.execute(
                 "SELECT COALESCE(MAX(sequence),0)+1 FROM task_events WHERE task_id=?",
                 (task_id,)).fetchone()
             sequence = int(row[0])
             self.db.execute(
-                "INSERT INTO task_events (task_id, sequence, type, payload, created)"
-                " VALUES (?,?,?,?,?)",
+                "INSERT INTO task_events (task_id, sequence, type, payload, envelope, created)"
+                " VALUES (?,?,?,?,?,?)",
                 (task_id, sequence, event_type,
-                 json.dumps(payload, ensure_ascii=False, sort_keys=True), time.time()))
+                 json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                 json.dumps(envelope, ensure_ascii=False, sort_keys=True) if envelope else None,
+                 time.time()))
             self.db.commit()
             return sequence
 
@@ -173,7 +234,8 @@ class TaskStore:
             self.db.commit()
 
     def finalize_task(self, task_id: str, state: str, result: dict[str, Any],
-                      event: tuple[str, dict[str, Any]] | None = None) -> bool:
+                      event: tuple[str, dict[str, Any]] | None = None,
+                      envelope: dict[str, Any] | None = None) -> bool:
         """Publish a result-bearing state and its result in a single transaction.
 
         Invariant: as soon as `task()` reports a result-bearing state, that same
@@ -205,10 +267,12 @@ class TaskStore:
                         "SELECT COALESCE(MAX(sequence),0)+1 FROM task_events"
                         " WHERE task_id=?", (task_id,)).fetchone()[0]
                     self.db.execute(
-                        "INSERT INTO task_events (task_id, sequence, type, payload, created)"
-                        " VALUES (?,?,?,?,?)",
+                        "INSERT INTO task_events (task_id, sequence, type, payload,"
+                        " envelope, created) VALUES (?,?,?,?,?,?)",
                         (task_id, int(sequence), event_type,
-                         json.dumps(event_payload, ensure_ascii=False, sort_keys=True), now))
+                         json.dumps(event_payload, ensure_ascii=False, sort_keys=True),
+                         json.dumps(envelope, ensure_ascii=False, sort_keys=True)
+                         if envelope else None, now))
             except Exception:
                 self.db.rollback()
                 raise
@@ -231,13 +295,15 @@ class TaskStore:
         limit = max(1, min(int(limit), 200))
         with self.lock:
             rows = self.db.execute(
-                "SELECT sequence, type, payload, created FROM task_events"
+                "SELECT sequence, type, payload, created, envelope FROM task_events"
                 " WHERE task_id=? AND sequence>? ORDER BY sequence LIMIT ?",
                 (task_id, int(after), limit)).fetchall()
             last = self.db.execute(
                 "SELECT COALESCE(MAX(sequence),0) FROM task_events WHERE task_id=?",
                 (task_id,)).fetchone()[0]
-        items = [{"sequence": r[0], "type": r[1], "payload": json.loads(r[2]), "created": r[3]}
+        items = [{"sequence": r[0], "type": r[1], "payload": json.loads(r[2]),
+                  "created": r[3],
+                  "envelope": json.loads(r[4]) if r[4] else None}
                  for r in rows]
         return {"items": items, "next_seq": items[-1]["sequence"] if items else int(after),
                 "last_seq": int(last), "limit": limit}
@@ -308,6 +374,27 @@ class TaskRun:
     loop: LoopDetector = field(default_factory=LoopDetector)
     started_at: float = field(default_factory=time.time)
     events: int = 0
+    context: RunContext = field(default_factory=RunContext)
+    #: Optional independent verifier. Absent means the deterministic code checker.
+    verifier: VerifierProvider | None = None
+    #: Optional read-only learning memory mounted for this run (P3-06).
+    frozen_memory: Any = None
+    #: Optional actor that may propose one bounded recovery subgoal after a step
+    #: fails (P4-01). It has no device access: proposals are validated against the
+    #: same intent contract and executed through the same guard.
+    actor: Any = None
+    max_actor_replans: int = field(
+        default_factory=lambda: max(0, int(os.environ.get(
+            "HARMONY_AGENT_MAX_ACTOR_REPLANS", "2") or 0)))
+    actor_replans: int = 0
+    #: Compress the recent-state window once it holds this many states *and* is
+    #: over budget. Compression never touches constraints, facts or unresolved
+    #: incidents; the runner verifies that afterwards.
+    compaction_states: int = 12
+    #: Context losses found after a compression; reported in the final result.
+    limitations: list[str] = field(default_factory=list)
+    #: The most recent verification outcome, recorded for the final result.
+    last_verification: VerificationOutcome | None = None
 
     def remaining(self) -> dict[str, Any]:
         elapsed = time.time() - self.started_at
@@ -320,7 +407,34 @@ class TaskRun:
 
     def event(self, event_type: str, payload: dict[str, Any]) -> None:
         self.events += 1
-        self.store.add_event(self.task_id, event_type, payload)
+        envelope = EventEnvelope(
+            event_type=event_type, task_id=self.task_id, sequence=0,
+            created=time.time(),
+            observation_id=self.context.observation_id,
+            candidate_set_hash=self.context.candidate_set_hash,
+            controller_epoch=self.context.controller_epoch,
+            model_revision=self.context.model_revision,
+            calibration_version=self.context.calibration_version,
+            evidence_refs=list(self.context.evidence_refs),
+            payload=payload,
+        )
+        self.store.add_event(self.task_id, event_type, payload,
+                             envelope=envelope.model_dump())
+
+    def verifier_provider(self) -> VerifierProvider:
+        return self.verifier or CodeVerifier(self.checker)
+
+    def check_conditions(self, predicates: list[Predicate],
+                         observation: dict[str, Any]) -> VerificationOutcome:
+        """Verify with the mounted verifier; a pass without evidence downgrades."""
+        request = VerificationRequest(
+            predicates=list(predicates), observation=observation,
+            arguments=self.arguments, incident_free=not self.facade.unresolved(),
+            task_id=self.task_id,
+            observation_id=str(observation.get("observation_id", "")))
+        outcome = verify_once(self.verifier_provider(), request)
+        self.last_verification = outcome
+        return outcome
 
 
 class TaskRunner:
@@ -332,10 +446,19 @@ class TaskRunner:
     # -- entry --------------------------------------------------------------
     def execute(self) -> dict[str, Any]:
         run = self.run
+        if run.frozen_memory is not None and not getattr(run.frozen_memory, "read_only", False):
+            raise TaskError("memory_not_frozen",
+                            "an online run may only mount a frozen memory snapshot")
         run.store.set_state(run.task_id, "RUNNING")
         run.event("task_started", {"goal_hash": _digest(run.task.goal),
                                    "plan_version": run.plan.version,
-                                   "profile": run.router.profile})
+                                   "profile": run.router.profile,
+                                   "protocol_version": PROTOCOL_VERSION})
+        if run.frozen_memory is not None:
+            run.event("memory_mounted",
+                      {"manifest_hash": getattr(run.frozen_memory, "manifest_hash", None),
+                       "version": getattr(run.frozen_memory, "version", None),
+                       "read_only": True})
         try:
             while True:
                 if run.cancel.is_set():
@@ -345,7 +468,10 @@ class TaskRunner:
                 subgoal = run.plan.next_pending()
                 if subgoal is None:
                     break
+                run.event("checkpoint", self._checkpoint_payload(subgoal, "start"))
                 outcome = self._run_subgoal(subgoal)
+                run.event("checkpoint", self._checkpoint_payload(subgoal, "end",
+                                                                outcome=outcome))
                 if outcome == "cancel":
                     return self._finish("CANCELLED", "cancelled_by_supervisor")
                 if outcome == "paused":
@@ -361,6 +487,67 @@ class TaskRunner:
             return self._finish("FAILED", code)
 
     # -- subgoal ------------------------------------------------------------
+    def _checkpoint_payload(self, subgoal: Subgoal, phase: str,
+                            *,
+                            outcome: str | None = None) -> dict[str, Any]:
+        """Durable per-step progress: what ran, what it cost, why it exists.
+
+        A long task must be reconstructable from the log alone, so every step
+        records its plan version (a replan bumps it), its status and attempts,
+        the remaining budget and, for a step that only exists because of a
+        replan, that reason.
+        """
+        run = self.run
+        return {
+            "phase": phase,
+            "subgoal_id": subgoal.subgoal_id,
+            "description": subgoal.description,
+            "action_kind": subgoal.action_kind,
+            "status": subgoal.status,
+            "blocked_reason": subgoal.blocked_reason,
+            "attempts": subgoal.attempts,
+            "plan_version": run.plan.version,
+            "replan_reasons": list(run.plan.reasons)[-2:],
+            "outcome": outcome,
+            "remaining": run.remaining(),
+            "dispatches_used": run.dispatches,
+            "observations": run.observations,
+        }
+
+    def _compress_context_if_needed(self) -> None:
+        """Compress the recent-state window when it is genuinely over budget.
+
+        Compression is only useful if what must survive actually survives, so the
+        runner asks the compressed context the task's own constraints, its
+        unresolved incidents and the goal, and records a limitation when any of
+        them can no longer be answered. It never silently proceeds on a context
+        that lost a constraint.
+        """
+        run = self.run
+        memory = run.memory
+        if len(memory.states) < run.compaction_states or not memory.over_window():
+            return
+        record = memory.compress(reason="window")
+        questions = compression_questions(
+            goal=run.task.goal, constraints=memory.constraints,
+            incident_codes=[incident.code for incident in memory.unresolved()])
+        missing = missing_after_compression(memory, questions)
+        run.event("memory_compressed", {
+            "states_before": record["states_before"],
+            "states_after": record["states_after"],
+            "kept_constraints": record["kept_constraints"],
+            "kept_facts": record["kept_facts"],
+            "unresolved_incidents": [item["code"]
+                                     for item in record["unresolved_incidents"]],
+            "evidence_refs": sorted(record["evidence_index"].values())[:16],
+            "questions_checked": len(questions),
+            "missing": missing})
+        if missing:
+            # A lost constraint or unresolved incident is reported, never hidden.
+            run.limitations.append("context_loss:" + ",".join(missing)[:120])
+            run.event("context_loss", {"missing": missing,
+                                       "plan_version": run.plan.version})
+
     def _run_subgoal(self, subgoal: Subgoal) -> str:
         run = self.run
         run.memory.add_subgoal(subgoal.subgoal_id, subgoal.description)
@@ -381,12 +568,21 @@ class TaskRunner:
             observation = run.facade.observe(mode="FULL" if attempt == 1 else "FAST")
             run.observations += 1
             run.memory.record_state(observation)
+            self._compress_context_if_needed()
+            run.context.observation_id = observation.get("observation_id")
+            run.context.controller_epoch = run.facade.controller_epoch()
+            run.context.candidate_set_hash = None
+            run.context.last_observation = observation
             if observation.get("blocking_dialog"):
                 run.store.set_state(run.task_id, "WAITING_USER")
                 run.event("authentication_required",
                           {"subgoal_id": subgoal.subgoal_id,
                            "source": observation["blocking_dialog"].get("source")})
                 return "stop"
+            # `expected` keeps governing both the skip check and the dispatch
+            # verification. `recovery_expected` travels separately: it is the
+            # terminal goal condition recorded as reconciliation evidence, so a
+            # step is never retried just because the goal is not reached yet.
             criteria = list(subgoal.expected)
             # An action with no explicit postcondition still declares the effect
             # the runtime will verify: the page must change after the dispatch.
@@ -416,9 +612,11 @@ class TaskRunner:
                 if error.code == "stale_observation" and reobserve_budget > 0:
                     reobserve_budget -= 1
                     continue
-                subgoal.status = "blocked"
-                return "stop"
+                return self._block(subgoal, "grounding_unavailable")
             grounding = candidate_set.grounding
+            run.context.candidate_set_hash = candidate_set.hash
+            run.context.note_evidence(
+                [ref for item in candidate_set.candidates for ref in item.candidate.evidence_refs])
             run.event("candidates", {
                 "subgoal_id": subgoal.subgoal_id,
                 "count": len(candidate_set.candidates),
@@ -434,22 +632,20 @@ class TaskRunner:
                                             "reason": "no_candidate",
                                             "remaining": reobserve_budget})
                     continue
-                subgoal.status = "blocked"
                 run.event("subgoal_blocked", {"subgoal_id": subgoal.subgoal_id,
                                               "reason": "no_candidate_after_retry"})
-                return "stop"
+                return self._block(subgoal, "no_candidate_after_retry")
             outcome = self._decide(subgoal, observation, candidate_set)
             run.event("decision", _decision_payload(outcome))
             if outcome.decision.route == "execute":
                 selected = candidate_set.by_id(outcome.decision.selected_candidate_id or "")
                 if selected is None:
-                    subgoal.status = "blocked"
                     run.event("subgoal_blocked", {"subgoal_id": subgoal.subgoal_id,
                                                   "reason": "selected_candidate_missing"})
-                    return "stop"
+                    return self._block(subgoal, "selected_candidate_missing")
                 try:
                     result = self._dispatch(subgoal, observation, selected,
-                                            expected_predicates)
+                                            expected_predicates, candidate_set)
                 except Exception as error:
                     # A refused dispatch is a recoverable refusal, not a task
                     # failure: re-observe and let the guard decide again.
@@ -459,8 +655,7 @@ class TaskRunner:
                     if reobserve_budget > 0:
                         reobserve_budget -= 1
                         continue
-                    subgoal.status = "blocked"
-                    return "stop"
+                    return self._block(subgoal, "dispatch_refused")
                 if result.get("execution_status") == "unknown":
                     # Do not publish the final state here: the state must become
                     # visible together with the result in `_finish()`. An early
@@ -477,14 +672,105 @@ class TaskRunner:
                 if reobserve_budget > 0:
                     reobserve_budget -= 1
                     continue
-                subgoal.status = "blocked"
-                return "stop"
-            subgoal.status = "blocked"
-            return "stop"
+                return self._block(subgoal, "reobserve_budget_exhausted")
+            return self._block(subgoal, "decision_not_executable")
         subgoal.status = "failed"
         run.event("subgoal_failed", {"subgoal_id": subgoal.subgoal_id,
                                      "attempts": subgoal.attempts})
+        if self._actor_recovery(subgoal):
+            return "continue"
         return "stop"
+
+    def _block(self, subgoal: Subgoal, reason: str) -> str:
+        """Mark a subgoal blocked, then give the actor one bounded replan chance.
+
+        A blocked step is exactly when replanning is useful: no candidate was
+        grounded, or the guard refused every attempt. The subgoal keeps its
+        blocked status either way, so the record still shows what failed.
+        """
+        subgoal.status = "blocked"
+        subgoal.blocked_reason = reason
+        if self._actor_recovery(subgoal):
+            return "continue"
+        return "stop"
+
+    def _actor_recovery(self, failed: Subgoal) -> bool:
+        """Ask the mounted actor for one bounded recovery subgoal (P4-01).
+
+        The actor sees a redacted request, never a facade, a candidate id or a
+        coordinate. Its answer is validated by the intent contract and then runs
+        through the ordinary loop, so the guard, epoch checks and budgets are
+        unchanged. Any actor failure degrades to "no recovery": the deterministic
+        outcome of the plan stands and the task reports it.
+        """
+        run = self.run
+        if run.actor is None or run.actor_replans >= run.max_actor_replans:
+            return False
+        if run.remaining()["dispatches"] <= 0:
+            return False
+        observation = run.context.last_observation or {}
+        request = ActorRequest(
+            request_id=f"actor_{failed.subgoal_id}",
+            task_id=run.task_id, goal=run.task.goal,
+            constraints=list(run.plan.constraints),
+            arguments=dict(run.arguments),
+            allowed_apps=list(run.task.scope.allowed_apps),
+            allowed_actions=list(run.task.scope.allowed_actions),
+            observation=ActorObservation(
+                observation_id=str(observation.get("observation_id") or "unknown"),
+                controller_epoch=int(run.context.controller_epoch or 0),
+                foreground_bundle=observation.get("foreground_bundle"),
+                fingerprint=observation.get("fingerprint"),
+                screen=dict(observation.get("screen") or {}),
+                facts=list(run.memory.context_facts())[:16],
+                recent_outcomes=[failed.description, failed.status],
+                blocking_dialog=(observation.get("blocking_dialog") or {}).get("source")
+                if isinstance(observation.get("blocking_dialog"), dict) else None),
+            plan_version=run.plan.version,
+            pending_subgoal_ids=[item.subgoal_id for item in run.plan.subgoals],
+            budget={"dispatches": run.remaining()["dispatches"],
+                    "seconds": run.remaining()["seconds"],
+                    "model_calls": run.remaining()["model_calls"]},
+            frozen_memory_hash=getattr(run.frozen_memory, "manifest_hash", None),
+            memory_facts=self._facts()[:16])
+        try:
+            proposal = asyncio.run(run.actor.propose(request))
+        except Exception as error:
+            run.event("actor_unavailable", {"code": safety_code(error),
+                                            "subgoal_id": failed.subgoal_id})
+            return False
+        if isinstance(proposal, ControlProposal):
+            run.event("actor_control", {"control": proposal.control,
+                                        "reason_code": proposal.reason_code,
+                                        "subgoal_id": failed.subgoal_id})
+            return False
+        if not isinstance(proposal, SubgoalProposal):
+            run.event("actor_proposal_rejected", {"code": "unsupported_proposal",
+                                                  "subgoal_id": failed.subgoal_id})
+            return False
+        try:
+            subgoal = subgoal_from_proposal(run.task_id, proposal)
+        except ActorUnavailable as error:
+            run.event("actor_proposal_rejected", {"code": error.code,
+                                                 "subgoal_id": failed.subgoal_id})
+            return False
+        if any(item.subgoal_id == subgoal.subgoal_id for item in run.plan.subgoals):
+            run.event("actor_proposal_rejected", {"code": "duplicate_subgoal",
+                                                  "subgoal_id": subgoal.subgoal_id})
+            return False
+        updated = replan(run.plan, failed.subgoal_id, reason="actor_recovery")
+        updated.subgoals = [*updated.subgoals, subgoal]
+        run.plan = updated
+        run.actor_replans += 1
+        run.store.add_plan(run.task_id, run.plan)
+        run.event("actor_recovery", {
+            "subgoal_id": subgoal.subgoal_id,
+            "after": failed.subgoal_id,
+            "plan_version": run.plan.version,
+            "actor": getattr(run.actor, "name", "actor"),
+            "revision": getattr(run.actor, "revision", None),
+            "remaining_replans": run.max_actor_replans - run.actor_replans})
+        return True
 
     def _early_progress(self, subgoal: Subgoal) -> bool | None:
         """Skip a subgoal whose conditions already hold; never dispatches."""
@@ -498,14 +784,15 @@ class TaskRunner:
         except Exception:
             return None
         self.run.observations += 1
-        report = self.run.checker.check(criteria, observation,
-                                        arguments=self.run.arguments,
-                                        incident_free=not self.run.facade.unresolved())
+        self.run.context.observation_id = observation.get("observation_id")
+        self.run.context.controller_epoch = self.run.facade.controller_epoch()
+        report = self.run.check_conditions(criteria, observation).report
         if report.verdict == "pass":
             subgoal.status = "verified"
             self.run.event("subgoal_already_satisfied",
                            {"subgoal_id": subgoal.subgoal_id,
                             "evidence": report.evidence_refs[:4]})
+            self.run.context.note_evidence(report.evidence_refs)
             return True
         return False
 
@@ -518,17 +805,30 @@ class TaskRunner:
             scope_id=run.task.scope.device_ref, observation=observation,
             candidate_set=candidate_set, controller_epoch=run.facade.controller_epoch(),
             remaining_model_calls=run.remaining()["model_calls"],
-            goal=run.task.goal, facts=run.memory.context_facts()))
+            goal=run.task.goal, facts=self._facts()))
         # Charge the budget for every provider invocation the router issued,
         # including attempts that timed out, crashed or returned garbage and
         # therefore fell back to rules. Inferring this from the *final* decision
         # provider would let a failing provider be called for free.
         run.model_calls += outcome.provider_calls
+        run.context.model_revision = outcome.decision.model_revision
+        run.context.calibration_version = outcome.decision.calibration_version
+        run.context.decision_provider = outcome.decision.provider
+        run.context.note_evidence(outcome.decision.native_scores.model_dump().get("evidence_refs"))
         return outcome
+
+    def _facts(self) -> list[str]:
+        """Facts from the in-task memory plus a frozen learning snapshot, if any."""
+        facts = list(self.run.memory.context_facts())
+        frozen = self.run.frozen_memory
+        if frozen is not None:
+            facts.extend(frozen.facts(limit=8))
+        return facts
 
     # -- dispatch -----------------------------------------------------------
     def _dispatch(self, subgoal: Subgoal, observation: dict[str, Any],
-                  selected: RegisteredCandidate, criteria: list[Predicate]) -> dict[str, Any]:
+                  selected: RegisteredCandidate, criteria: list[Predicate],
+                  candidate_set) -> dict[str, Any]:
         run = self.run
         epoch = run.facade.controller_epoch()
         if epoch != selected.candidate.controller_epoch:
@@ -558,14 +858,27 @@ class TaskRunner:
         action = _action_payload(subgoal, selected)
         expected = _expected_payload(criteria, run.arguments)
         request_id = "act_" + uuid.uuid4().hex[:24]
-        payload = {
-            "session_id": run.facade.session_id,
-            "request_id": request_id,
-            "observation_id": observation["observation_id"],
-            "action": action,
-            "expected": expected,
-            "timeout_ms": 8000,
-        }
+        try:
+            guarded = _guarded_action(
+                run=run, subgoal=subgoal, observation=observation,
+                selected=selected, criteria=criteria, action=action,
+                candidate_set=candidate_set, request_id=request_id, epoch=epoch)
+        except (ProtocolError, ValueError) as error:
+            code = getattr(error, "code", None) or "guarded_action_invalid"
+            run.event("guarded_action_rejected", {
+                "subgoal_id": subgoal.subgoal_id,
+                "code": code,
+                "detail": str(error)[:200]})
+            return {"status": code, "execution_status": "not_dispatched",
+                    "verification_status": "inconclusive"}
+        # The runtime re-derives the epoch and rejects unknown fields, so the
+        # wire payload keeps the v1 shape; the epoch lives in the envelope.
+        payload = guarded.model_dump(include={"session_id", "request_id",
+                                              "observation_id"})
+        payload.update({"action": action, "expected": expected, "timeout_ms": 8000})
+        recovery = _expected_payload(list(subgoal.recovery_expected), run.arguments)
+        if recovery is not None:
+            payload["recovery"] = recovery
         signature = f"{action['kind']}:{selected.candidate.target_ref}"
         if run.loop.observe(signature, observation.get("fingerprint", ""),
                             is_scroll=subgoal.action_kind == "swipe"):
@@ -574,6 +887,10 @@ class TaskRunner:
             return {"status": "loop_detected", "execution_status": "not_dispatched",
                     "verification_status": "inconclusive"}
         run.dispatches += 1
+        run.context.candidate_set_hash = guarded.candidate_set_hash
+        run.context.observation_id = guarded.observation_id
+        run.context.controller_epoch = guarded.controller_epoch
+        run.context.note_evidence(guarded.evidence_refs)
         result = run.facade.act(payload)
         run.event("dispatch", {
             "subgoal_id": subgoal.subgoal_id,
@@ -582,6 +899,11 @@ class TaskRunner:
             "target_ref": selected.candidate.target_ref,
             "action_kind": action["kind"],
             "risk_class": selected.candidate.risk_class,
+            "candidate_set_hash": guarded.candidate_set_hash,
+            "controller_epoch": guarded.controller_epoch,
+            "protocol_version": guarded.protocol_version,
+            "guarded_action_hash": _digest(canonical(guarded.model_dump())),
+            "recovery_condition": bool(recovery),
             "execution_status": result.get("execution_status"),
             "verification_status": result.get("verification_status"),
             "status": result.get("status"),
@@ -605,20 +927,25 @@ class TaskRunner:
         run = self.run
         run.store.set_state(run.task_id, "VERIFYING")
         report = CheckReport(verdict="inconclusive", conditions=[])
+        verification: VerificationOutcome | None = None
         try:
             observation = run.facade.observe(mode="FULL", include_image=False)
             run.observations += 1
             run.memory.record_state(observation)
-            report = run.checker.check(run.task.success_criteria, observation,
-                                       arguments=run.arguments,
-                                       incident_free=not run.facade.unresolved())
+            run.context.observation_id = observation.get("observation_id")
+            run.context.controller_epoch = run.facade.controller_epoch()
+            verification = run.check_conditions(run.task.success_criteria, observation)
+            report = verification.report
+            run.context.note_evidence(report.evidence_refs)
+            run.event("verification", verification.to_dict())
         except Exception as error:
             run.event("verify_failed", {"code": safety_code(error)})
         if report.verdict == "pass":
-            return self._finish("SUCCEEDED", "all_conditions_verified", report)
+            return self._finish("SUCCEEDED", "all_conditions_verified", report,
+                                verification)
         if report.verdict == "fail":
-            return self._finish("FAILED", "condition_failed", report)
-        return self._finish("PARTIAL", "conditions_inconclusive", report)
+            return self._finish("FAILED", "condition_failed", report, verification)
+        return self._finish("PARTIAL", "conditions_inconclusive", report, verification)
 
     # -- terminal -----------------------------------------------------------
     def _paused(self) -> dict[str, Any]:
@@ -631,9 +958,16 @@ class TaskRunner:
                 "events": run.events}
 
     def _finish(self, state: str, reason: str,
-                report: CheckReport | None = None) -> dict[str, Any]:
+                report: CheckReport | None = None,
+                verification: VerificationOutcome | None = None) -> dict[str, Any]:
         run = self.run
+        if state == "FAILED":
+            # A subgoal that never verified used to finish with an empty condition
+            # list, which hides *which* criterion was unmet. One read-only check
+            # fills that in; it never dispatches.
+            report = self._failure_report(report)
         unresolved = run.facade.unresolved()
+        verification = verification or run.last_verification
         result = {
             "task_id": run.task_id,
             "status": state,
@@ -648,7 +982,15 @@ class TaskRunner:
                       "observations": run.observations,
                       "elapsed_seconds": round(time.time() - run.started_at, 3)},
             "memory": run.memory.snapshot(),
-            "limitations": list(report.limitations) if report else [],
+            "limitations": list(dict.fromkeys(
+                [*(report.limitations if report else []), *run.limitations])),
+            "verification": {
+                "verifier": verification.verifier,
+                "revision": verification.revision,
+                "verdict": verification.verdict,
+                "evidence_refs": list(verification.evidence_refs),
+            } if verification else None,
+            "protocol_version": PROTOCOL_VERSION,
         }
         if run.artifacts is not None:
             try:
@@ -666,10 +1008,34 @@ class TaskRunner:
             event=("task_finished",
                    {"status": state, "reason": reason,
                     "resolution_required": result["resolution_required"],
-                    "result_artifact_id": result.get("result_artifact_id")}))
+                    "result_artifact_id": result.get("result_artifact_id")}),
+            envelope=EventEnvelope(
+                event_type="task_finished", task_id=run.task_id, sequence=0,
+                created=time.time(),
+                observation_id=run.context.observation_id,
+                candidate_set_hash=run.context.candidate_set_hash,
+                controller_epoch=run.context.controller_epoch,
+                model_revision=run.context.model_revision,
+                calibration_version=run.context.calibration_version,
+                evidence_refs=list(run.context.evidence_refs),
+                payload={"status": state, "reason": reason},
+            ).model_dump())
         if published:
             run.events += 1
         return result
+
+    def _failure_report(self, previous: CheckReport | None) -> CheckReport | None:
+        if previous is not None and previous.conditions:
+            return previous
+        try:
+            observation = self.run.facade.observe(mode="FAST")
+            self.run.observations += 1
+            outcome = self.run.check_conditions(self.run.task.success_criteria, observation)
+            self.run.event("failure_conditions", {"verdict": outcome.verdict})
+            return outcome.report
+        except Exception as error:
+            self.run.event("failure_conditions_unavailable", {"code": safety_code(error)})
+            return previous
 
 
 class TaskSupervisor:
@@ -713,6 +1079,7 @@ class TaskSupervisor:
             raise TaskError("unknown_task", "No such task")
         events = self.store.events(task_id, after=after_event_seq, limit=1)
         run = self.runs.get(task_id)
+        pending = run.plan.next_pending() if run is not None else None
         return {
             "task_id": task_id,
             "status": record["state"],
@@ -724,6 +1091,12 @@ class TaskSupervisor:
                        "observations": run.observations}
                       if run else None),
             "next_event_seq": events["last_seq"],
+            "current_subgoal": ({"subgoal_id": pending.subgoal_id,
+                                 "description": pending.description,
+                                 "status": pending.status,
+                                 "attempts": pending.attempts,
+                                 "plan_version": run.plan.version}
+                                if pending is not None else None),
             "terminal": record["state"] in TERMINAL,
             "result_available": record["result"] is not None,
         }
@@ -802,6 +1175,42 @@ class TaskSupervisor:
 # -- helpers ----------------------------------------------------------------
 
 ACTION_NEEDS_TARGET = ("tap", "long_press", "input_text", "replace_text")
+
+
+def _guarded_action(*, run: TaskRun, subgoal: Subgoal, observation: dict[str, Any],
+                    selected: RegisteredCandidate, criteria: list[Predicate],
+                    action: dict[str, Any], candidate_set,
+                    request_id: str, epoch: int) -> GuardedAction:
+    """Build the frozen dispatch envelope, or raise before any device call.
+
+    The envelope is validated by its own schema: a target action without a
+    registry-issued target, a coordinate-bearing argument or a high-risk action
+    without a runtime-issued authorization cannot be constructed at all.
+    """
+    evidence = next(
+        (list(item.candidate.evidence_refs) for item in candidate_set.candidates
+         if item.candidate.candidate_id == selected.candidate.candidate_id), [])
+    argument_values = {key: action[key] for key in ("text", "direction", "bundle")
+                       if key in action}
+    return GuardedAction(
+        session_id=run.facade.session_id,
+        request_id=request_id,
+        task_id=run.task_id,
+        subgoal_id=subgoal.subgoal_id,
+        observation_id=observation["observation_id"],
+        controller_epoch=epoch,
+        candidate_set_hash=candidate_set.hash,
+        candidate_id=selected.candidate.candidate_id,
+        target_ref=selected.candidate.target_ref,
+        local_fingerprint=(selected.target.local_fingerprint or None),
+        action_kind=subgoal.action_kind,
+        argument_values=argument_values,
+        expected=list(criteria),
+        recovery=list(subgoal.recovery_expected),
+        risk_class=selected.candidate.risk_class,
+        authorization_ref=None,
+        evidence_refs=evidence,
+    )
 
 
 def _action_payload(subgoal: Subgoal, selected: RegisteredCandidate) -> dict[str, Any]:

@@ -4,18 +4,35 @@ Mirrors the frozen review contract (review-contracts:2.1). The schema checks
 structure; probability normalisation, candidate membership, digest, epoch,
 authorization and success conditions are enforced by this module's semantic
 validators and by the runtime guard.
+
+Protocol 2.1 adds the frozen ``Intent -> CandidateSetRef -> DecisionSuggestion
+-> GuardedAction`` chain plus the event envelope used by the task event log.
+Those models carry the plan's hard constraints inside the schema itself:
+
+* an intent names a *semantic* identity (text / resource id / accessibility id)
+  or a task-argument reference; it can never carry a coordinate or a raw input
+  value that the caller did not already place in the task parameter store;
+* a suggestion may only name a candidate id that the registry offered for the
+  exact observation, epoch and candidate-set hash;
+* a guarded action is the only payload the runner may hand to the runtime, and a
+  high-risk action requires a runtime-issued authorization reference — a model's
+  own ``approved=true`` is not part of this schema at all.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import math
+import re
 from datetime import datetime, timezone
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 SCHEMA_VERSION = "2.0"
+
+#: Version of the frozen execution protocol (P2-01/P2-02).
+PROTOCOL_VERSION = "2.1"
 
 ACTION_KINDS = (
     "tap",
@@ -61,6 +78,49 @@ LEDGER_STATES = (
 )
 
 ROUTES = ("execute", "reobserve", "escalate", "stop")
+
+#: Action kinds that must name a semantic target before dispatch.
+TARGET_ACTION_KINDS = ("tap", "long_press", "input_text", "replace_text")
+
+#: Keys an intent may resolve from the task parameter store. Anything else is a
+#: raw payload the model would have had to invent.
+INTENT_ARGUMENT_KEYS = ("text", "direction", "bundle")
+
+#: Keys a guarded action may carry into the runtime, already resolved.
+GUARDED_ARGUMENT_KEYS = ("text", "direction", "bundle")
+
+SWIPE_DIRECTIONS = ("up", "down", "left", "right")
+
+_BUNDLE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$")
+_COORDINATE_PAIR = re.compile(r"^\s*-?\d{1,6}(\.\d+)?\s*[,; ]\s*-?\d{1,6}(\.\d+)?\s*$")
+_CANDIDATE_ID = r"^cand_[0-9a-f]{16,64}$"
+_TARGET_REF = r"^gt_[0-9a-f]{16,64}$"
+_AUTHORIZATION_REF = r"^authz_[0-9a-f]{16,64}$"
+_SHA256 = r"^[0-9a-f]{64}$"
+
+
+class ProtocolError(RuntimeError):
+    """A frozen-protocol violation. Carries a stable machine-readable code."""
+
+    def __init__(self, code: str, message: str):
+        self.code = code
+        super().__init__(message)
+
+
+def _reject_coordinates(field: str, value: str) -> None:
+    """Reject a bare coordinate pair smuggled into a semantic field."""
+    if _COORDINATE_PAIR.match(value):
+        raise ValueError(f"{field} must be semantic; coordinates are not part of the protocol")
+
+
+def _aware(value: str, field: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:  # pragma: no cover - defensive
+        raise ValueError(f"{field} must be an ISO-8601 timestamp") from error
+    if parsed.tzinfo is None:
+        raise ValueError(f"{field} must be timezone aware")
+    return parsed
 
 
 class AgentContract(BaseModel):
@@ -314,6 +374,237 @@ class DecisionResult(AgentContract):
 
 def canonical(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+class Intent(AgentContract):
+    """Frozen grounding intent (P2-01): the first link of the execution chain.
+
+    Built by the planner or an ``ActorProvider``, never by the runtime. It names
+    *what* the caller wants to reach, not where it is on screen.
+    """
+
+    protocol_version: Literal["2.1"] = PROTOCOL_VERSION
+    intent_id: str = Field(pattern=r"^intent_[0-9a-f]{16,64}$")
+    task_id: str = Field(min_length=1, max_length=128)
+    subgoal_id: str = Field(min_length=1, max_length=128)
+    action_kind: Literal[ACTION_KINDS]
+    text: str | None = Field(default=None, min_length=1, max_length=512)
+    resource_id: str | None = Field(default=None, min_length=1, max_length=256)
+    accessibility_id: str | None = Field(default=None, min_length=1, max_length=256)
+    description: str | None = Field(default=None, min_length=1, max_length=512)
+    argument_refs: dict[str, str] = Field(default_factory=dict)
+    expected_predicates: list[Predicate] = Field(default_factory=list, max_length=16)
+    require_clickable: bool = False
+    constraints: list[str] = Field(default_factory=list, max_length=16)
+
+    @model_validator(mode="after")
+    def semantic_only(self):
+        for key, value in self.argument_refs.items():
+            if key not in INTENT_ARGUMENT_KEYS:
+                raise ValueError(f"intent argument {key!r} is not part of the protocol")
+            if not isinstance(value, str) or not value:
+                raise ValueError("intent argument references must be non-empty strings")
+            _reject_coordinates(f"argument_refs[{key}]", value)
+        for field in ("text", "resource_id", "accessibility_id", "description"):
+            value = getattr(self, field)
+            if value is not None:
+                _reject_coordinates(field, value)
+        if self.action_kind in ("input_text", "replace_text"):
+            # Input content must come from the task parameter store: an inline
+            # value here would be a model-supplied payload.
+            reference = self.argument_refs.get("text")
+            if reference is None or not reference.startswith("arg."):
+                raise ValueError("input intent must reference a task argument, not a literal text")
+        if "direction" in self.argument_refs:
+            if self.argument_refs["direction"] not in SWIPE_DIRECTIONS:
+                raise ValueError("swipe direction must be up, down, left or right")
+        if "bundle" in self.argument_refs:
+            if not _BUNDLE.match(self.argument_refs["bundle"]):
+                raise ValueError("launch bundle must be a reverse-DNS application id")
+        if self.action_kind in TARGET_ACTION_KINDS:
+            if not (self.text or self.resource_id or self.accessibility_id):
+                raise ValueError("a target action requires a semantic identity")
+        return self
+
+
+class CandidateSetRef(AgentContract):
+    """Serializable reference to a registry-issued candidate set (P2-01).
+
+    Carries digests and identifiers only. Grounded targets, fingerprints and
+    coordinates stay inside the runtime-side registry; this is what may travel
+    to a provider, an event log or an evidence bundle.
+    """
+
+    protocol_version: Literal["2.1"] = PROTOCOL_VERSION
+    observation_id: str = Field(min_length=1, max_length=128)
+    controller_epoch: int = Field(ge=0)
+    candidate_set_hash: str = Field(pattern=_SHA256)
+    candidate_ids: list[str] = Field(default_factory=list, max_length=32)
+    risk_classes: dict[str, Literal["low", "high"]] = Field(default_factory=dict)
+    control_options: list[str] = Field(default_factory=list, max_length=8)
+    grounding_layers: list[str] = Field(default_factory=list, max_length=8)
+    expires_at: str
+
+    @model_validator(mode="after")
+    def consistent(self):
+        for candidate_id in self.candidate_ids:
+            if not re.match(_CANDIDATE_ID, candidate_id):
+                raise ValueError("candidate_ids must be registry-issued candidate ids")
+        if len(set(self.candidate_ids)) != len(self.candidate_ids):
+            raise ValueError("candidate_ids must be unique")
+        if set(self.risk_classes) != set(self.candidate_ids):
+            raise ValueError("risk_classes must describe exactly the candidate set")
+        _aware(self.expires_at, "expires_at")
+        return self
+
+    def is_expired(self, now: datetime | None = None) -> bool:
+        return _aware(self.expires_at, "expires_at") <= (now or utc_now())
+
+
+class DecisionSuggestion(AgentContract):
+    """Advisory provider output (P2-01): the third link of the chain.
+
+    A suggestion is *advice*. It may name one offered candidate id or route away
+    (``reobserve``/``escalate``/``stop``); it can never invent a candidate, carry
+    a coordinate, or claim its own authorization.
+    """
+
+    protocol_version: Literal["2.1"] = PROTOCOL_VERSION
+    task_id: str = Field(min_length=1, max_length=128)
+    subgoal_id: str = Field(min_length=1, max_length=128)
+    observation_id: str = Field(min_length=1, max_length=128)
+    controller_epoch: int = Field(ge=0)
+    candidate_set_hash: str = Field(pattern=_SHA256)
+    candidate_ids: list[str] = Field(default_factory=list, max_length=32)
+    provider: Literal["rules", "typesafe", "openjev", "decider"]
+    model_revision: str = Field(min_length=1, max_length=128)
+    calibration_version: str | None = Field(default=None, max_length=128)
+    route: Literal[ROUTES]
+    selected_candidate_id: str | None = Field(default=None, pattern=_CANDIDATE_ID)
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    certainty: float | None = Field(default=None, ge=0, le=1)
+    noul: float | None = Field(default=None, ge=0, le=1)
+    abstained: bool = False
+    latency_ms: float = Field(ge=0)
+    fallback_reason: str | None = Field(default=None, max_length=128)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=16)
+
+    @model_validator(mode="after")
+    def route_consistency(self):
+        for candidate_id in self.candidate_ids:
+            if not re.match(_CANDIDATE_ID, candidate_id):
+                raise ValueError("candidate_ids must be registry-issued candidate ids")
+        if self.route == "execute":
+            if not self.selected_candidate_id:
+                raise ValueError("execute requires a selected candidate")
+            if self.selected_candidate_id not in self.candidate_ids:
+                raise ValueError("the selected candidate was not offered for this observation")
+            if self.provider != "rules" and not self.calibration_version:
+                raise ValueError("an uncalibrated provider may not suggest execute")
+            if self.abstained:
+                raise ValueError("an abstaining provider may not suggest execute")
+        elif self.selected_candidate_id is not None:
+            raise ValueError("only execute may name a selected candidate")
+        return self
+
+
+def admit_suggestion(suggestion: DecisionSuggestion,
+                     offered: CandidateSetRef) -> DecisionSuggestion:
+    """Cross-check a suggestion against the set the registry actually issued.
+
+    The schema already rejects a suggestion that names a candidate it did not
+    list; this check rejects one that names a *foreign* set, a stale observation,
+    a superseded epoch or an expired set. Any failure is a refusal, never a
+    re-issued candidate.
+    """
+    if suggestion.observation_id != offered.observation_id:
+        raise ProtocolError("stale_observation",
+                            "suggestion refers to a different observation")
+    if suggestion.controller_epoch != offered.controller_epoch:
+        raise ProtocolError("epoch_mismatch", "suggestion was made under another epoch")
+    if suggestion.candidate_set_hash != offered.candidate_set_hash:
+        raise ProtocolError("candidate_set_mismatch",
+                            "suggestion does not belong to the offered candidate set")
+    if not set(suggestion.candidate_ids).issubset(set(offered.candidate_ids)):
+        raise ProtocolError("unregistered_candidate",
+                            "suggestion names a candidate the registry never offered")
+    if offered.is_expired():
+        raise ProtocolError("expired_candidate_set", "the candidate set has expired")
+    return suggestion
+
+
+class GuardedAction(AgentContract):
+    """The only payload the runner may hand to the runtime guard (P2-01).
+
+    Everything here is either registry-issued (candidate id, target ref, epoch,
+    candidate-set hash) or resolved from the task parameter store. Coordinates,
+    raw targets and ``approved`` flags have no field to live in.
+    """
+
+    protocol_version: Literal["2.1"] = PROTOCOL_VERSION
+    session_id: str = Field(min_length=1, max_length=128)
+    request_id: str = Field(pattern=r"^act_[0-9a-f]{16,64}$")
+    task_id: str = Field(min_length=1, max_length=128)
+    subgoal_id: str = Field(min_length=1, max_length=128)
+    observation_id: str = Field(min_length=1, max_length=128)
+    controller_epoch: int = Field(ge=0)
+    candidate_set_hash: str = Field(pattern=_SHA256)
+    candidate_id: str = Field(pattern=_CANDIDATE_ID)
+    target_ref: str | None = Field(default=None, pattern=_TARGET_REF)
+    local_fingerprint: str | None = Field(default=None, min_length=8, max_length=128)
+    action_kind: Literal[ACTION_KINDS]
+    argument_values: dict[str, str] = Field(default_factory=dict)
+    expected: list[Predicate] = Field(default_factory=list, max_length=16)
+    #: The terminal semantic condition this step is expected to reach, used as the
+    #: recovery condition if the dispatch result is lost. It is recorded evidence
+    #: for a later reconciliation and never gates the dispatch itself.
+    recovery: list[Predicate] = Field(default_factory=list, max_length=16)
+    risk_class: Literal["low", "high"]
+    authorization_ref: str | None = Field(default=None, pattern=_AUTHORIZATION_REF)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=16)
+
+    @model_validator(mode="after")
+    def dispatchable(self):
+        for key, value in self.argument_values.items():
+            if key not in GUARDED_ARGUMENT_KEYS:
+                raise ValueError(f"guarded argument {key!r} is not part of the protocol")
+            if not isinstance(value, str) or not value:
+                raise ValueError("guarded argument values must be non-empty strings")
+        if self.action_kind in TARGET_ACTION_KINDS:
+            if not self.target_ref:
+                raise ValueError("a target action requires a registry-issued target_ref")
+            if not self.local_fingerprint:
+                raise ValueError("a target action requires the grounded local fingerprint")
+            if set(self.argument_values) - {"text"}:
+                raise ValueError("target actions may only resolve input text")
+        if self.risk_class == "high" and not self.authorization_ref:
+            raise ValueError("a high-risk action requires a runtime-issued authorization")
+        if self.authorization_ref and self.risk_class != "high":
+            raise ValueError("authorization_ref is only meaningful for a high-risk action")
+        return self
+
+
+class EventEnvelope(AgentContract):
+    """Provenance every task event carries (P2-02).
+
+    ``payload`` stays the event-specific body; the envelope records which
+    observation, epoch, candidate set, decision revision and calibration were in
+    force when the event was written, so a later reviewer can audit an event
+    without replaying the run.
+    """
+
+    protocol_version: Literal["2.1"] = PROTOCOL_VERSION
+    event_type: str = Field(min_length=1, max_length=64)
+    task_id: str = Field(min_length=1, max_length=128)
+    sequence: int = Field(ge=0)
+    created: float = Field(ge=0)
+    observation_id: str | None = Field(default=None, max_length=128)
+    candidate_set_hash: str | None = Field(default=None, pattern=_SHA256)
+    controller_epoch: int | None = Field(default=None, ge=0)
+    model_revision: str | None = Field(default=None, max_length=128)
+    calibration_version: str | None = Field(default=None, max_length=128)
+    evidence_refs: list[str] = Field(default_factory=list, max_length=16)
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 def candidate_set_hash(candidates: list[Candidate]) -> str:

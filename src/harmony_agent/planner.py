@@ -23,9 +23,17 @@ class Subgoal:
     action_kind: str = "tap"
     argument_refs: dict[str, str] = field(default_factory=dict)
     expected: list[Predicate] = field(default_factory=list)
+    #: The terminal postcondition this step is expected to reach, taken from the
+    #: task's own success criteria. It is *not* used to skip work (`expected` is);
+    #: it is handed to the runtime as the dispatch's expected effect, which is what
+    #: lets an unknown write be reconciled later by the action's own semantic
+    #: condition instead of only by "the page did not move".
+    recovery_expected: list[Predicate] = field(default_factory=list)
     depends_on: list[str] = field(default_factory=list)
     status: str = "pending"
     attempts: int = 0
+    #: Why the step could not proceed, when it ended blocked.
+    blocked_reason: str | None = None
 
 
 @dataclass
@@ -60,7 +68,9 @@ class Plan:
                 "parameters": dict(self.parameters), "constraints": list(self.constraints),
                 "subgoals": [{"subgoal_id": s.subgoal_id, "description": s.description,
                               "action_kind": s.action_kind, "status": s.status,
-                              "attempts": s.attempts, "depends_on": list(s.depends_on)}
+                              "attempts": s.attempts, "depends_on": list(s.depends_on),
+                              "expected": [p.id for p in s.expected],
+                              "recovery_expected": [p.id for p in s.recovery_expected]}
                              for s in self.subgoals]}
 
 
@@ -105,6 +115,29 @@ def plan_from_task(task: TaskSubmit) -> Plan:
     if task.arguments.get(STEPS_ARGUMENT):
         return _plan_from_steps(task)
     return _plan_from_criteria(task)
+
+
+#: Criteria the runtime can turn into a *semantic* postcondition (and therefore a
+#: salted recovery condition for an unknown write). Other criteria still bound
+#: the final verification but map to "the page changed".
+SEMANTIC_POSTCONDITIONS = ("text_equals", "foreground_is")
+
+
+def _bind_terminal_postcondition(subgoals: list[Subgoal], task: TaskSubmit) -> None:
+    """Attach the task's terminal semantic criteria to the last step.
+
+    Only the final step is bound: intermediate steps keep the permissive
+    "page changed" effect, because a terminal condition is not expected to hold
+    mid-plan. When the task declares no semantic criterion nothing changes.
+
+    This is what makes an unknown write from an agent task reconcilable by
+    `postcondition_verified`: the runtime stores a salted digest of the condition
+    the caller itself declared, instead of only a pre-dispatch page fingerprint.
+    """
+    criteria = [item for item in task.success_criteria
+                if item.type in SEMANTIC_POSTCONDITIONS]
+    if subgoals and criteria:
+        subgoals[-1].recovery_expected = criteria
 
 
 def _plan_from_steps(task: TaskSubmit) -> Plan:
@@ -156,6 +189,7 @@ def _plan_from_steps(task: TaskSubmit) -> Plan:
                     reference = value if value.startswith("arg.") else f"arg.{value}"
                 subgoal.argument_refs = {"text": reference}
         subgoals.append(subgoal)
+    _bind_terminal_postcondition(subgoals, task)
     return Plan(goal=task.goal, subgoals=subgoals, parameters=parameters,
                 constraints=_constraints(task))
 
@@ -193,6 +227,7 @@ def _plan_from_criteria(task: TaskSubmit) -> Plan:
                 intent_resource_id=intent_resource_id,
                 action_kind="tap",
             ))
+    _bind_terminal_postcondition(subgoals, task)
     return Plan(goal=task.goal, subgoals=subgoals, parameters=parameters,
                 constraints=_constraints(task))
 

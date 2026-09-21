@@ -24,6 +24,7 @@ from .memory import Memory
 from .planner import plan_from_task
 from .supervisor import (RuntimeFacade, TaskError, TaskRun, TaskStore, TaskSupervisor,
                          safety_code)
+from .verifier import VerifierProvider
 from harmony_runtime.contracts import RuntimeFault
 
 
@@ -64,6 +65,11 @@ class AgentHost:
                  certainty_threshold: float = 0.0,
                  ocr=None, matcher=None, retention: Retention | None = None,
                  repo_root: str | Path | None = None,
+                 verifier: VerifierProvider | None = None,
+                 frozen_memory: Any = None,
+                 actor: Any = None,
+                 memory_window_tokens: int | None = None,
+                 memory_compaction_states: int | None = None,
                  provider_config: ProviderConfig | None = None):
         self.runtime = runtime
         self.root = Path(root)
@@ -78,6 +84,21 @@ class AgentHost:
                                    provider_config)
         self.ocr = ocr
         self.matcher = matcher
+        # Optional independent verifier (P2-05) and read-only learning memory
+        # mount (P3-06). Both default to absent, which keeps the code checker and
+        # an unmounted memory in force.
+        self.verifier = verifier
+        self.frozen_memory = frozen_memory
+        # Optional actor: it may propose one bounded recovery subgoal after a step
+        # fails, and it never receives a device handle (P4-01).
+        self.actor = actor
+        # A smaller window makes compression actually trigger in a bounded run;
+        # the default matches the frozen 3000-token window.
+        self.memory_window_tokens = memory_window_tokens
+        self.memory_compaction_states = memory_compaction_states
+        if frozen_memory is not None and not getattr(frozen_memory, "read_only", False):
+            raise RuntimeFault("memory_not_frozen",
+                               "AgentHost may only mount a frozen memory snapshot")
         self.store = TaskStore(self.root / "agent-tasks.sqlite3")
         self.artifacts = ArtifactStore(self.root / "artifacts", retention)
         self.supervisor = TaskSupervisor(self.store)
@@ -153,11 +174,17 @@ class AgentHost:
             task_id=created["task_id"], task=model, plan=plan,
             memory=Memory(goal=model.goal,
                           constraints=[f"allowed_apps={model.scope.allowed_apps}",
-                                       f"allowed_actions={model.scope.allowed_actions}"]),
+                                       f"allowed_actions={model.scope.allowed_actions}"],
+                          **({"window_tokens": self.memory_window_tokens}
+                             if self.memory_window_tokens else {})),
             facade=RuntimeFacade(self.runtime, owner, session_id),
             registry=self.registry, router=self._router(profile), checker=self.checker,
             store=self.store, artifacts=self.artifacts, ocr=self.ocr, matcher=self.matcher,
             arguments=dict(plan.parameters),
+            verifier=self.verifier, frozen_memory=self.frozen_memory,
+            actor=self.actor,
+            **({"compaction_states": self.memory_compaction_states}
+               if self.memory_compaction_states else {}),
         )
         self.supervisor.start(created["task_id"], run)
         return created
