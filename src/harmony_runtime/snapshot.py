@@ -85,17 +85,27 @@ MAX_TREE_BYTES = 8 * 1024 * 1024
 MAX_IMAGE_BYTES = 12 * 1024 * 1024
 TMP_ROOT = "/data/local/tmp"
 
+#: The batched capture runs in two phases with a host-evaluated readiness gate
+#: in between. Phase 1 reads the screen evidence *only*; phase 2 - which holds
+#: every content-bearing read (foreground, display, hierarchy, screenshot) - is
+#: only ever sent to the device after the gate has confirmed a live, awake,
+#: unlocked screen. A screen that is off, locked or not explicitly known ends
+#: the observation at phase 1, so the hierarchy command is never issued.
+PHASE_READINESS = "readiness"
+PHASE_CAPTURE = "capture"
+
 #: One probe = a named list of device commands whose concatenated output is one
-#: section of the transaction.
-_FAST_PROBES = (
-    (SCREEN_BEFORE, (SCREEN_POWER, SCREEN_LOCK)),
+#: section of a transaction.
+_READINESS_PROBE = (SCREEN_BEFORE, (SCREEN_POWER, SCREEN_LOCK))
+_CAPTURE_PROBES = (
     (FOREGROUND_BEFORE, (FOREGROUND_WINDOW, FOREGROUND_MISSIONS, FOREGROUND_WINDOW)),
     (DISPLAY, (DISPLAY_INFO,)),
 )
-_FAST_TAIL = (
+_CAPTURE_TAIL = (
     (FOREGROUND_AFTER, (FOREGROUND_WINDOW, FOREGROUND_MISSIONS, FOREGROUND_WINDOW)),
     (SCREEN_AFTER, (SCREEN_POWER, SCREEN_LOCK)),
 )
+_CONTENT_PROBES = (_CAPTURE_PROBES[0], _CAPTURE_PROBES[1], _CAPTURE_TAIL[0], _CAPTURE_TAIL[1])
 
 CONSISTENT = "consistent"
 SCREEN_CHANGED = "screen_changed_during_capture"
@@ -134,8 +144,8 @@ def temp_dir(pid):
     return "%s/hrt_%s_%s" % (TMP_ROOT, pid, uuid.uuid4().hex[:8])
 
 
-def build_script(marker, directory, include_image, section_timing=False):
-    """Assemble the device-side transaction.
+def build_script(marker, directory, include_image, phase=PHASE_CAPTURE):
+    """Assemble one device-side transaction.
 
     Every command comes from :data:`ALLOWED_COMMANDS`; only the random marker,
     the derived temp directory and the derived file names are interpolated.
@@ -144,8 +154,15 @@ def build_script(marker, directory, include_image, section_timing=False):
     wrapped; every other command runs under the shell's own ``time`` keyword,
     which reports device-side wall time without starting another process, so
     per-section device timing stays available at no measurable cost.
+
+    ``phase`` is the safety gate: :data:`PHASE_READINESS` emits exactly one
+    section (the screen evidence) and nothing else, so the caller can decide
+    whether the device may be asked for content at all. :data:`PHASE_CAPTURE`
+    holds every content-bearing read and is only ever built after that decision.
     """
-    for name, commands in (*_FAST_PROBES, *_FAST_TAIL):
+    if phase not in (PHASE_READINESS, PHASE_CAPTURE):
+        raise RuntimeFault("internal_error", "Unknown device transaction phase")
+    for name, commands in (*_CAPTURE_PROBES, *_CAPTURE_TAIL, _READINESS_PROBE):
         for command in commands:
             if command not in ALLOWED_COMMANDS:
                 raise RuntimeFault("internal_error", "Refused to build an unlisted device command")
@@ -158,11 +175,9 @@ def build_script(marker, directory, include_image, section_timing=False):
     layout_after = f"{directory}_layout_after.json"
     # `snapshot_display` refuses any suffix other than `.jpeg`.
     shot = f"{directory}_shot.jpeg"
-    lines = [
-        f"M={marker}",
-        f"D={directory}",
-        f"rm -f {layout} {layout_after} {shot}",
-    ]
+    lines = [f"M={marker}"]
+    if phase == PHASE_CAPTURE:
+        lines += [f"D={directory}", f"rm -f {layout} {layout_after} {shot}"]
     index = 0
 
     def emit(name, commands):
@@ -178,16 +193,19 @@ def build_script(marker, directory, include_image, section_timing=False):
         lines.append(f"echo {marker}:{index}:e")
         index += 1
 
-    for name, commands in _FAST_PROBES:
-        emit(name, commands)
-    emit(TREE, (f"uitest dumpLayout -p {layout}", "date +%s%N", f"cat {layout}"))
-    if include_image:
-        emit(IMAGE, (f"snapshot_display -f {shot}", "date +%s%N", f"base64 {shot}"))
-        emit(TREE_AFTER, (f"uitest dumpLayout -p {layout_after}", f"cat {layout_after}"))
-        emit(DISPLAY_AFTER, (DISPLAY_INFO,))
-    for name, commands in _FAST_TAIL:
-        emit(name, commands)
-    lines.append(f"rm -f {layout} {layout_after} {shot}")
+    if phase == PHASE_READINESS:
+        emit(*_READINESS_PROBE)
+    else:
+        for name, commands in _CAPTURE_PROBES:
+            emit(name, commands)
+        emit(TREE, (f"uitest dumpLayout -p {layout}", "date +%s%N", f"cat {layout}"))
+        if include_image:
+            emit(IMAGE, (f"snapshot_display -f {shot}", "date +%s%N", f"base64 {shot}"))
+            emit(TREE_AFTER, (f"uitest dumpLayout -p {layout_after}", f"cat {layout_after}"))
+            emit(DISPLAY_AFTER, (DISPLAY_INFO,))
+        for name, commands in _CAPTURE_TAIL:
+            emit(name, commands)
+        lines.append(f"rm -f {layout} {layout_after} {shot}")
     lines.append(f"echo {marker}:done")
     return "\n".join(lines)
 
@@ -257,10 +275,12 @@ def _tree_fingerprint(tree):
     return hashlib.sha256(canonical(tree).encode()).hexdigest()
 
 
-def _section_map(include_image):
+def _section_map(include_image, phase=PHASE_CAPTURE):
     """Return {name: index} and {index: command count} for one transaction."""
     names, counts, index = [], {}, 0
-    for name, commands in _FAST_PROBES:
+    if phase == PHASE_READINESS:
+        return {SCREEN_BEFORE: 0}, {0: len(_READINESS_PROBE[1])}
+    for name, commands in _CAPTURE_PROBES:
         names.append(name)
         counts[index] = len(commands)
         index += 1
@@ -277,7 +297,7 @@ def _section_map(include_image):
         names.append(DISPLAY_AFTER)
         counts[index] = 1
         index += 1
-    for name, commands in _FAST_TAIL:
+    for name, commands in _CAPTURE_TAIL:
         names.append(name)
         counts[index] = len(commands)
         index += 1
@@ -331,8 +351,14 @@ def device_timing_ms(text):
     return round(total, 3) if found else None
 
 
-def _sections_to_snapshot(results, names, *, provider, round_trips, started, finished,
-                          device_ms, include_image, component_errors):
+def parse_screen_section(pieces):
+    """Parse the readiness section with the same parser the legacy path uses."""
+    parse_screen_state, _ = _library()
+    return parse_screen_state(*[strip_device_timing(piece) for piece in pieces])
+
+
+def _sections_to_snapshot(results, names, *, screen_before, provider, round_trips, started,
+                          finished, device_ms, include_image, component_errors):
     parse_screen_state, parse_display_info = _library()
     values = {name: results[index] for name, index in names.items()}
     section_ms = {}
@@ -354,8 +380,7 @@ def _sections_to_snapshot(results, names, *, provider, round_trips, started, fin
         "section_ms": section_ms,
         "component_errors": list(component_errors),
     }
-    snapshot["screen_before"] = parse_screen_state(*[strip_device_timing(p)
-                                                    for p in values[SCREEN_BEFORE]])
+    snapshot["screen_before"] = screen_before
     snapshot["foreground_before"] = parse_foreground(*[strip_device_timing(p)
                                                        for p in values[FOREGROUND_BEFORE]])
     snapshot["display"] = _validate_display(parse_display_info(strip_device_timing(values[DISPLAY][0])))
@@ -438,7 +463,14 @@ def assess(snapshot, include_image):
 # -- providers ---------------------------------------------------------------
 
 class BatchedSnapshotProvider:
-    """One device-side transaction per snapshot (one host<->device round trip)."""
+    """The readiness gate and the capture transaction, as two device phases.
+
+    :meth:`readiness` is the only thing that may be asked of the device before
+    the gate is satisfied: it carries the screen evidence and nothing else.
+    :meth:`capture` holds every content-bearing read and must only be called
+    once the runtime has accepted that evidence, so a screen that is off,
+    locked or not explicitly known never receives a hierarchy command.
+    """
 
     name = "batched"
     version = 1
@@ -446,27 +478,57 @@ class BatchedSnapshotProvider:
     def __init__(self, device):
         self.device = device
 
-    def capture(self, include_image=False, timing=None):
-        marker = MARKER_PREFIX + uuid.uuid4().hex[:12]
-        directory = temp_dir(os.getpid())
-        script = build_script(marker, directory, include_image)
-        names, counts = _section_map(include_image)
+    def _run(self, script, marker, counts, timing, phase):
         started = time.monotonic()
         if timing is None:
             result = self.device.batch_probe(script)
         else:
-            result = timing.call("snapshot_transaction", self.device.batch_probe, script)
+            name = "readiness_transaction" if phase == PHASE_READINESS else "snapshot_transaction"
+            result = timing.call(name, self.device.batch_probe, script)
         finished = time.monotonic()
         if timing is None:
             results = parse_transaction(result.get("raw"), marker, counts)
         else:
-            results = timing.call("snapshot_parse", parse_transaction,
-                                  result.get("raw"), marker, counts)
-        return _sections_to_snapshot(
-            results, names, provider=self.name, round_trips=1,
+            name = "readiness_parse" if phase == PHASE_READINESS else "snapshot_parse"
+            results = timing.call(name, parse_transaction, result.get("raw"), marker, counts)
+        return results, result, started, finished
+
+    def readiness(self, timing=None):
+        """Phase 1: the live screen evidence, and nothing else."""
+        marker = MARKER_PREFIX + uuid.uuid4().hex[:12]
+        directory = temp_dir(os.getpid())
+        script = build_script(marker, directory, False, PHASE_READINESS)
+        _, counts = _section_map(False, PHASE_READINESS)
+        results, result, started, finished = self._run(script, marker, counts, timing,
+                                                       PHASE_READINESS)
+        screen_ms = None
+        for piece in results[0]:
+            measured = device_timing_ms(piece)
+            if measured is not None:
+                screen_ms = (screen_ms or 0.0) + measured
+        return {
+            "state": parse_screen_section(results[0]),
+            "raw_ms": round((finished - started) * 1000, 3),
+            "device_ms": result.get("device_ms"),
+            "screen_ms": screen_ms,
+        }
+
+    def capture(self, include_image=False, timing=None, screen_before=None):
+        if screen_before is None:
+            raise RuntimeFault("internal_error",
+                               "A batched capture requires a confirmed readiness state")
+        marker = MARKER_PREFIX + uuid.uuid4().hex[:12]
+        directory = temp_dir(os.getpid())
+        script = build_script(marker, directory, include_image, PHASE_CAPTURE)
+        names, counts = _section_map(include_image, PHASE_CAPTURE)
+        results, result, started, finished = self._run(script, marker, counts, timing,
+                                                       PHASE_CAPTURE)
+        snapshot = _sections_to_snapshot(
+            results, names, screen_before=screen_before, provider=self.name, round_trips=2,
             started=started, finished=finished,
             device_ms=result.get("device_ms"), include_image=include_image,
             component_errors=[])
+        return snapshot
 
 
 class LegacySnapshotProvider:
@@ -579,6 +641,10 @@ class ProviderState:
         self.degraded = False
         self.fallback_reason = None
         self.counts = {"batched": 0, "legacy": 0, "legacy_fallback": 0}
+        #: Device transactions actually issued, and readiness refusals that
+        #: stopped the observation *before* any content-bearing command.
+        self.transactions = 0
+        self.gate_refusals = 0
 
     def record_success(self, provider):
         self.counts[provider] = self.counts.get(provider, 0) + 1
@@ -595,44 +661,90 @@ class ProviderState:
     def as_dict(self):
         return {"counts": dict(self.counts), "degraded": self.degraded,
                 "consecutive_failures": self.consecutive_failures,
-                "last_fallback_reason": self.fallback_reason}
+                "last_fallback_reason": self.fallback_reason,
+                "transactions": self.transactions,
+                "gate_refusals": self.gate_refusals}
+
+
+def provider_choice(device, supports_foreground=True, state=None):
+    """``("batched", None)`` or ``("legacy", reason)``."""
+    state = state if state is not None else _MODULE_STATE
+    if state.degraded:
+        return "legacy", "degraded"
+    if not batched_enabled():
+        return "legacy", "flag_off"
+    if not hasattr(device, "batch_probe"):
+        return "legacy", "device_without_batched_probe"
+    if not supports_foreground:
+        return "legacy", "no_foreground_support"
+    return "batched", None
+
+
+def readiness_probe(device, *, timing=None, state=None):
+    """Phase 1: the live screen evidence, and nothing else.
+
+    This is the only device transaction that may run before the readiness gate
+    is satisfied. It carries no hierarchy, no screenshot and no foreground
+    payload, so a screen that is off or locked never sees a content read.
+    """
+    state = state if state is not None else _MODULE_STATE
+    state.transactions += 1
+    try:
+        return BatchedSnapshotProvider(device).readiness(timing)
+    except TransactionError as error:
+        state.record_failure(str(error))
+        raise
+
+
+def capture_after_readiness(device, *, include_image=False, screen_before, readiness_ms=None,
+                            supports_foreground=True, timing=None, state=None, ready=None):
+    """Phase 2: every content-bearing read, only after an accepted gate.
+
+    ``screen_before`` must be the state the gate accepted; passing ``None`` is
+    refused here as well, so a caller cannot reach the hierarchy section by
+    skipping the gate.
+    """
+    state = state if state is not None else _MODULE_STATE
+    if not isinstance(screen_before, dict):
+        raise RuntimeFault("internal_error",
+                           "Refusing a content capture without a confirmed readiness state")
+    state.transactions += 1
+    try:
+        snapshot = BatchedSnapshotProvider(device).capture(include_image, timing, screen_before)
+        if readiness_ms is not None:
+            snapshot["section_ms"]["screen_before"] = readiness_ms
+            snapshot["readiness_gate_ms"] = readiness_ms
+        snapshot["readiness_gate"] = "confirmed"
+        state.record_success("batched")
+        return snapshot
+    except TransactionError as error:
+        degraded = state.record_failure(str(error))
+        snapshot = LegacySnapshotProvider(device, supports_foreground, ready).capture(include_image,
+                                                                                     timing)
+        snapshot["provider"] = "legacy_fallback"
+        snapshot["fallback_reason"] = str(error)
+        snapshot["provider_degraded"] = degraded
+        state.record_success("legacy_fallback")
+        return snapshot
 
 
 def capture_snapshot(device, *, include_image=False, supports_foreground=True, state=None,
                      timing=None, ready=None):
-    """Capture one live snapshot, preferring the merged transport.
+    """The legacy/fallback capture: the original gated six-read sequence.
 
-    The caller always receives the same normalized shape. A framing or parsing
-    failure of the batched transaction is answered by one legacy capture, which
-    is recorded (never hidden) and bounded: after
-    :data:`ProviderState.MAX_CONSECUTIVE_FAILURES` consecutive failures the
-    provider degrades to the legacy sequence for the remaining process.
+    The batched path never reaches this function directly; it enters through
+    :func:`readiness_probe` + :func:`capture_after_readiness` so that no
+    content-bearing command can run before the gate. This entry exists for the
+    legacy selection branches (flag off, no batched probe, no foreground
+    support, degraded) and as the bounded fallback, and it applies the same
+    readiness policy through ``ready`` as it always did.
     """
     state = state if state is not None else _MODULE_STATE
-    legacy = LegacySnapshotProvider(device, supports_foreground, ready)
-    reason = None
-    if state.degraded:
-        reason = "degraded"
-    elif not batched_enabled():
-        reason = "flag_off"
-    elif not hasattr(device, "batch_probe"):
-        reason = "device_without_batched_probe"
-    elif not supports_foreground:
-        reason = "no_foreground_support"
-    if reason is None:
-        try:
-            snapshot = BatchedSnapshotProvider(device).capture(include_image, timing)
-            state.record_success("batched")
-            return snapshot
-        except TransactionError as error:
-            degraded = state.record_failure(str(error))
-            snapshot = legacy.capture(include_image, timing)
-            snapshot["provider"] = "legacy_fallback"
-            snapshot["fallback_reason"] = str(error)
-            snapshot["provider_degraded"] = degraded
-            state.record_success("legacy_fallback")
-            return snapshot
-    snapshot = legacy.capture(include_image, timing)
+    name, reason = provider_choice(device, supports_foreground, state)
+    if name == "batched":
+        reason = "no_readiness_gate"
+    snapshot = LegacySnapshotProvider(device, supports_foreground, ready).capture(include_image,
+                                                                                 timing)
     snapshot["fallback_reason"] = reason
     state.record_success("legacy")
     return snapshot

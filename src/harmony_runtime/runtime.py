@@ -12,7 +12,8 @@ from .device_queue import DeviceQueue
 from .device_worker import ProcessDevice
 from .journal import Journal
 from .observation import canonical, matches, resolve, snapshot, input_value_matches
-from .snapshot import ProviderState, capture_snapshot
+from .snapshot import (ProviderState, capture_after_readiness, capture_snapshot,
+                       provider_choice, readiness_probe)
 from .target_identity import AMBIGUOUS, StableTargetMatcher
 from .risk import is_sensitive, label_of, scan
 from .visual import encode_image, mark_targets
@@ -318,45 +319,83 @@ class Runtime:
             return "screen_off"
         return "screen_state_unknown"
 
-    def _capture_snapshot(self, s, include_image, timing, ready=None):
-        """One live capture, with the legacy screen-readiness policy applied.
+    @staticmethod
+    def _screen_recoverable(state) -> bool:
+        """Only an explicitly off or explicitly locked screen may be recovered."""
+        return state.get("screen_on") is False or state.get("screen_locked") is True
 
-        The legacy sequence reads the screen through ``ready`` first, so a
-        locked or dark screen is still refused before the hierarchy is read.
-        A batched transaction samples the screen inside the same device-side
-        transaction, so its readiness is evaluated afterwards: an unconfirmed
-        screen drops every existing observation handle, discards the capture and
-        is answered by exactly one credential-free wake/unlock recovery before
-        the snapshot is read again. A capture that stays unconfirmed raises the
-        same fault the previous single-read path raised.
+    def _require_ready(self, s, state):
+        """The shared readiness policy: accept, or fail closed with the exact code.
+
+        Both providers use this. It never turns unknown evidence into readiness,
+        and it drops every existing observation handle before refusing.
+        """
+        if self._screen_ready(state):
+            return state
+        s.observations.clear()
+        raise RuntimeFault(
+            self._screen_fault_code(state),
+            "A confirmed awake, unlocked screen is required; "
+            "automatic wake/unlock did not confirm readiness")
+
+    def _capture_snapshot(self, s, include_image, timing, ready=None):
+        """One live capture, gated before any content-bearing device command.
+
+        Legacy reads the screen through ``ready`` first, exactly as before.
+        The batched provider runs in two phases: phase 1 reads the live screen
+        evidence and nothing else, this method applies the shared readiness
+        policy to it, and only an accepted state lets phase 2 (foreground,
+        display, hierarchy, screenshot) reach the device. A screen that is off,
+        locked or not explicitly known therefore never receives a hierarchy
+        command - the capture transaction is not built for it at all.
+
+        A screen that changes *during* the capture is still caught by the
+        post-read: the capture is discarded, handles are dropped, and one
+        bounded credential-free wake/unlock recovery is attempted before the
+        whole sequence is retried.
         """
         device = self._device(s)
-        for _ in range(3):
-            captured = capture_snapshot(
+        name, _ = provider_choice(device, self.supports_foreground, self.provider_state)
+        started_transactions = self.provider_state.transactions
+
+        def completed(snapshot):
+            snapshot["transactions"] = self.provider_state.transactions - started_transactions
+            snapshot["readiness_gate"] = ("confirmed" if name == "batched" else "legacy")
+            return snapshot
+
+        if name == "legacy":
+            return completed(capture_snapshot(
                 device, include_image=include_image,
                 supports_foreground=self.supports_foreground,
-                state=self.provider_state, timing=timing, ready=ready)
-            if captured["provider"] != "batched":
-                return captured
-            unready = [captured[key] for key in ("screen_before", "screen_after")
-                       if not self._screen_ready(captured[key])]
-            if not unready:
-                return captured
-            state = unready[0]
+                state=self.provider_state, timing=timing, ready=ready))
+        for _ in range(3):
+            evidence = readiness_probe(device, timing=timing, state=self.provider_state)
+            state = evidence["state"]
+            if self._screen_ready(state):
+                captured = capture_after_readiness(
+                    device, include_image=include_image, screen_before=state,
+                    readiness_ms=evidence.get("screen_ms"),
+                    supports_foreground=self.supports_foreground, timing=timing,
+                    state=self.provider_state, ready=ready)
+                if self._screen_ready(captured["screen_after"]):
+                    return completed(captured)
+                state = captured["screen_after"]
+            else:
+                # Nothing content-bearing was sent: refuse before phase 2.
+                self.provider_state.gate_refusals += 1
+            # Only an explicitly off or explicitly locked screen may be
+            # recovered, and only when the adapter can actually do it; anything
+            # else fails closed with the exact fault the single-read path raised.
+            recoverable = self._screen_recoverable(state) and all(
+                hasattr(device, name) for name in ("screen_on", "wake_up_display", "unlock"))
+            if not recoverable:
+                self._require_ready(s, state)          # fails closed with the exact code
             s.observations.clear()
-            if not (state.get("screen_on") is False or state.get("screen_locked") is True):
-                raise RuntimeFault(
-                    self._screen_fault_code(state),
-                    "A confirmed awake, unlocked screen is required; "
-                    "automatic wake/unlock did not confirm readiness")
-            # Keep the sequence explicit so each physical recovery step stays
-            # visible to the audit trail and to fake devices in tests.
-            if all(hasattr(device, name) for name in ("screen_on", "wake_up_display", "unlock")):
-                timing.call("screen_recovery", self._wake_unlock, device)
+            timing.call("screen_recovery", self._wake_unlock, device)
             time.sleep(0.05)
         s.observations.clear()
         raise RuntimeFault(
-            self._screen_fault_code(captured.get("screen_after") or {}),
+            self._screen_fault_code(state),
             "A confirmed awake, unlocked screen is required; "
             "automatic wake/unlock did not confirm readiness")
 
@@ -474,6 +513,9 @@ class Runtime:
             "observe.device_ms": captured["span_ms"],
             "observe.hdc_round_trips": captured["round_trips"],
             "observe.provider": captured["provider"],
+            "observe.readiness_gate": captured.get("readiness_gate"),
+            "observe.readiness_gate_ms": captured.get("readiness_gate_ms"),
+            "observe.capture_transactions": captured.get("transactions"),
             "observe.snapshot_span_ms": captured["span_ms"],
             "observe.consistency_check_ms": timing.get("consistency_check_ms"),
             "observe.consistent": bool(captured["consistent"]),
