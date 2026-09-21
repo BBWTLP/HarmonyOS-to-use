@@ -1,0 +1,142 @@
+{
+  "bounded_reobserves": 0,
+  "current_primitive": null,
+  "duration_seconds": 40.785,
+  "gate": {
+    "all_requested_primitives_present": true,
+    "insufficient_valid_samples": [],
+    "passed": true,
+    "primitive_success_rate_ok": true,
+    "recovery_required": false,
+    "requested_samples_per_primitive": 3,
+    "unresolved_actions": 0
+  },
+  "notes": [
+    "input: field resolved via structure and is not focused; focusing as setup",
+    "input: editor field focused via focused"
+  ],
+  "per_primitive": 3,
+  "primitives": {
+    "input": {
+      "elapsed_seconds": 39.768,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 7843.944,
+      "p50_ms": 7703.31,
+      "p95_ms": 7843.944,
+      "primitive_failures": 0,
+      "refusals_before_dispatch": {},
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 0.0,
+        "actions_p95": 0.0,
+        "attempts": 1,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 7219.0,
+        "elapsed_p50_ms": 2281.0,
+        "elapsed_p95_ms": 2438.0,
+        "failure_code": null,
+        "failure_codes": [],
+        "failure_kind": null,
+        "failures": 0,
+        "no_progress": 0,
+        "sessions": [
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 2281.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 1,
+            "elapsed_ms": 2266.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 1,
+            "elapsed_ms": 2438.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          }
+        ],
+        "stale_refusals": 0,
+        "success": 1,
+        "target_drift": [],
+        "trace": [],
+        "transition_counts": {}
+      },
+      "setup_sessions_failed": 0,
+      "success": 3,
+      "success_rate": 1.0,
+      "valid_attempts": 3
+    }
+  },
+  "privacy": "metadata only: no UI text, screenshots, or input values",
+  "schema_version": 2,
+  "scope": "M0 primitive matrix on the current authorised device; acceptance app = Weibo",
+  "session": {
+    "controller_epoch": 0,
+    "device_bound": true,
+    "recovery_required": false,
+    "target_match_counts": {},
+    "unresolved_actions": 0
+  },
+  "setup_actions": 1,
+  "setup_budget": {
+    "max_actions": 10,
+    "max_elapsed_ms": 90000.0,
+    "max_no_progress": 3,
+    "max_same_state_repeats": 2,
+    "max_stale_refusals": 3
+  },
+  "status": "ok",
+  "target_match": {
+    "ambiguous": 0,
+    "changed": 0,
+    "exact": 0,
+    "missing": 0,
+    "stable_rebind": 0
+  },
+  "threshold": {
+    "key_primitives_success_rate": 0.99,
+    "required_valid_attempts": 3
+  },
+  "totals": {
+    "setup_attempts": 1,
+    "setup_failures": 0,
+    "setup_no_progress": 0,
+    "setup_stale_refusals": 0,
+    "setup_success": 1,
+    "setup_transition_counts": {},
+    "success": 3,
+    "success_rate": 1.0,
+    "valid_attempts": 3
+  }
+}

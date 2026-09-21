@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "task": "P0-01/P0-03 baseline freeze",
+  "runtime": {
+    "path": "D:\\music mv\\HarmonyOS-to-use",
+    "branch": "feat/runtime-foundation",
+    "commit": "578265754403b320e6d36355905450855c2e4f75",
+    "dirty_paths": 30,
+    "python": "3.11.9"
+  },
+  "rsi_reference": {
+    "path": "D:\\music mv\\RSIAgent",
+    "present": true,
+    "commit": "a9e56263f6deaa493496ad6b155fe24bf131bc12",
+    "role": "reference implementation only; never a Runtime dependency"
+  },
+  "dependencies": {
+    "requirements.lock": {
+      "sha256": "18a991d559cde14ec9d7d2e06dffd4d9140c4ac949ccf7e61b7719e62a126055"
+    },
+    "pyproject.toml": {
+      "sha256": "71dd8af8f8e589c04c2e98989aeaeb3844a846b8642e46dc4bbebe00a2eb162b"
+    },
+    "pip_check": {
+      "exit_code": 0,
+      "summary": "No broken requirements found."
+    }
+  },
+  "device_baseline": {
+    "path": "docs/acceptance/2026-09-19/device-baseline-20260919-batched.json",
+    "sha256": "7278d6c9f1c14ef92a487b589ed75116bcba877144c425e19461f2734a2bb98b",
+    "note": "device identity is recorded per batch; a device change invalidates"
+  },
+  "frozen_commands": {
+    "regression": "D:\\music mv\\HarmonyOS-to-use\\.venv\\Scripts\\python.exe -m unittest discover -s tests -p test*.py",
+    "regression_wrapper": "python scripts/reproduce.py",
+    "secret_scan": "python scripts/secret_scan.py --report docs/acceptance/2026-09-20/secret-scan.json",
+    "offline_practice": "python tools/rsi/author_wave.py && python tools/rsi/run_practice.py --approval-ref approval_<id>",
+    "batch_report": "python scripts/experiment_report.py --wave-report .runtime/rsi/wave-report.json"
+  },
+  "report_schema": {
+    "module": "harmony_agent.reporting.ExperimentReport",
+    "plan_section": "§8.3",
+    "required_fields": [
+      "run_id",
+      "code_revision",
+      "device_baseline_hash",
+      "task_set_hash",
+      "memory_manifest_hash",
+      "model_revision",
+      "attempted",
+      "success",
+      "failed",
+      "blocked",
+      "unknown",
+      "p50_ms",
+      "p95_ms",
+      "safety_violations",
+      "artifacts_redacted"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "run_id": "wave_549b2fa015ac489e",
+  "kind": "offline_practice_wave",
+  "code_revision": "578265754403b320e6d36355905450855c2e4f75",
+  "device_baseline_hash": "",
+  "task_set_hash": "",
+  "memory_manifest_hash": "3147cf540be7a00d8ef4e1334908f08a29b0765a928282f1c5bde7ea2a8d0ad5",
+  "model_revision": "",
+  "attempted": 4,
+  "success": 2,
+  "failed": 1,
+  "blocked": 0,
+  "unknown": 1,
+  "p50_ms": null,
+  "p95_ms": null,
+  "safety_violations": 0,
+  "artifacts_redacted": true,
+  "notes": [
+    "mock device only: not device evidence"
+  ]
+}

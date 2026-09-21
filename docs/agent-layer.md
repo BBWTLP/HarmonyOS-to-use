@@ -17,11 +17,57 @@
 | `decision/router.py` | 规则优先、影子/白名单 canary 路由、拒答与升级 |
 | `planner.py` | 计划与子目标；委派步骤语法；循环检测 |
 | `supervisor.py` | 任务状态机、预算、事件、暂停/取消/恢复、对账出口 |
+| `actor.py`（已接入） | Actor 提案是 runner 的唯一"下一步"来源之一：子目标 blocked/failed 时给一次有界重规划；提案经 Intent 契约校验，仍走同一 guard |
 | `memory.py` | 近期窗口、事实/假设分离、压缩与证据索引 |
 | `checker.py` | 只读最终核验；`id:`/`a11y:`/`type:` 目标键与程序谓词 |
 | `artifacts.py` | 工件配额、TTL、脱敏导出；未决记录不参与回收 |
 | `cli.py` | 只读 CLI：`agent tasks / task / artifacts / replay`，分页有界、缺失工件显式标记 |
 | `evals.py` | 离线评测：开发/校准/保留集切分、覆盖率与错误分母、Brier/ECE、阈值只在校准集拟合 |
+| `actor.py` | `ActorProvider` 协议：Actor 只能返回结构化子目标或控制出口；`DeterministicActor` 无需模型即可跑完计划 |
+| `verifier.py` | `VerifierProvider` 协议：三态 verdict、只读能力声明校验、`ReadOnlyVerifierMount` 写方法一律拒绝 |
+| `experience.py` | 经验 schema（scope/trigger/grounding/procedure/outcome/risk/evidence/hash）与 staging/commit 门 |
+| `memory_store.py` | 版本化学习记忆：父/自身 manifest hash、原子快照、独立 frozen 产物、只读挂载 `FrozenMemory` |
+| `fake_device.py` | 离线练习用 mock 设备（可被真实 Runtime 持有；故障注入 noop/unknown/lock） |
+| `rsi.py` | 离线 RSI wave runner：同一起点并行分支、wave barrier、固定顺序合并、练习选择器 |
+| `reporting.py` | 计划 §8.3 的批量报告 schema（失败分母、P50/P95、安全违规、脱敏标记） |
+
+## 协议 2.1（P2）
+
+`Intent → CandidateSetRef → DecisionSuggestion → GuardedAction` 是执行链的冻结契约，
+`EventEnvelope` 是事件日志的溯源外壳：
+
+- `Intent` 只能表达语义目标；坐标、内联输入内容、任意键都不在 schema 内。
+- `CandidateSetRef` 只携带 id/哈希/TTL；`DecisionSuggestion` 只能引用被提供的候选，
+  未校准模型不得 `execute`；`admit_suggestion` 交叉校验 observation/epoch/哈希/过期。
+- `GuardedAction` 是 runner 交给 Runtime 的唯一载荷：必须有注册 `target_ref` 与局部指纹，
+  高风险必须有运行时签发的 `authz_` 引用（模型自报的 approved 不是授权）。
+- 每条任务事件都带 envelope：`observation_id / candidate_set_hash / controller_epoch /
+  model_revision / calibration_version / evidence_refs`，旧数据库自动迁移。
+
+## 学习闭环（P3）
+
+## Actor 重规划与恢复条件（P4-01 前半 / P1-04）
+
+- `AgentHost(actor=...)` 注入 ActorProvider（未注入时行为与之前一致）。子目标 blocked 或
+  attempts 用尽时，runner 会构造**脱敏** `ActorRequest`（无 facade、无 catalog、无候选 id、
+  无坐标），Actor 只能返回结构化子目标或 reobserve/escalate/wait/stop。
+- 提案经 `Intent` 契约校验（坐标、内联输入、跨任务 intent 一律拒绝），通过后作为新子目标
+  追加并写入新 plan version；重规划次数默认上限 2（`HARMONY_AGENT_MAX_ACTOR_REPLANS`），
+  且仍受 dispatch/时间预算约束。即使 Actor 绕过 schema 直接给出坐标，grounding 也找不到
+  语义目标，不会派发。
+- 计划的最后一步可携带 `recovery_expected`：任务的语义终态条件被送入
+  `mobile_act.recovery`，运行时把它当作 durable 恢复条件（salted digest）写入 journal。
+  这样未知写入可以用 `postcondition_verified` 对账，而中间步骤仍是 "page changed"，
+  目标未达成不会变成重复点击。
+
+```text
+PRACTICE_AUTHORED → ACTOR_ATTEMPTED → VERIFIER_PASS/FAIL/INCONCLUSIVE
+  → EXPERIENCE_STAGED → MEMORY_COMMITTED → MEMORY_FROZEN
+```
+
+wave 的所有分支从同一 frozen memory 出发，全部分支结束后才合并；inconclusive、执行未知、
+基础设施错误、缺证据一律 blocked，不进入 memory。在线任务只能挂载 `FrozenMemory`（无写
+方法），`AgentHost` 拒绝非 frozen 挂载。
 
 ## 安全边界
 

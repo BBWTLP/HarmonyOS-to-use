@@ -2,6 +2,57 @@
 
 更新：2026-09-19。项目仍未完成最终验收；此文件记录真实进展，不修改原计划范围。
 
+## 本增量（2026-09-21：真机复测 + 设备锁定期间的离线推进）
+
+- 真机复测（设备解锁窗口内）：`input` 原语缺口定位并修复（编辑器输入框 `resource_id` 为空、
+  仅自增 `accessibilityId`、不自动聚焦）→ 复测 **3/3**，M0 25/原语长批中 **25/25**；
+  M0 全量 smoke 7×3 = **20/21**（仅 `screenshot_inconsistent` 1 次）；M0 25/原语
+  **174/175 = 99.43%**（gate 未过，screenshot 96%），`unresolved_actions=0`。
+- M1 单批 30 次尝试只完成 5 次（全部 blocked、dispatches=0），第 6 次因手机**密码锁屏**
+  `screen_locked` 中止；脚本已改为把设备级失败记为 blocked 并在连续 3 次后干净收尾。
+- 设备锁定期间完成三项关键路径上的离线工作：P1-04 收口（任务语义终态条件作为
+  `ActRequest.recovery` 写入 journal，agent 任务的未知写入可用 `postcondition_verified`
+  对账，且未达成目标不触发重复派发）、P4-01 前半（Actor 接入任务循环：有界重规划、
+  脱敏请求、仍走同一 guard）、P7-02（只读 `harmony-runtime service` 诊断，服务存活 ok/
+  过期 stale，已加入 `doctor`）。
+- 离线回归 **739 项通过**（本轮 723 → 739）；`pip check`、`compileall`、
+  `git diff --check`、`secret_scan`（0 findings）全部通过。
+- 仍未关闭：M0 100/原语、M1 30 次、Burst/Wait 真机语义、300 次正式验收、真实决策数据
+  300+ 与 canary（当前 `keep_shadow_only`）。设备需人工解锁并保持解锁。
+
+### 续（同一设备锁定窗口内，第二、三批离线推进）
+
+- P6-01：子目标级 `checkpoint` 事件（phase/plan_version/status/attempts/blocked_reason/
+  剩余预算/replan 原因）+ `task_status.current_subgoal`，长任务可从日志重建。
+- P6-02：runner 在 recent-state 窗口真正超预算时触发压缩，压缩后立刻用任务目标、约束与
+  未决 incident 做 `can_answer` 校验；缺失会写 `context_loss` 并计入结果 limitations
+  （此前 `Memory.compress()` 从未被在线路径调用）。
+- P7-05：`docs/runbook-rollback.md` 覆盖 Runtime/Decider/memory 三层回滚；
+  `MemoryStore.rollback()` 以追加方式回滚并保留旧版本与审查记录，实跑演练通过。
+- 离线回归 **745 项通过**（723 → 745）；`pip check`、`compileall`、`git diff --check`、
+  `secret_scan`（0 findings）全部通过。
+
+## 本增量（2026-09-20：RSIAgent × Decider 计划落地，Phase 0/2/3 + P1-04）
+
+- 按 `docs/architecture-rsi-decider-plan-2026-09-20.md` 落地：Phase 0（基线冻结、秘密扫描、
+  报告 schema）、Phase 2（协议 2.1 + 事件 envelope + Actor/Verifier 协议）、Phase 3（离线
+  学习闭环：mock 设备、wave barrier、经验门、memory staging/freeze、`tools/rsi/*`）、
+  P1-04（unknown write 可信对账）。台账见 `docs/rsi-decider-plan-status.md`，证据见
+  `docs/acceptance/2026-09-20/rsi-decider-plan-increment.md`。
+- 离线回归 **710 项通过**（675 → 710：协议 16、学习闭环 13、对账 6）。
+- `scripts/secret_scan.py` 扫描 224 个受控文件：**0 findings**，8 条 device-serial 命中列入
+  `reviewed_allowlisted` 并给出理由；未见被跟踪截图/原始树/私钥/服务 token。
+- 新增 `mobile_session(operation="reconcile")`：只有 `postcondition_verified`（原始语义后置
+  条件成立）或 `not_executed`（页面指纹与派发前逐字节一致 + attestation）才能关闭未知写入；
+  拒绝过期证据、证据不足、未绑定设备旧记录；**永不重放**，也不改动原始 unknown 记录。
+- 真机分级入口复跑 `--only back input --per-primitive 3`：`back` **3/3**，
+  `input` **0/3**（`input_field_missing`，setup_actions=0），gate `not_ready`；
+  同 RC `19ee190` 的 3/原语全绿与本轮不同，input setup 需要继续定位。
+- 真机部署前置条件本轮确认：stdio MCP 前端只连接常驻服务，缺少服务或端点过期时会长时间
+  静默停顿（不派发、不写 progress）。运行真机批次前必须先启动 `harmony_runtime.cli serve`。
+- 未完成门槛不变：M0 每原语 100 有效样本、M1 冻结代码单批 30 次、Burst/Wait 真机语义、
+  300 次正式验收、真实决策数据 300+ 与 canary（当前仍为 `keep_shadow_only`）。
+
 ## 当前增量（2026-09-19：严格输入、微博搜索与受控服务加载）
 
 - 按用户更正，跳过重新做基线，沿用当前已就绪真机与既有 Runtime，继续输入及业务闭环。系统和验收仍以这台真机为准。

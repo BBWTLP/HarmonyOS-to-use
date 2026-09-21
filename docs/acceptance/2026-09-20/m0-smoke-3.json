@@ -1,0 +1,943 @@
+{
+  "bounded_reobserves": 2,
+  "current_primitive": null,
+  "duration_seconds": 259.005,
+  "gate": {
+    "all_requested_primitives_present": true,
+    "insufficient_valid_samples": [],
+    "passed": false,
+    "primitive_success_rate_ok": false,
+    "recovery_required": false,
+    "requested_samples_per_primitive": 3,
+    "unresolved_actions": 0
+  },
+  "notes": [
+    "input: field resolved via structure and is not focused; focusing as setup",
+    "input: editor field focused via focused"
+  ],
+  "per_primitive": 3,
+  "primitives": {
+    "back": {
+      "elapsed_seconds": 67.099,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 4956.596,
+      "p50_ms": 4954.71,
+      "p95_ms": 4956.596,
+      "primitive_failures": 0,
+      "refusals_before_dispatch": {},
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 3.0,
+        "actions_p95": 3.0,
+        "attempts": 6,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 16375.0,
+        "elapsed_p50_ms": 21063.0,
+        "elapsed_p95_ms": 29063.0,
+        "failure_code": null,
+        "failure_codes": [
+          "stale_observation"
+        ],
+        "failure_kind": null,
+        "failures": 0,
+        "no_progress": 0,
+        "sessions": [
+          {
+            "actions": 3,
+            "actions_start": 0,
+            "elapsed_ms": 29063.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 1,
+            "stale_start": 0,
+            "steps": 2,
+            "transitions": {
+              "open_discover": 1,
+              "open_search": 1
+            }
+          },
+          {
+            "actions": 0,
+            "actions_start": 3,
+            "elapsed_ms": 2156.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 1,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 3,
+            "actions_start": 3,
+            "elapsed_ms": 21063.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 2,
+            "stale_start": 1,
+            "steps": 1,
+            "transitions": {
+              "open_search": 1
+            }
+          }
+        ],
+        "stale_refusals": 3,
+        "success": 3,
+        "target_drift": [
+          {
+            "action_id_changed": false,
+            "bounds": {
+              "after": [
+                47,
+                154,
+                1273,
+                276
+              ],
+              "before": [
+                47,
+                154,
+                1273,
+                276
+              ]
+            },
+            "fields_changed": [
+              "accessibility_id"
+            ],
+            "label_hash_changed": true,
+            "local_attributes_changed": [
+              "accessibility_id"
+            ],
+            "parent_action_id_changed": false,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_search",
+            "subtree_fingerprint": {
+              "after": "207ea9359e37",
+              "before": "d09e5e2a7bdc"
+            },
+            "subtree_fingerprint_changed": true
+          },
+          {
+            "action_id_changed": false,
+            "bounds": {
+              "after": [
+                47,
+                154,
+                1273,
+                276
+              ],
+              "before": [
+                47,
+                154,
+                1273,
+                276
+              ]
+            },
+            "fields_changed": [
+              "accessibility_id"
+            ],
+            "label_hash_changed": true,
+            "local_attributes_changed": [
+              "accessibility_id"
+            ],
+            "parent_action_id_changed": false,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_search",
+            "subtree_fingerprint": {
+              "after": "a4d0695b9323",
+              "before": "26360171eaf2"
+            },
+            "subtree_fingerprint_changed": true
+          },
+          {
+            "action_id_changed": false,
+            "bounds": {
+              "after": [
+                47,
+                154,
+                1273,
+                276
+              ],
+              "before": [
+                47,
+                154,
+                1273,
+                276
+              ]
+            },
+            "fields_changed": [
+              "accessibility_id",
+              "hierarchy"
+            ],
+            "label_hash_changed": true,
+            "local_attributes_changed": [
+              "accessibility_id",
+              "hierarchy"
+            ],
+            "parent_action_id_changed": false,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_search",
+            "subtree_fingerprint": {
+              "after": "90b584567185",
+              "before": "a4d0695b9323"
+            },
+            "subtree_fingerprint_changed": true
+          }
+        ],
+        "trace": [
+          {
+            "act_error_code": null,
+            "act_status": "ok",
+            "elapsed_ms": 1953.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": true,
+            "stale_refusal": false,
+            "state_changed": true,
+            "step": 1,
+            "surface_after": "discover",
+            "surface_before": "tabs",
+            "target_found": true,
+            "transition": "open_discover",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": null,
+            "act_status": "ok",
+            "elapsed_ms": 13938.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": true,
+              "field_present": true,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": true
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": true,
+            "stale_refusal": true,
+            "state_changed": true,
+            "step": 2,
+            "surface_after": "search_editor",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": null,
+            "act_status": "ok",
+            "elapsed_ms": 1860.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": true,
+              "field_present": true,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": true
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": true,
+            "stale_refusal": true,
+            "state_changed": true,
+            "step": 1,
+            "surface_after": "search_editor",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          }
+        ],
+        "transition_counts": {
+          "open_discover": 1,
+          "open_search": 2
+        }
+      },
+      "setup_sessions_failed": 0,
+      "success": 3,
+      "success_rate": 1.0,
+      "valid_attempts": 3
+    },
+    "input": {
+      "elapsed_seconds": 40.133,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 7892.406,
+      "p50_ms": 7668.843,
+      "p95_ms": 7892.406,
+      "primitive_failures": 0,
+      "refusals_before_dispatch": {},
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 0.0,
+        "actions_p95": 0.0,
+        "attempts": 1,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 7469.0,
+        "elapsed_p50_ms": 2344.0,
+        "elapsed_p95_ms": 2360.0,
+        "failure_code": null,
+        "failure_codes": [],
+        "failure_kind": null,
+        "failures": 0,
+        "no_progress": 0,
+        "sessions": [
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 2187.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 1,
+            "elapsed_ms": 2344.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 1,
+            "elapsed_ms": 2360.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          }
+        ],
+        "stale_refusals": 0,
+        "success": 1,
+        "target_drift": [],
+        "trace": [],
+        "transition_counts": {}
+      },
+      "setup_sessions_failed": 0,
+      "success": 3,
+      "success_rate": 1.0,
+      "valid_attempts": 3
+    },
+    "launch": {
+      "elapsed_seconds": 22.478,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 5275.567,
+      "p50_ms": 5050.301,
+      "p95_ms": 5275.567,
+      "primitive_failures": 0,
+      "refusals_before_dispatch": {},
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 0.0,
+        "actions_p95": 0.0,
+        "attempts": 0,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 0.0,
+        "elapsed_p50_ms": 0.0,
+        "elapsed_p95_ms": 0.0,
+        "failure_code": null,
+        "failure_codes": [],
+        "failure_kind": null,
+        "failures": 0,
+        "no_progress": 0,
+        "sessions": [],
+        "stale_refusals": 0,
+        "success": 0,
+        "target_drift": [],
+        "trace": [],
+        "transition_counts": {}
+      },
+      "setup_sessions_failed": 0,
+      "success": 3,
+      "success_rate": 1.0,
+      "valid_attempts": 3
+    },
+    "screenshot": {
+      "elapsed_seconds": 11.438,
+      "failure_codes": [
+        "screenshot_inconsistent"
+      ],
+      "failures": [
+        {
+          "code": "screenshot_inconsistent",
+          "index": 1,
+          "message": "Tree bracket around the screenshot did not match",
+          "setup_actions": 0
+        }
+      ],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 3878.256,
+      "p50_ms": 3842.544,
+      "p95_ms": 3878.256,
+      "primitive_failures": 1,
+      "refusals_before_dispatch": {},
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 0.0,
+        "actions_p95": 0.0,
+        "attempts": 0,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 0.0,
+        "elapsed_p50_ms": 0.0,
+        "elapsed_p95_ms": 0.0,
+        "failure_code": null,
+        "failure_codes": [],
+        "failure_kind": null,
+        "failures": 0,
+        "no_progress": 0,
+        "sessions": [],
+        "stale_refusals": 0,
+        "success": 0,
+        "target_drift": [],
+        "trace": [],
+        "transition_counts": {}
+      },
+      "setup_sessions_failed": 0,
+      "success": 2,
+      "success_rate": 0.6667,
+      "valid_attempts": 3
+    },
+    "swipe": {
+      "elapsed_seconds": 75.235,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 6364.709,
+      "p50_ms": 5696.011,
+      "p95_ms": 6364.709,
+      "primitive_failures": 0,
+      "refusals_before_dispatch": {},
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 0.0,
+        "actions_p95": 6.0,
+        "attempts": 6,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 21422.0,
+        "elapsed_p50_ms": 2328.0,
+        "elapsed_p95_ms": 53297.0,
+        "failure_code": null,
+        "failure_codes": [
+          "stale_observation"
+        ],
+        "failure_kind": null,
+        "failures": 0,
+        "no_progress": 1,
+        "sessions": [
+          {
+            "actions": 6,
+            "actions_start": 0,
+            "elapsed_ms": 53297.0,
+            "failure_code": null,
+            "no_progress": 1,
+            "outcome": "ok",
+            "stale_refusals": 3,
+            "stale_start": 0,
+            "steps": 3,
+            "transitions": {
+              "back_to_known": 2,
+              "open_home": 1
+            }
+          },
+          {
+            "actions": 0,
+            "actions_start": 6,
+            "elapsed_ms": 2328.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 3,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 6,
+            "elapsed_ms": 2016.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 3,
+            "steps": 0,
+            "transitions": {}
+          }
+        ],
+        "stale_refusals": 3,
+        "success": 3,
+        "target_drift": [
+          {
+            "action_id_changed": true,
+            "bounds": {
+              "after": [
+                98,
+                2720,
+                166,
+                2754
+              ],
+              "before": [
+                98,
+                2720,
+                166,
+                2754
+              ]
+            },
+            "fields_changed": [],
+            "label_hash_changed": false,
+            "local_attributes_changed": [],
+            "parent_action_id_changed": true,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_home",
+            "subtree_fingerprint": {
+              "after": "baf44ebb3973",
+              "before": "baf44ebb3973"
+            },
+            "subtree_fingerprint_changed": false
+          },
+          {
+            "action_id_changed": true,
+            "bounds": {
+              "after": [
+                98,
+                2720,
+                166,
+                2754
+              ],
+              "before": [
+                98,
+                2720,
+                166,
+                2754
+              ]
+            },
+            "fields_changed": [],
+            "label_hash_changed": false,
+            "local_attributes_changed": [],
+            "parent_action_id_changed": true,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_home",
+            "subtree_fingerprint": {
+              "after": "baf44ebb3973",
+              "before": "baf44ebb3973"
+            },
+            "subtree_fingerprint_changed": false
+          },
+          {
+            "action_id_changed": true,
+            "bounds": {
+              "after": [
+                98,
+                2720,
+                166,
+                2754
+              ],
+              "before": [
+                98,
+                2720,
+                166,
+                2754
+              ]
+            },
+            "fields_changed": [],
+            "label_hash_changed": false,
+            "local_attributes_changed": [],
+            "parent_action_id_changed": true,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_home",
+            "subtree_fingerprint": {
+              "after": "baf44ebb3973",
+              "before": "baf44ebb3973"
+            },
+            "subtree_fingerprint_changed": false
+          }
+        ],
+        "trace": [
+          {
+            "act_error_code": null,
+            "act_status": "ok",
+            "elapsed_ms": 2453.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": true,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": true
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": true,
+              "field_present": true,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": true
+            },
+            "progress": false,
+            "stale_refusal": false,
+            "state_changed": false,
+            "step": 1,
+            "surface_after": "search_editor",
+            "surface_before": "search_editor",
+            "target_found": true,
+            "transition": "back_to_known",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": null,
+            "act_status": "ok",
+            "elapsed_ms": 17406.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": true,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": true
+            },
+            "progress": true,
+            "stale_refusal": false,
+            "state_changed": true,
+            "step": 2,
+            "surface_after": "discover",
+            "surface_before": "search_editor",
+            "target_found": true,
+            "transition": "back_to_known",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": null,
+            "act_status": "ok",
+            "elapsed_ms": 29328.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": true,
+            "stale_refusal": true,
+            "state_changed": true,
+            "step": 3,
+            "surface_after": "tabs",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_home",
+            "unexpected_transition": false
+          }
+        ],
+        "transition_counts": {
+          "back_to_known": 2,
+          "open_home": 1
+        }
+      },
+      "setup_sessions_failed": 0,
+      "success": 3,
+      "success_rate": 1.0,
+      "valid_attempts": 3
+    },
+    "tap": {
+      "elapsed_seconds": 30.234,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 5085.213,
+      "p50_ms": 4896.1,
+      "p95_ms": 5085.213,
+      "primitive_failures": 0,
+      "refusals_before_dispatch": {
+        "stale_observation": 2
+      },
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 0.0,
+        "actions_p95": 0.0,
+        "attempts": 0,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 0.0,
+        "elapsed_p50_ms": 2219.0,
+        "elapsed_p95_ms": 2437.0,
+        "failure_code": null,
+        "failure_codes": [],
+        "failure_kind": null,
+        "failures": 0,
+        "no_progress": 0,
+        "sessions": [
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 2281.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 2219.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 1984.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 2172.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 2437.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          }
+        ],
+        "stale_refusals": 0,
+        "success": 0,
+        "target_drift": [],
+        "trace": [],
+        "transition_counts": {}
+      },
+      "setup_sessions_failed": 0,
+      "success": 3,
+      "success_rate": 1.0,
+      "valid_attempts": 3
+    },
+    "tree": {
+      "elapsed_seconds": 11.388,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 3848.576,
+      "p50_ms": 3847.615,
+      "p95_ms": 3848.576,
+      "primitive_failures": 0,
+      "refusals_before_dispatch": {},
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 0.0,
+        "actions_p95": 0.0,
+        "attempts": 0,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 0.0,
+        "elapsed_p50_ms": 0.0,
+        "elapsed_p95_ms": 0.0,
+        "failure_code": null,
+        "failure_codes": [],
+        "failure_kind": null,
+        "failures": 0,
+        "no_progress": 0,
+        "sessions": [],
+        "stale_refusals": 0,
+        "success": 0,
+        "target_drift": [],
+        "trace": [],
+        "transition_counts": {}
+      },
+      "setup_sessions_failed": 0,
+      "success": 3,
+      "success_rate": 1.0,
+      "valid_attempts": 3
+    }
+  },
+  "privacy": "metadata only: no UI text, screenshots, or input values",
+  "schema_version": 2,
+  "scope": "M0 primitive matrix on the current authorised device; acceptance app = Weibo",
+  "session": {
+    "controller_epoch": 0,
+    "device_bound": true,
+    "recovery_required": false,
+    "target_match_counts": {
+      "exact": 4
+    },
+    "unresolved_actions": 0
+  },
+  "setup_actions": 1,
+  "setup_budget": {
+    "max_actions": 10,
+    "max_elapsed_ms": 90000.0,
+    "max_no_progress": 3,
+    "max_same_state_repeats": 2,
+    "max_stale_refusals": 3
+  },
+  "status": "not_ready",
+  "target_match": {
+    "ambiguous": 0,
+    "changed": 0,
+    "exact": 4,
+    "missing": 0,
+    "stable_rebind": 0
+  },
+  "threshold": {
+    "key_primitives_success_rate": 0.99,
+    "required_valid_attempts": 3
+  },
+  "totals": {
+    "setup_attempts": 13,
+    "setup_failures": 0,
+    "setup_no_progress": 1,
+    "setup_stale_refusals": 6,
+    "setup_success": 7,
+    "setup_transition_counts": {
+      "back_to_known": 2,
+      "open_discover": 1,
+      "open_home": 1,
+      "open_search": 2
+    },
+    "success": 20,
+    "success_rate": 0.9524,
+    "valid_attempts": 21
+  }
+}

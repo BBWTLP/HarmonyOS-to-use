@@ -1,0 +1,48 @@
+{
+  "app": "com.sina.weibo.stage",
+  "milestone": "M1",
+  "runs": [
+    {
+      "blocked": {
+        "code": "stale_observation",
+        "message": "Page changed since the referenced observation"
+      },
+      "dispatches": 0,
+      "elapsed_seconds": 17.469,
+      "goal": "打开微博搜索页",
+      "reobserves": 0,
+      "run": 1,
+      "status": "blocked",
+      "steps": [],
+      "task_id": "m1_01_open_search_editor",
+      "verdict": {
+        "conditions": [
+          {
+            "decided_by": "code",
+            "detail": "0 node(s)",
+            "evidence_refs": [
+              "obs:c83d4f125683431eaa372d1a142ee148"
+            ],
+            "id": "editor",
+            "verdict": "fail"
+          }
+        ],
+        "evidence_refs": [
+          "obs:c83d4f125683431eaa372d1a142ee148"
+        ],
+        "limitations": [],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "verdict": "fail"
+      }
+    }
+  ],
+  "runs_per_task": 3,
+  "schema_version": 1,
+  "scope": "10 low-risk Weibo tasks, 3 runs each, real device",
+  "session": {
+    "controller_epoch": 0,
+    "device_bound": true
+  },
+  "status": "not_ready"
+}

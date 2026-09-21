@@ -1,0 +1,678 @@
+{
+  "bounded_reobserves": 0,
+  "current_primitive": null,
+  "duration_seconds": 155.086,
+  "gate": {
+    "all_requested_primitives_present": true,
+    "insufficient_valid_samples": [],
+    "passed": false,
+    "primitive_success_rate_ok": false,
+    "recovery_required": false,
+    "requested_samples_per_primitive": 3,
+    "unresolved_actions": 0
+  },
+  "notes": [
+    "back: setup failed (setup_budget_exhausted); primitive not measured"
+  ],
+  "per_primitive": 3,
+  "primitives": {
+    "back": {
+      "elapsed_seconds": 147.185,
+      "failure_codes": [],
+      "failures": [],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 5227.563,
+      "p50_ms": 4899.005,
+      "p95_ms": 5227.563,
+      "primitive_failures": 0,
+      "refusals_before_dispatch": {},
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 1.0,
+        "actions_p95": 10.0,
+        "attempts": 13,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 7547.0,
+        "elapsed_p50_ms": 12703.0,
+        "elapsed_p95_ms": 99875.0,
+        "failure_code": "setup_budget_exhausted",
+        "failure_codes": [
+          "setup_budget_exhausted",
+          "setup_stale_budget_exhausted",
+          "stale_observation"
+        ],
+        "failure_kind": null,
+        "failures": 8,
+        "no_progress": 6,
+        "sessions": [
+          {
+            "actions": 10,
+            "actions_start": 0,
+            "elapsed_ms": 99875.0,
+            "failure_code": "setup_budget_exhausted",
+            "no_progress": 6,
+            "outcome": "failed",
+            "stale_refusals": 10,
+            "stale_start": 0,
+            "steps": 7,
+            "transitions": {
+              "open_home": 1,
+              "open_search": 6
+            }
+          },
+          {
+            "actions": 2,
+            "actions_start": 10,
+            "elapsed_ms": 18156.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 1,
+            "stale_start": 10,
+            "steps": 1,
+            "transitions": {
+              "open_search": 1
+            }
+          },
+          {
+            "actions": 0,
+            "actions_start": 12,
+            "elapsed_ms": 2062.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 11,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 1,
+            "actions_start": 12,
+            "elapsed_ms": 12703.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 11,
+            "steps": 1,
+            "transitions": {
+              "open_search": 1
+            }
+          }
+        ],
+        "stale_refusals": 11,
+        "success": 2,
+        "target_drift": [
+          {
+            "action_id_changed": false,
+            "bounds": {
+              "after": [
+                47,
+                154,
+                1273,
+                276
+              ],
+              "before": [
+                47,
+                154,
+                1273,
+                276
+              ]
+            },
+            "fields_changed": [
+              "accessibility_id"
+            ],
+            "label_hash_changed": true,
+            "local_attributes_changed": [
+              "accessibility_id"
+            ],
+            "parent_action_id_changed": false,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_search",
+            "subtree_fingerprint": {
+              "after": "44254e60ffaf",
+              "before": "9ba090d5ee30"
+            },
+            "subtree_fingerprint_changed": true
+          },
+          {
+            "action_id_changed": false,
+            "bounds": {
+              "after": [
+                47,
+                154,
+                1273,
+                276
+              ],
+              "before": [
+                47,
+                154,
+                1273,
+                276
+              ]
+            },
+            "fields_changed": [
+              "accessibility_id"
+            ],
+            "label_hash_changed": true,
+            "local_attributes_changed": [
+              "accessibility_id"
+            ],
+            "parent_action_id_changed": false,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_search",
+            "subtree_fingerprint": {
+              "after": "600e3417bca8",
+              "before": "44254e60ffaf"
+            },
+            "subtree_fingerprint_changed": true
+          },
+          {
+            "action_id_changed": false,
+            "bounds": {
+              "after": [
+                47,
+                154,
+                1273,
+                276
+              ],
+              "before": [
+                47,
+                154,
+                1273,
+                276
+              ]
+            },
+            "fields_changed": [
+              "accessibility_id"
+            ],
+            "label_hash_changed": true,
+            "local_attributes_changed": [
+              "accessibility_id"
+            ],
+            "parent_action_id_changed": false,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_search",
+            "subtree_fingerprint": {
+              "after": "f646558cc19c",
+              "before": "600e3417bca8"
+            },
+            "subtree_fingerprint_changed": true
+          },
+          {
+            "action_id_changed": false,
+            "bounds": {
+              "after": [
+                47,
+                154,
+                1273,
+                276
+              ],
+              "before": [
+                47,
+                154,
+                1273,
+                276
+              ]
+            },
+            "fields_changed": [
+              "accessibility_id"
+            ],
+            "label_hash_changed": true,
+            "local_attributes_changed": [
+              "accessibility_id"
+            ],
+            "parent_action_id_changed": false,
+            "resolved_before": true,
+            "resolved_current": true,
+            "selector": "open_search",
+            "subtree_fingerprint": {
+              "after": "148cdc8f4097",
+              "before": "f646558cc19c"
+            },
+            "subtree_fingerprint_changed": true
+          }
+        ],
+        "trace": [
+          {
+            "act_error_code": "setup_stale_budget_exhausted",
+            "act_status": "refused",
+            "elapsed_ms": 5562.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": false,
+            "stale_refusal": true,
+            "state_changed": false,
+            "step": 1,
+            "surface_after": "discover",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": "setup_stale_budget_exhausted",
+            "act_status": "refused",
+            "elapsed_ms": 32297.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": false,
+            "stale_refusal": true,
+            "state_changed": false,
+            "step": 2,
+            "surface_after": "discover",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": "setup_stale_budget_exhausted",
+            "act_status": "refused",
+            "elapsed_ms": 45125.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": false,
+            "stale_refusal": true,
+            "state_changed": false,
+            "step": 3,
+            "surface_after": "discover",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": "setup_stale_budget_exhausted",
+            "act_status": "refused",
+            "elapsed_ms": 57078.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": false,
+            "stale_refusal": true,
+            "state_changed": false,
+            "step": 4,
+            "surface_after": "discover",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": "setup_stale_budget_exhausted",
+            "act_status": "refused",
+            "elapsed_ms": 66953.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": false,
+            "recovery": true,
+            "stale_refusal": true,
+            "state_changed": false,
+            "step": 5,
+            "surface_after": "discover",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_home",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": "setup_stale_budget_exhausted",
+            "act_status": "refused",
+            "elapsed_ms": 79343.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": false,
+            "stale_refusal": true,
+            "state_changed": false,
+            "step": 6,
+            "surface_after": "discover",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": "setup_stale_budget_exhausted",
+            "act_status": "refused",
+            "elapsed_ms": 89937.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": false,
+            "stale_refusal": true,
+            "state_changed": false,
+            "step": 7,
+            "surface_after": "discover",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": null,
+            "act_status": "ok",
+            "elapsed_ms": 2875.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": true,
+              "field_present": true,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": true
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": true,
+            "stale_refusal": true,
+            "state_changed": true,
+            "step": 1,
+            "surface_after": "search_editor",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          },
+          {
+            "act_error_code": null,
+            "act_status": "ok",
+            "elapsed_ms": 2406.0,
+            "evidence_after": {
+              "app": true,
+              "field_focused": true,
+              "field_present": true,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": true
+            },
+            "evidence_before": {
+              "app": true,
+              "field_focused": false,
+              "field_present": false,
+              "scroll_container": true,
+              "search_role": false,
+              "single_field": false
+            },
+            "progress": true,
+            "stale_refusal": false,
+            "state_changed": true,
+            "step": 1,
+            "surface_after": "search_editor",
+            "surface_before": "discover",
+            "target_found": true,
+            "transition": "open_search",
+            "unexpected_transition": false
+          }
+        ],
+        "transition_counts": {
+          "open_home": 1,
+          "open_search": 8
+        }
+      },
+      "setup_sessions_failed": 1,
+      "success": 3,
+      "success_rate": 1.0,
+      "valid_attempts": 3
+    },
+    "input": {
+      "elapsed_seconds": 6.897,
+      "failure_codes": [
+        "input_field_missing"
+      ],
+      "failures": [
+        {
+          "code": "input_field_missing",
+          "index": 0,
+          "message": "No single focused input field is observable",
+          "setup_actions": 0
+        },
+        {
+          "code": "input_field_missing",
+          "index": 1,
+          "message": "No single focused input field is observable",
+          "setup_actions": 0
+        },
+        {
+          "code": "input_field_missing",
+          "index": 2,
+          "message": "No single focused input field is observable",
+          "setup_actions": 0
+        }
+      ],
+      "in_progress": false,
+      "insufficient_valid_samples": false,
+      "max_ms": 0.0,
+      "p50_ms": 0.0,
+      "p95_ms": 0.0,
+      "primitive_failures": 3,
+      "refusals_before_dispatch": {},
+      "requested_samples": 3,
+      "setup": {
+        "actions_p50": 0.0,
+        "actions_p95": 0.0,
+        "attempts": 0,
+        "budget": {
+          "max_actions": 10,
+          "max_elapsed_ms": 90000.0,
+          "max_no_progress": 3,
+          "max_same_state_repeats": 2,
+          "max_stale_refusals": 3
+        },
+        "elapsed_ms": 0.0,
+        "elapsed_p50_ms": 2297.0,
+        "elapsed_p95_ms": 2313.0,
+        "failure_code": null,
+        "failure_codes": [],
+        "failure_kind": null,
+        "failures": 0,
+        "no_progress": 0,
+        "sessions": [
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 2266.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 2297.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          },
+          {
+            "actions": 0,
+            "actions_start": 0,
+            "elapsed_ms": 2313.0,
+            "failure_code": null,
+            "no_progress": 0,
+            "outcome": "ok",
+            "stale_refusals": 0,
+            "stale_start": 0,
+            "steps": 0,
+            "transitions": {}
+          }
+        ],
+        "stale_refusals": 0,
+        "success": 0,
+        "target_drift": [],
+        "trace": [],
+        "transition_counts": {}
+      },
+      "setup_sessions_failed": 0,
+      "success": 0,
+      "success_rate": 0.0,
+      "valid_attempts": 3
+    }
+  },
+  "privacy": "metadata only: no UI text, screenshots, or input values",
+  "schema_version": 2,
+  "scope": "M0 primitive matrix on the current authorised device; acceptance app = Weibo",
+  "session": {
+    "controller_epoch": 0,
+    "device_bound": true,
+    "recovery_required": false,
+    "target_match_counts": {
+      "exact": 2
+    },
+    "unresolved_actions": 0
+  },
+  "setup_actions": 0,
+  "setup_budget": {
+    "max_actions": 10,
+    "max_elapsed_ms": 90000.0,
+    "max_no_progress": 3,
+    "max_same_state_repeats": 2,
+    "max_stale_refusals": 3
+  },
+  "status": "not_ready",
+  "target_match": {
+    "ambiguous": 0,
+    "changed": 0,
+    "exact": 2,
+    "missing": 0,
+    "stable_rebind": 0
+  },
+  "threshold": {
+    "key_primitives_success_rate": 0.99,
+    "required_valid_attempts": 3
+  },
+  "totals": {
+    "setup_attempts": 13,
+    "setup_failures": 8,
+    "setup_no_progress": 6,
+    "setup_stale_refusals": 11,
+    "setup_success": 2,
+    "setup_transition_counts": {
+      "open_home": 1,
+      "open_search": 8
+    },
+    "success": 3,
+    "success_rate": 0.5,
+    "valid_attempts": 6
+  }
+}
