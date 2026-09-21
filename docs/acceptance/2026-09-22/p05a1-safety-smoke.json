@@ -1,0 +1,73 @@
+{
+  "checks": {
+    "full_observation": {
+      "actionable": true,
+      "capture_ms": 2796,
+      "image_tree_consistent": true,
+      "provider": "batched",
+      "som_available": true,
+      "transactions": 2
+    },
+    "no_dispatch": {
+      "journal_entries": 0
+    },
+    "recovery_observation": {
+      "actionable": true,
+      "elapsed_ms": 5235.0,
+      "gate_refusals_total": 1,
+      "provider": "batched",
+      "screen_after": {
+        "screen_locked": false,
+        "screen_on": true
+      }
+    },
+    "sleeping_gate": {
+      "phase1_commands": [
+        "time { hidumper -s PowerManagerService -a '-a'; } 2>&1",
+        "time { hidumper -s ScreenlockService -a -all; } 2>&1"
+      ],
+      "phase1_offenders": [],
+      "refusal_code": "screen_locked",
+      "screen": {
+        "screen_locked": true,
+        "screen_on": false
+      },
+      "transactions_issued": 1
+    },
+    "unlocked_observation": {
+      "actionable": true,
+      "capture_ms": 2062,
+      "provider": "batched",
+      "readiness_gate": "confirmed",
+      "readiness_gate_ms": 110.0,
+      "round_trips": 2,
+      "transactions": 2
+    }
+  },
+  "provider_state": {
+    "consecutive_failures": 0,
+    "counts": {
+      "batched": 0,
+      "legacy": 0,
+      "legacy_fallback": 0
+    },
+    "degraded": false,
+    "gate_refusals": 0,
+    "last_fallback_reason": null,
+    "transactions": 1
+  },
+  "runtime_provider_state": {
+    "consecutive_failures": 0,
+    "counts": {
+      "batched": 3,
+      "legacy": 0,
+      "legacy_fallback": 0
+    },
+    "degraded": false,
+    "gate_refusals": 1,
+    "last_fallback_reason": null,
+    "transactions": 7
+  },
+  "schema_version": 1,
+  "status": "ok"
+}

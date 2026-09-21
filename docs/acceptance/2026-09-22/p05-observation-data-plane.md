@@ -105,7 +105,7 @@ Feature flag：`HARMONY_OBSERVE_BATCHED`（默认 `1`）。`0` 强制 legacy。
 | unknown-write 不自动重试 | 未改：`execution_unknown` 仍进入 reconciliation；本轮没有任何自动重放路径 |
 | 不用无限 retry 换成功率 | batched 回退有界（≤3 次后永久降级）；屏幕恢复仍是有界一次唤醒/解锁；setup 的 stale/无进展预算未放宽 |
 | TEMPORAL 旧观察 | 未改：TEMPORAL 帧仍 `actionable=false`，且不参与本次复用 |
-| 锁屏语义 | legacy 仍先 `_ready_screen` 再读 tree（`tests/test_runtime.py::test_locked_observation_rejects_before_capture_and_invalidates_targets` 保护）；batched 在事务内读屏后立即判定，不可信即丢弃 |
+| 锁屏语义 | **P0.5-A.1 修正后**：legacy 仍先 `_ready_screen` 再读 tree；batched 的 readiness transaction 在 hierarchy/screenshot 之前 fail closed，不可信时后续 capture transaction **根本不会下发**。A.1 之前的实现只做到"事务内读屏后判定、不可信即丢弃"，即设备仍然执行了 `uitest dumpLayout`——该缺口已在 A.1 关闭，详见本文档第 I 节与 `p05a1-observation-readiness-gate.md` |
 
 ## D. Benchmark Before / After
 

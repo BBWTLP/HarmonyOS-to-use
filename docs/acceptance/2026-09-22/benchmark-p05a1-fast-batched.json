@@ -1,0 +1,745 @@
+{
+  "act": {
+    "kind": "tap",
+    "text": "首页"
+  },
+  "include_image": false,
+  "mode": "fast",
+  "phases": {
+    "batched": {
+      "prepared": "ok",
+      "samples": [
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 922.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 922.0,
+            "tree_fingerprint": "58d5448e61a86933",
+            "version": 1
+          },
+          "capture_ms": 1094,
+          "client_ms": 1103.882,
+          "consistent": true,
+          "index": 1,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 922.0,
+            "observe.display_ms": 50.0,
+            "observe.foreground_after_ms": 90.0,
+            "observe.foreground_ms": 130.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 60.0,
+            "observe.screen_after_ms": 70.0,
+            "observe.screen_ms": 60.0,
+            "observe.snapshot_span_ms": 922.0,
+            "observe.tree_ms": 350.0,
+            "observe.wall_ms": 1094.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 172.0,
+            "request_ms": 1094.0,
+            "snapshot_ms": 0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 922.0,
+            "worker_setup_ms": 0
+          }
+        },
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 1000.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 1016.0,
+            "tree_fingerprint": "58d5448e61a86933",
+            "version": 1
+          },
+          "capture_ms": 1204,
+          "client_ms": 1216.438,
+          "consistent": true,
+          "index": 2,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 1016.0,
+            "observe.display_ms": 50.0,
+            "observe.foreground_after_ms": 130.0,
+            "observe.foreground_ms": 110.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 70.0,
+            "observe.screen_after_ms": 80.0,
+            "observe.screen_ms": 70.0,
+            "observe.snapshot_span_ms": 1016.0,
+            "observe.tree_ms": 410.0,
+            "observe.wall_ms": 1204.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 188.0,
+            "request_ms": 1204.0,
+            "snapshot_ms": 0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 1016.0,
+            "worker_setup_ms": 0
+          }
+        },
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 1156.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 1156.0,
+            "tree_fingerprint": "456bce7599cf8216",
+            "version": 1
+          },
+          "capture_ms": 1359,
+          "client_ms": 1362.845,
+          "consistent": true,
+          "index": 3,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 1156.0,
+            "observe.display_ms": 160.0,
+            "observe.foreground_after_ms": 120.0,
+            "observe.foreground_ms": 90.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 70.0,
+            "observe.screen_after_ms": 110.0,
+            "observe.screen_ms": 70.0,
+            "observe.snapshot_span_ms": 1156.0,
+            "observe.tree_ms": 430.0,
+            "observe.wall_ms": 1359.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 187.0,
+            "request_ms": 1359.0,
+            "snapshot_ms": 0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 1156.0,
+            "worker_setup_ms": 0
+          }
+        },
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 1140.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 1140.0,
+            "tree_fingerprint": "bfda096c36e297c1",
+            "version": 1
+          },
+          "capture_ms": 1328,
+          "client_ms": 1329.243,
+          "consistent": true,
+          "index": 4,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 1140.0,
+            "observe.display_ms": 50.0,
+            "observe.foreground_after_ms": 100.0,
+            "observe.foreground_ms": 120.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 50.0,
+            "observe.screen_after_ms": 90.0,
+            "observe.screen_ms": 50.0,
+            "observe.snapshot_span_ms": 1140.0,
+            "observe.tree_ms": 520.0,
+            "observe.wall_ms": 1328.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 172.0,
+            "request_ms": 1328.0,
+            "snapshot_ms": 0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 1140.0,
+            "worker_setup_ms": 0
+          }
+        },
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 1110.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 1110.0,
+            "tree_fingerprint": "bfda096c36e297c1",
+            "version": 1
+          },
+          "capture_ms": 1328,
+          "client_ms": 1360.403,
+          "consistent": true,
+          "index": 5,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 1110.0,
+            "observe.display_ms": 70.0,
+            "observe.foreground_after_ms": 80.0,
+            "observe.foreground_ms": 150.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 80.0,
+            "observe.screen_after_ms": 40.0,
+            "observe.screen_ms": 80.0,
+            "observe.snapshot_span_ms": 1110.0,
+            "observe.tree_ms": 510.0,
+            "observe.wall_ms": 1328.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 203.0,
+            "request_ms": 1328.0,
+            "snapshot_ms": 0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 1110.0,
+            "worker_setup_ms": 0
+          }
+        },
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 1063.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 1063.0,
+            "tree_fingerprint": "bfda096c36e297c1",
+            "version": 1
+          },
+          "capture_ms": 1250,
+          "client_ms": 1247.549,
+          "consistent": true,
+          "index": 6,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 1063.0,
+            "observe.display_ms": 70.0,
+            "observe.foreground_after_ms": 100.0,
+            "observe.foreground_ms": 70.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 50.0,
+            "observe.screen_after_ms": 90.0,
+            "observe.screen_ms": 50.0,
+            "observe.snapshot_span_ms": 1063.0,
+            "observe.tree_ms": 500.0,
+            "observe.wall_ms": 1250.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 172.0,
+            "request_ms": 1250.0,
+            "snapshot_ms": 0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 1063.0,
+            "worker_setup_ms": 0
+          }
+        },
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 1266.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 1266.0,
+            "tree_fingerprint": "bfda096c36e297c1",
+            "version": 1
+          },
+          "capture_ms": 1469,
+          "client_ms": 1469.671,
+          "consistent": true,
+          "index": 7,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 1266.0,
+            "observe.display_ms": 70.0,
+            "observe.foreground_after_ms": 160.0,
+            "observe.foreground_ms": 110.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 60.0,
+            "observe.screen_after_ms": 110.0,
+            "observe.screen_ms": 60.0,
+            "observe.snapshot_span_ms": 1266.0,
+            "observe.tree_ms": 570.0,
+            "observe.wall_ms": 1469.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 188.0,
+            "request_ms": 1469.0,
+            "snapshot_ms": 15.0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 1266.0,
+            "worker_setup_ms": 0
+          }
+        },
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 1359.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 1359.0,
+            "tree_fingerprint": "bfda096c36e297c1",
+            "version": 1
+          },
+          "capture_ms": 1563,
+          "client_ms": 1592.729,
+          "consistent": true,
+          "index": 8,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 1359.0,
+            "observe.display_ms": 80.0,
+            "observe.foreground_after_ms": 170.0,
+            "observe.foreground_ms": 160.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 80.0,
+            "observe.screen_after_ms": 100.0,
+            "observe.screen_ms": 80.0,
+            "observe.snapshot_span_ms": 1359.0,
+            "observe.tree_ms": 600.0,
+            "observe.wall_ms": 1563.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 188.0,
+            "request_ms": 1563.0,
+            "snapshot_ms": 16.0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 1359.0,
+            "worker_setup_ms": 0
+          }
+        },
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 1297.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 1297.0,
+            "tree_fingerprint": "bfda096c36e297c1",
+            "version": 1
+          },
+          "capture_ms": 1516,
+          "client_ms": 1512.327,
+          "consistent": true,
+          "index": 9,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 1297.0,
+            "observe.display_ms": 70.0,
+            "observe.foreground_after_ms": 170.0,
+            "observe.foreground_ms": 140.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 70.0,
+            "observe.screen_after_ms": 90.0,
+            "observe.screen_ms": 70.0,
+            "observe.snapshot_span_ms": 1297.0,
+            "observe.tree_ms": 570.0,
+            "observe.wall_ms": 1516.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 203.0,
+            "request_ms": 1516.0,
+            "snapshot_ms": 16.0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 1297.0,
+            "worker_setup_ms": 0
+          }
+        },
+        {
+          "actionable": true,
+          "capture": {
+            "component_errors": [],
+            "consistent": true,
+            "device_ms": 1297.0,
+            "fallback_reason": null,
+            "provider": "batched",
+            "reason": "consistent",
+            "round_trips": 2,
+            "span_ms": 1297.0,
+            "tree_fingerprint": "bfda096c36e297c1",
+            "version": 1
+          },
+          "capture_ms": 1500,
+          "client_ms": 1500.766,
+          "consistent": true,
+          "index": 10,
+          "perf": {
+            "observe.capture_transactions": 2,
+            "observe.consistency_check_ms": 0.0,
+            "observe.consistency_reason": "consistent",
+            "observe.consistent": true,
+            "observe.device_ms": 1297.0,
+            "observe.display_ms": 70.0,
+            "observe.foreground_after_ms": 160.0,
+            "observe.foreground_ms": 160.0,
+            "observe.hdc_round_trips": 2,
+            "observe.mode": "FAST",
+            "observe.provider": "batched",
+            "observe.readiness_gate": "confirmed",
+            "observe.readiness_gate_ms": 60.0,
+            "observe.screen_after_ms": 110.0,
+            "observe.screen_ms": 60.0,
+            "observe.snapshot_span_ms": 1297.0,
+            "observe.tree_ms": 570.0,
+            "observe.wall_ms": 1500.0
+          },
+          "reason": "consistent",
+          "status": "ok",
+          "timing": {
+            "consistency_check_ms": 0.0,
+            "queue_ms": 0,
+            "readiness_parse_ms": 0,
+            "readiness_transaction_ms": 187.0,
+            "request_ms": 1500.0,
+            "snapshot_ms": 16.0,
+            "snapshot_parse_ms": 0,
+            "snapshot_transaction_ms": 1297.0,
+            "worker_setup_ms": 0
+          }
+        }
+      ],
+      "summary": {
+        "attempted": 10,
+        "capture_ms": {
+          "count": 10,
+          "max": 1563,
+          "min": 1094,
+          "p50": 1328.0,
+          "p95": 1563.0
+        },
+        "client_ms": {
+          "count": 10,
+          "max": 1592.729,
+          "min": 1103.882,
+          "p50": 1360.403,
+          "p95": 1592.729
+        },
+        "consistency_reasons": [
+          "consistent"
+        ],
+        "failed": 0,
+        "perf": {
+          "observe.capture_transactions": {
+            "count": 10,
+            "max": 2,
+            "min": 2,
+            "p50": 2.0,
+            "p95": 2.0
+          },
+          "observe.consistency_check_ms": {
+            "count": 10,
+            "max": 0.0,
+            "min": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "observe.consistent": {
+            "count": 10,
+            "max": 1,
+            "min": 1,
+            "p50": 1.0,
+            "p95": 1.0
+          },
+          "observe.device_ms": {
+            "count": 10,
+            "max": 1359.0,
+            "min": 922.0,
+            "p50": 1140.0,
+            "p95": 1359.0
+          },
+          "observe.display_ms": {
+            "count": 10,
+            "max": 160.0,
+            "min": 50.0,
+            "p50": 70.0,
+            "p95": 160.0
+          },
+          "observe.foreground_after_ms": {
+            "count": 10,
+            "max": 170.0,
+            "min": 80.0,
+            "p50": 120.0,
+            "p95": 170.0
+          },
+          "observe.foreground_ms": {
+            "count": 10,
+            "max": 160.0,
+            "min": 70.0,
+            "p50": 120.0,
+            "p95": 160.0
+          },
+          "observe.hdc_round_trips": {
+            "count": 10,
+            "max": 2,
+            "min": 2,
+            "p50": 2.0,
+            "p95": 2.0
+          },
+          "observe.readiness_gate_ms": {
+            "count": 10,
+            "max": 80.0,
+            "min": 50.0,
+            "p50": 60.0,
+            "p95": 80.0
+          },
+          "observe.screen_after_ms": {
+            "count": 10,
+            "max": 110.0,
+            "min": 40.0,
+            "p50": 90.0,
+            "p95": 110.0
+          },
+          "observe.screen_ms": {
+            "count": 10,
+            "max": 80.0,
+            "min": 50.0,
+            "p50": 60.0,
+            "p95": 80.0
+          },
+          "observe.snapshot_span_ms": {
+            "count": 10,
+            "max": 1359.0,
+            "min": 922.0,
+            "p50": 1140.0,
+            "p95": 1359.0
+          },
+          "observe.tree_ms": {
+            "count": 10,
+            "max": 600.0,
+            "min": 350.0,
+            "p50": 510.0,
+            "p95": 600.0
+          },
+          "observe.wall_ms": {
+            "count": 10,
+            "max": 1563.0,
+            "min": 1094.0,
+            "p50": 1328.0,
+            "p95": 1563.0
+          }
+        },
+        "perf_enums": {
+          "observe.consistency_reason": [
+            "consistent"
+          ],
+          "observe.mode": [
+            "FAST"
+          ],
+          "observe.provider": [
+            "batched"
+          ],
+          "observe.readiness_gate": [
+            "confirmed"
+          ]
+        },
+        "phases": {
+          "consistency_check_ms": {
+            "count": 10,
+            "max": 0.0,
+            "min": 0.0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "queue_ms": {
+            "count": 10,
+            "max": 0,
+            "min": 0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "readiness_parse_ms": {
+            "count": 10,
+            "max": 0,
+            "min": 0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "readiness_transaction_ms": {
+            "count": 10,
+            "max": 203.0,
+            "min": 172.0,
+            "p50": 187.0,
+            "p95": 203.0
+          },
+          "request_ms": {
+            "count": 10,
+            "max": 1563.0,
+            "min": 1094.0,
+            "p50": 1328.0,
+            "p95": 1563.0
+          },
+          "snapshot_ms": {
+            "count": 10,
+            "max": 16.0,
+            "min": 0,
+            "p50": 0.0,
+            "p95": 16.0
+          },
+          "snapshot_parse_ms": {
+            "count": 10,
+            "max": 0,
+            "min": 0,
+            "p50": 0.0,
+            "p95": 0.0
+          },
+          "snapshot_transaction_ms": {
+            "count": 10,
+            "max": 1359.0,
+            "min": 922.0,
+            "p50": 1140.0,
+            "p95": 1359.0
+          },
+          "worker_setup_ms": {
+            "count": 10,
+            "max": 0,
+            "min": 0,
+            "p50": 0.0,
+            "p95": 0.0
+          }
+        },
+        "providers": [
+          "batched"
+        ],
+        "round_trips": [
+          2
+        ],
+        "successful": 10
+      }
+    }
+  },
+  "samples": 10,
+  "schema_version": 1,
+  "started_at": "2026-09-22T07:44:06+0800"
+}
