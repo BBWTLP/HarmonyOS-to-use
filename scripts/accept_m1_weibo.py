@@ -14,6 +14,7 @@ import asyncio
 import json
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -33,9 +34,49 @@ SETTLE_SECONDS = 0.4
 MAX_STEP_REOBSERVES = 2
 MAX_INNER_ATTEMPTS = 4
 
+#: Device/service-level failures that end a run before any dispatch. They are
+#: recorded as a blocked run (with the code) instead of aborting the batch, so a
+#: dark screen or a lost service cannot destroy the other runs' evidence.
+BATCH_FATAL_CODES = (
+    "screen_locked", "screen_state_unknown", "screen_unavailable",
+    "wake_unlock_unconfirmed", "runtime_unavailable", "runtime_transport_error",
+    "device_unavailable", "device_quarantined", "device_busy", "timeout",
+    "client_invalid", "session_invalid", "session_reopen_required",
+)
+
+#: How many consecutive device-level failures stop the batch cleanly.
+MAX_CONSECUTIVE_DEVICE_FAILURES = 3
+
 
 class TaskBlocked(HarnessError):
     pass
+
+
+@dataclass
+class DeviceFailureTracker:
+    """Decide when a batch must stop because the *device*, not the task, failed.
+
+    A long unattended batch can lose the device (screen locked, service gone).
+    The batch must then write what it has and stop cleanly: continuing would
+    produce a long row of blocked runs that hides the real cause, and aborting
+    without a report loses the evidence already collected.
+    """
+
+    limit: int = MAX_CONSECUTIVE_DEVICE_FAILURES
+    consecutive: int = 0
+
+    def record(self, code: str | None) -> str | None:
+        """Feed one run's failure code; return a stop reason when the batch ends."""
+        if code is None:
+            self.consecutive = 0
+            return None
+        if code not in BATCH_FATAL_CODES:
+            return None
+        self.consecutive += 1
+        if self.consecutive >= self.limit:
+            return (f"stopped after {self.consecutive} consecutive device failures; "
+                    "device/service state must be restored before resuming")
+        return None
 
 
 async def settle() -> None:
@@ -378,6 +419,7 @@ async def main(args) -> int:
                     "scope": "10 low-risk Weibo tasks, 3 runs each, real device",
                     "runs_per_task": args.runs, "runs": [], "status": "not_ready"}
     started = time.time()
+    device_failures = DeviceFailureTracker()
     harness_class = ServiceClientHarness if args.transport == "service" else AgentHarness
     harness_kwargs = ({"state_dir": args.state_dir} if args.transport == "service"
                       else {"state_dir": args.state_dir, "agent_tools": False})
@@ -390,7 +432,22 @@ async def main(args) -> int:
                              "controller_epoch": opened.get("controller_epoch")}
         for task in tasks:
             for run_index in range(1, args.runs + 1):
-                outcome = await run_once(harness, task)
+                device_failure = None
+                try:
+                    outcome = await run_once(harness, task)
+                except HarnessError as error:
+                    # A device/service failure (e.g. the phone screen went dark
+                    # during a long unattended batch) must be recorded, not
+                    # allowed to abort the remaining runs without a report.
+                    device_failure = error
+                    outcome = {"task_id": task["id"], "goal": task["goal"],
+                               "steps": [], "dispatches": 0, "reobserves": 0,
+                               "status": "blocked",
+                               "verdict": {"verdict": "inconclusive",
+                                           "conditions": [], "unobserved": []},
+                               "blocked": {"code": error.code,
+                                           "message": str(error)[:200]},
+                               "device_failure": True}
                 outcome["run"] = run_index
                 report["runs"].append(outcome)
                 print(json.dumps({"task": task["id"], "run": run_index,
@@ -404,6 +461,19 @@ async def main(args) -> int:
                     Path(args.report).write_text(
                         json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True),
                         encoding="utf-8")
+                if device_failure is not None:
+                    code = device_failure.code
+                    stopped = device_failures.record(code)
+                    report["blocked_reason"] = {
+                        "code": code, "message": str(device_failure)[:200],
+                        "consecutive_runs": device_failures.consecutive}
+                    if stopped:
+                        report["blocked_reason"]["stopped"] = stopped
+                        break
+                    continue
+                device_failures.record(None)
+            if report.get("blocked_reason", {}).get("stopped"):
+                break
         status = await harness.session_status()
         report["session"].update(unresolved_actions=len(status.get("unresolved_actions", [])),
                                  recovery_required=bool(status.get("recovery_required")))
@@ -421,6 +491,7 @@ async def main(args) -> int:
     }
     report["threshold"] = {"required_successes": 27, "total": 30}
     report["false_success_claims"] = errored
+    report["device_failures"] = sum(1 for item in runs if item.get("device_failure"))
     report["duration_seconds"] = round(time.time() - started, 3)
     report["status"] = ("ok" if (report["totals"]["runs"] == 30 and succeeded >= 27
                                  and not report["session"]["unresolved_actions"])

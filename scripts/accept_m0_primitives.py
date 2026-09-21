@@ -517,12 +517,60 @@ class PrimitiveRunner:
         self._require(result, "back")
         return elapsed
 
+    def _editor_field(self, observation: dict) -> tuple[dict | None, str]:
+        """Resolve the search editor's text field, most specific source first.
+
+        The acceptance device reports this field with an empty ``resource_id``
+        and a volatile auto-increment ``accessibilityId``, and it is not always
+        autofocused. The lookup order therefore is: the focused field, the
+        declared resource id, then structure (exactly one top-band input above a
+        results list). The source is recorded so the evidence stays explicit.
+        """
+        focused = focused_input(observation)
+        if focused is not None:
+            return focused, "focused"
+        declared = find_node(observation, resource_id=SEARCH_INPUT_ID)
+        if declared is not None:
+            return declared, "resource_id"
+        structured = editor_input(observation)
+        if structured is not None:
+            return structured, "structure"
+        return None, "absent"
+
+    async def _focus_editor_field(self) -> tuple[dict, dict]:
+        """Bring the editor field into focus as bounded *setup*, then re-locate.
+
+        Focusing is navigation, never the measured primitive: the sample is the
+        ``replace_text`` dispatch that follows it. A field that refuses to take
+        focus within the setup budget is a setup failure, so it stays out of the
+        primitive's denominator instead of being reported as an input failure.
+        """
+        await self._setup_step(
+            selector="focus_input_field",
+            locate=lambda obs: self._editor_field(obs)[0],
+            action_for=lambda node: {"kind": "tap",
+                                     "target": {"action_id": node["action_id"]}},
+            timeout_ms=10000)
+        observation = await self.harness.observe(mode="FAST")
+        field, source = self._editor_field(observation)
+        if field is None:
+            raise self._setup_fail("input_field_missing",
+                                   "Editor field disappeared after the focus step")
+        if not field.get("focused"):
+            raise self._setup_fail("input_focus_unavailable",
+                                   "Editor field did not take focus within the setup budget")
+        self.note(f"input: editor field focused via {source}")
+        return observation, field
+
     async def _input(self, index: int) -> float:
         editor = await self.ensure_search_editor()
-        field = focused_input(editor) or find_node(editor, resource_id=SEARCH_INPUT_ID)
+        field, source = self._editor_field(editor)
         if field is None:
             raise HarnessError("input_field_missing",
-                               "No single focused input field is observable")
+                               "No single editable field is observable in the search editor")
+        if not field.get("focused"):
+            self.note(f"input: field resolved via {source} and is not focused; focusing as setup")
+            editor, field = await self._focus_editor_field()
         value = INPUT_VALUES[index % len(INPUT_VALUES)]
         started = time.perf_counter()
         result = await self.harness.act(

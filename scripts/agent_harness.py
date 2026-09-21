@@ -13,6 +13,7 @@ import hashlib
 import json
 import math
 import os
+import socket
 import sys
 import time
 import uuid
@@ -181,12 +182,45 @@ class AgentHarness:
         self.errlog_path = self.state_dir / "mcp-client-stderr.log"
 
     # -- lifecycle ----------------------------------------------------------
+    def require_service(self) -> None:
+        """Refuse to start before the resident Runtime service is reachable.
+
+        Read-only: it inspects ``endpoint.json`` and opens a TCP connection to
+        the loopback port. It never sends a runtime request, so it cannot dispatch
+        a device action.
+        """
+        endpoint_path = self.state_dir / "endpoint.json"
+        try:
+            endpoint = json.loads(endpoint_path.read_text(encoding="utf-8"))
+            port = endpoint["port"]
+            token = endpoint["token"]
+            if type(port) is not int or not 1 <= port <= 65535 or not isinstance(token, str) or not token:
+                raise ValueError("invalid endpoint")
+        except (OSError, ValueError, TypeError, KeyError):
+            raise HarnessError(
+                "runtime_unavailable",
+                "No reachable local Runtime service; start "
+                "`harmony_runtime.cli serve` for this --state-dir first") from None
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=2.0):
+                pass
+        except OSError:
+            raise HarnessError(
+                "runtime_unavailable",
+                f"Stale endpoint.json: nothing is listening on 127.0.0.1:{port}; "
+                "restart `harmony_runtime.cli serve` (the file is rewritten on start)") from None
+
     async def __aenter__(self) -> "AgentHarness":
         # Inherit the parent environment: the stdio server is a separate
         # process and needs the normal interpreter environment to import
         # packages and to reach the runtime service.
         env = dict(os.environ)
         env["HARMONY_HDC"] = self.hdc
+        # The stdio frontend reaches the device only through the resident local
+        # service. Without it every tool call fails, and a missing endpoint used
+        # to surface as a stalled run (the orphaned stdio child keeps the pipe
+        # open, so the caller never sees output or an exit). Fail loudly first.
+        self.require_service()
         if self.agent_tools:
             env["HARMONY_AGENT_TOOLS"] = "1"
             for name in ("HARMONY_AGENT_PROFILE", "HARMONY_AGENT_CALIBRATION",
@@ -216,10 +250,19 @@ class AgentHarness:
                                 session_id=self.session_id, record=False)
         except Exception:
             pass
-        if self._session_context is not None:
-            await self._session_context.__aexit__(*exc)
-        if self._context is not None:
-            await self._context.__aexit__(*exc)
+        # Every teardown step must run even if an earlier one raises: a leftover
+        # stdio child keeps the caller's stdout pipe open, which turns any failure
+        # into an apparent hang at interpreter shutdown.
+        try:
+            if self._session_context is not None:
+                await self._session_context.__aexit__(*exc)
+        except Exception:
+            pass
+        try:
+            if self._context is not None:
+                await self._context.__aexit__(*exc)
+        except Exception:
+            pass
         try:
             self._errlog.close()
         except Exception:
