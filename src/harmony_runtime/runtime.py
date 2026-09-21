@@ -53,13 +53,23 @@ class Runtime:
         self.active = {}
         self.stopped = False
 
-    def session(self, owner, operation, session_id=None, device_id=None, request_id=None):
+    def session(self, owner, operation, session_id=None, device_id=None, request_id=None,
+                evidence_kind=None, attestation=None):
         if operation in ("action_status", "burst_status"):
             if not isinstance(request_id, str) or not 1 <= len(request_id) <= 128:
                 raise RuntimeFault("invalid_arguments", "Status queries require request_id (1–128 characters)")
+            if evidence_kind is not None or attestation is not None:
+                raise RuntimeFault("invalid_arguments",
+                                   "evidence_kind and attestation belong to the reconcile operation")
             with self.guard:
                 s = self._session(owner, session_id, allow_paused=True)
                 return getattr(self.journal, operation)(s.serial, request_id)
+        if operation == "reconcile":
+            return self.reconcile(owner, session_id, request_id,
+                                  evidence_kind=evidence_kind, attestation=attestation)
+        if evidence_kind is not None or attestation is not None:
+            raise RuntimeFault("invalid_arguments",
+                               "evidence_kind and attestation belong to the reconcile operation")
         if request_id is not None:
             raise RuntimeFault("invalid_arguments", "request_id is only supported for action_status or burst_status")
         if operation == "recover":
@@ -217,6 +227,30 @@ class Runtime:
             result["closed_incidents"] = closed_incidents
             result.update(status="recovered_read_only" if result["recovery_required"] else "recovered", observation=observation)
             return result
+
+    def reconcile(self, owner, session_id, request_id, *, evidence_kind=None,
+                  attestation=None):
+        """Close one unknown write against fresh evidence. Never dispatches.
+
+        The runtime takes a new observation first (the only device call this path
+        makes) and hands it to the journal together with the caller's evidence
+        kind. A refused closure leaves the write barrier exactly as it was.
+        """
+        with self.guard:
+            s = self._session(owner, session_id, allow_paused=True)
+        observation = self.observe(owner, s.id, mode="FAST")
+        with self.guard:
+            s = self._session(owner, session_id, allow_paused=True)
+            outcome = self.journal.close_incident_with_evidence(
+                s.serial, request_id, observation,
+                evidence_kind=evidence_kind or "postcondition_verified",
+                attestation=attestation)
+            result = self._session_result(s)
+        result.update(outcome)
+        result["observation_id"] = observation["observation_id"]
+        result["status"] = ("reconciled" if not result["recovery_required"]
+                            else "reconciliation_incomplete")
+        return result
 
     def _device(self, s):
         if s.serial not in self.devices:
@@ -511,7 +545,14 @@ class Runtime:
             # Durable dispatch is the cancellation boundary. After it, a write
             # may be in flight and must be reconciled, never blindly replayed.
             # A generic text/bundle condition cannot reconcile a particular input.
-            recovery_expected = req.expected.model_dump() if req.expected and req.action.kind != "replace_text" else None
+            # An explicit `recovery` (the caller's terminal goal condition) is
+            # recorded instead of the immediate effect, so a lost response can
+            # later be closed against the action's own semantic condition.
+            recovery_expected = None
+            if req.action.kind != "replace_text":
+                condition = req.recovery or req.expected
+                if condition is not None:
+                    recovery_expected = condition.model_dump()
             timing.call("journal_begin", self.journal.begin, req.request_id,digest,s.serial, expected=recovery_expected, before_fingerprint=before["fingerprint"])
         result={"status":"ok","execution_status":"not_dispatched","verification_status":"inconclusive","before_observation_id":req.observation_id,"after_observation_id":None,"timing":{},"evidence_refs":[],"incident_id":None}
         if target_match_note is not None:

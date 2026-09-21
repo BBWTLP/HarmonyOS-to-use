@@ -123,6 +123,11 @@ class ActRequest(Contract):
     observation_id: str
     action: Action
     expected: Expected | None = None
+    #: Optional recovery condition, used only as the durable evidence a later
+    #: reconciliation reads. It never changes what `expected` verifies after the
+    #: dispatch, so declaring a terminal goal condition here cannot turn a step
+    #: into a retry loop.
+    recovery: Expected | None = None
     timeout_ms: int = Field(default=5000, ge=100, le=30000)
 
 

@@ -23,7 +23,8 @@ def main():
             rest = rest[:index] + rest[index + 2:]
         return agent_main(rest, state)
     parser = argparse.ArgumentParser(description="HarmonyOS local agent runtime")
-    parser.add_argument("command", choices=["serve", "mcp", "doctor", "probe", "benchmark", "baseline", "protocol"])
+    parser.add_argument("command", choices=["serve", "mcp", "doctor", "service", "probe",
+                                            "benchmark", "baseline", "protocol"])
     parser.add_argument("--state-dir", default=str(default_state()))
     parser.add_argument("--samples", type=int, default=10, help="Benchmark observations (1-500)")
     parser.add_argument("--mode", choices=["FAST", "FULL"], default="FAST")
@@ -41,6 +42,13 @@ def main():
     if args.command == "serve":
         from .service import serve
         serve(args.state_dir)
+    elif args.command == "service":
+        # Read-only: endpoint file, loopback port and recorded pid. It never
+        # opens a session, touches the phone or dispatches anything.
+        from .diagnostics import service_report
+        result = service_report(args.state_dir)
+        print(json.dumps(result, indent=2, allow_nan=False))
+        return 0 if result["status"] == "ok" else 1
     elif args.command == "mcp":
         from .mcp_server import run
         run(args.state_dir)

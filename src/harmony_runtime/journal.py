@@ -258,6 +258,87 @@ class Journal:
                 closed.append(incident_id)
         return closed
 
+    #: Evidence kinds an operator or agent may use to close one unknown write.
+    RECONCILIATION_KINDS = ("postcondition_verified", "not_executed")
+
+    def close_incident_with_evidence(self, serial, request_id, observation, *,
+                                     evidence_kind, attestation=None):
+        """Close one unknown write against fresh evidence, never by replay.
+
+        Two kinds are accepted, and both need an observation newer than the
+        incident:
+
+        * ``postcondition_verified``: the action's *original* semantic
+          postcondition currently holds (salted digest match), so the write is
+          known to have taken effect.
+        * ``not_executed``: the page fingerprint is byte-identical to the
+          pre-dispatch fingerprint, so the action cannot have produced a visible
+          effect. A caller must still supply an attestation string.
+
+        Anything else — a changed page without the postcondition, a stale
+        observation, a missing pre-dispatch fingerprint — is refused. The action
+        row keeps its original unknown result; closure is recorded as separate
+        evidence, and no device call is made here.
+        """
+        if evidence_kind not in self.RECONCILIATION_KINDS:
+            raise RuntimeFault("invalid_arguments",
+                               "evidence_kind must be postcondition_verified or not_executed")
+        if len(request_id or "") > 128 or not request_id:
+            raise RuntimeFault("invalid_arguments", "request_id is required")
+        if evidence_kind == "not_executed" and not (attestation or "").strip():
+            raise RuntimeFault("attestation_required",
+                               "not_executed reconciliation requires an attestation string")
+        if attestation is not None and len(attestation) > 300:
+            raise RuntimeFault("invalid_arguments", "attestation must be at most 300 characters")
+        with self.lock, self.db:
+            row = self.db.execute(
+                "SELECT i.incident_id,i.status,i.created,c.expected,c.before_fingerprint "
+                "FROM incidents i JOIN actions a ON i.request_id=a.request_id "
+                "JOIN action_devices d ON i.request_id=d.request_id "
+                "LEFT JOIN recovery_conditions c ON i.request_id=c.request_id "
+                "WHERE i.request_id=? AND d.device_key=?",
+                (request_id, self.device_key(serial))).fetchone()
+            if row is None:
+                # An unbound legacy record is deliberately not closeable per device.
+                raise RuntimeFault("unknown_request",
+                                   "No device-bound incident exists for this request_id")
+            incident_id, status, created, stored, before = row
+            if status != "open":
+                raise RuntimeFault("incident_already_closed",
+                                   "This incident already has a closure record")
+            if observation is None or observation.get("captured_at", 0) < created:
+                raise RuntimeFault("evidence_stale",
+                                   "A fresh observation captured after the incident is required")
+            if evidence_kind == "postcondition_verified":
+                if not stored or not self.recovery_matches(json.loads(stored), observation,
+                                                           before):
+                    raise RuntimeFault(
+                        "evidence_insufficient",
+                        "The original postcondition does not hold in this observation")
+                reason = "original_text_postcondition_observed"
+                state = "reconciled_verified"
+            else:
+                if not before or observation.get("fingerprint") != before:
+                    raise RuntimeFault(
+                        "evidence_insufficient",
+                        "The page changed since the dispatch; non-execution cannot be attested")
+                reason = "page_unchanged_since_dispatch"
+                state = "reconciled_not_executed"
+            evidence = {"observation_id": observation.get("observation_id"),
+                        "fingerprint": observation.get("fingerprint"),
+                        "captured_at": observation.get("captured_at"),
+                        "reason": reason, "evidence_kind": evidence_kind,
+                        "attestation": attestation, "closed_at": time.time()}
+            self.db.execute(
+                "UPDATE incidents SET status='closed',closed=?,evidence=? WHERE incident_id=?",
+                (time.time(), canonical(evidence), incident_id))
+            self.db.execute("UPDATE actions SET state=? WHERE request_id=?",
+                            (state, request_id))
+        return {"request_id": request_id, "incident_id": incident_id,
+                "status": "closed", "action_state": state, "evidence": evidence,
+                "replay": "never", "message": "Closure is recorded evidence; the original "
+                                              "dispatch is never replayed"}
+
     def device_history(self, serial, limit=20, before=None):
         """Page durable action metadata; never return stored UI, input or recovery text."""
         if type(limit) is not int or not 1 <= limit <= 100:
