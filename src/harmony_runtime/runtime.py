@@ -769,6 +769,9 @@ class Runtime:
             # which evidence. Never UI text.
             result["target_match"] = target_match_note
         try:
+            # Point of no return for non-execution attestation: after this mark
+            # the write may reach the device even if the UI later matches again.
+            self.journal.mark_dispatch_started(req.request_id)
             timing.call("dispatch", self._device(s).dispatch, req.action,target)
             result["execution_status"]="executed"
             s.observations.clear()

@@ -156,24 +156,64 @@ class ReconciliationTests(unittest.TestCase):
                                  evidence_kind="postcondition_verified")
         self.assertEqual(fault.exception.code, "incident_already_closed")
 
-    def test_not_executed_requires_an_unchanged_page_and_an_attestation(self):
-        self.apply_first = False  # the write never reached the phone
-        request_id = self.unknown_write(
-            criteria=[{"id": "editor", "type": "text_equals", "value": "热搜榜"}])
+    def test_not_executed_refused_once_dispatch_was_entered(self):
+        # Driver dispatch ran; the response was lost and the UI fingerprint is
+        # unchanged. A free-text attestation must not clear the barrier.
+        self.apply_first = True
+        request_id = self.unknown_direct_write(expected={"text": "这个文本不会出现"})
+        # Force the page back to the pre-dispatch fingerprint shape by observing.
+        observation = self.runtime.observe(self.owner, self.session_id, mode="FAST")
         with self.assertRaises(RuntimeFault) as fault:
             self.runtime.session(self.owner, "reconcile", session_id=self.session_id,
-                                 request_id=request_id, evidence_kind="not_executed")
+                                 request_id=request_id, evidence_kind="not_executed",
+                                 attestation="checked the phone: nothing happened")
+        self.assertEqual(fault.exception.code, "evidence_insufficient")
+        self.assertTrue(self.runtime.session(
+            self.owner, "status", session_id=self.session_id)["recovery_required"])
+        self.assertEqual(self.runtime.devices["fake-device"].dispatch_attempts, 1)
+
+    def test_not_executed_allowed_only_with_trusted_never_dispatched_record(self):
+        # Admitted to the journal, but the worker never entered device dispatch.
+        self.runtime.journal.begin("never-dispatched", "digest", "fake-device",
+                                  before_fingerprint="f" * 64)
+        self.runtime.journal.finish("never-dispatched", {
+            "execution_status": "unknown", "verification_status": "inconclusive",
+            "incident_id": "inc-never-dispatched"})
+        self.runtime.journal.mark_dispatch_started  # attribute exists
+        observation = self.runtime.observe(self.owner, self.session_id, mode="FAST")
+        with self.assertRaises(RuntimeFault) as fault:
+            self.runtime.session(self.owner, "reconcile", session_id=self.session_id,
+                                 request_id="never-dispatched", evidence_kind="not_executed")
         self.assertEqual(fault.exception.code, "attestation_required")
         outcome = self.runtime.session(
-            self.owner, "reconcile", session_id=self.session_id, request_id=request_id,
-            evidence_kind="not_executed",
-            attestation="checked the phone: the tap never registered")
+            self.owner, "reconcile", session_id=self.session_id,
+            request_id="never-dispatched", evidence_kind="not_executed",
+            attestation="worker log: dispatch was never entered for this request")
         self.assertEqual(outcome["status"], "reconciled")
-        self.assertEqual(outcome["evidence"]["reason"], "page_unchanged_since_dispatch")
+        self.assertEqual(outcome["evidence"]["reason"], "trusted_never_dispatched")
         self.assertEqual(outcome["action_state"], "reconciled_not_executed")
         self.assertFalse(self.runtime.session(
             self.owner, "status", session_id=self.session_id)["recovery_required"])
+        self.assertEqual(self.runtime.devices["fake-device"].dispatch_attempts, 0)
+
+    def test_side_effect_with_unchanged_ui_rejects_arbitrary_attestation(self):
+        # Device applied the write; UI fingerprint may look the same afterwards.
+        self.apply_first = True
+        request_id = self.unknown_direct_write(expected={"text": "这个文本不会出现"})
+        before_row = self.runtime.journal.db.execute(
+            "SELECT before_fingerprint, dispatch_started FROM recovery_conditions "
+            "JOIN actions USING(request_id) WHERE request_id=?",
+            (request_id,)).fetchone()
+        self.assertEqual(before_row[1], 1)
+        observation = self.runtime.observe(self.owner, self.session_id, mode="FAST")
+        with self.assertRaises(RuntimeFault) as fault:
+            self.runtime.session(self.owner, "reconcile", session_id=self.session_id,
+                                 request_id=request_id, evidence_kind="not_executed",
+                                 attestation="looks the same so it did not run")
+        self.assertEqual(fault.exception.code, "evidence_insufficient")
         self.assertEqual(self.runtime.devices["fake-device"].dispatch_attempts, 1)
+        self.assertTrue(self.runtime.session(
+            self.owner, "status", session_id=self.session_id)["recovery_required"])
 
     # -- refusals -----------------------------------------------------------
     def test_postcondition_that_does_not_hold_is_refused(self):

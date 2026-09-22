@@ -20,6 +20,13 @@ class Journal:
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
         self.db.execute("CREATE TABLE IF NOT EXISTS actions (request_id TEXT PRIMARY KEY, payload_hash TEXT NOT NULL, state TEXT NOT NULL, result TEXT, created REAL NOT NULL)")
+        # Trusted non-execution evidence: 0 only while the request was admitted
+        # but the worker never entered device dispatch. Historical rows default
+        # to 1 so an old unknown cannot be closed as not_executed by attestation.
+        try:
+            self.db.execute("ALTER TABLE actions ADD COLUMN dispatch_started INTEGER NOT NULL DEFAULT 1")
+        except sqlite3.OperationalError:
+            pass
         self.db.execute("CREATE TABLE IF NOT EXISTS action_devices (request_id TEXT PRIMARY KEY, device_key TEXT NOT NULL)")
         self.db.execute("CREATE INDEX IF NOT EXISTS action_devices_key ON action_devices(device_key)")
         self.db.execute("CREATE TABLE IF NOT EXISTS recovery_conditions (request_id TEXT PRIMARY KEY, expected TEXT, before_fingerprint TEXT)")
@@ -127,6 +134,10 @@ class Journal:
                     return False
             if stored.get("changed") and observation["fingerprint"] == before:
                 return False
+            # An unchanged page cannot prove this action caused the text: the
+            # condition may already have held before dispatch.
+            if observation.get("fingerprint") == before:
+                return False
             return any(secrets.compare_digest(cls.recovery_digest(item["text"], stored["salt"]),
                                               stored["text_digest"])
                        for item in observation["catalog"])
@@ -150,10 +161,24 @@ class Journal:
             self._require_unused_id(request_id)
             if serial is not None:
                 self.require_reconciled(serial)
-            self.db.execute("INSERT INTO actions VALUES (?,?,?,NULL,?)", (request_id,digest,"dispatching",time.time()))
+            self.db.execute(
+                "INSERT INTO actions (request_id, payload_hash, state, result, created, dispatch_started) "
+                "VALUES (?,?,?,?,?,0)",
+                (request_id, digest, "dispatching", None, time.time()))
             self.db.execute("INSERT INTO recovery_conditions VALUES (?,?,?)", (request_id, canonical(recovery) if recovery else None, before_fingerprint))
             if serial is not None:
                 self.db.execute("INSERT INTO action_devices VALUES (?,?)", (request_id,self.device_key(serial)))
+
+    def mark_dispatch_started(self, request_id):
+        """Record that the worker is about to enter device dispatch.
+
+        After this point non-execution cannot be attested: the write may have
+        reached the device even if the UI fingerprint later matches again.
+        """
+        with self.lock, self.db:
+            self.db.execute(
+                "UPDATE actions SET dispatch_started=1 WHERE request_id=?",
+                (request_id,))
 
     @staticmethod
     def stored_result(result):
@@ -271,9 +296,11 @@ class Journal:
         * ``postcondition_verified``: the action's *original* semantic
           postcondition currently holds (salted digest match), so the write is
           known to have taken effect.
-        * ``not_executed``: the page fingerprint is byte-identical to the
-          pre-dispatch fingerprint, so the action cannot have produced a visible
-          effect. A caller must still supply an attestation string.
+        * ``not_executed``: only with a trusted journal record that the worker
+          never entered device dispatch (``dispatch_started == 0``). A free-text
+          attestation is recorded for audit but is never sufficient: an
+          unchanged page fingerprint cannot prove non-execution once dispatch
+          may have run. Without that trusted record this kind is refused.
 
         Anything else — a changed page without the postcondition, a stale
         observation, a missing pre-dispatch fingerprint — is refused. The action
@@ -292,7 +319,8 @@ class Journal:
             raise RuntimeFault("invalid_arguments", "attestation must be at most 300 characters")
         with self.lock, self.db:
             row = self.db.execute(
-                "SELECT i.incident_id,i.status,i.created,c.expected,c.before_fingerprint "
+                "SELECT i.incident_id,i.status,i.created,c.expected,c.before_fingerprint,"
+                "a.dispatch_started "
                 "FROM incidents i JOIN actions a ON i.request_id=a.request_id "
                 "JOIN action_devices d ON i.request_id=d.request_id "
                 "LEFT JOIN recovery_conditions c ON i.request_id=c.request_id "
@@ -302,7 +330,7 @@ class Journal:
                 # An unbound legacy record is deliberately not closeable per device.
                 raise RuntimeFault("unknown_request",
                                    "No device-bound incident exists for this request_id")
-            incident_id, status, created, stored, before = row
+            incident_id, status, created, stored, before, dispatch_started = row
             if status != "open":
                 raise RuntimeFault("incident_already_closed",
                                    "This incident already has a closure record")
@@ -318,11 +346,16 @@ class Journal:
                 reason = "original_text_postcondition_observed"
                 state = "reconciled_verified"
             else:
-                if not before or observation.get("fingerprint") != before:
+                # Trusted non-execution requires a durable "never entered
+                # dispatch" record bound to this request. Attestation and an
+                # unchanged fingerprint are not sufficient once dispatch may
+                # have reached the device.
+                if dispatch_started:
                     raise RuntimeFault(
                         "evidence_insufficient",
-                        "The page changed since the dispatch; non-execution cannot be attested")
-                reason = "page_unchanged_since_dispatch"
+                        "Dispatch was entered; non-execution cannot be attested "
+                        "from a free-text statement or an unchanged page")
+                reason = "trusted_never_dispatched"
                 state = "reconciled_not_executed"
             evidence = {"observation_id": observation.get("observation_id"),
                         "fingerprint": observation.get("fingerprint"),

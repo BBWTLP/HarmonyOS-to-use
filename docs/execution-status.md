@@ -76,7 +76,17 @@
 
 ## T02 — 未知写入对账收紧（P0）
 
-**状态：** 未开始
+**状态：** `verified_offline`
+
+**改动：** journal `dispatch_started` 可信字段；`not_executed` 仅当可信未派发；`recovery_matches` 拒绝页面未变的弱后置；runtime 在 device.dispatch 前标记派发开始。
+
+**反例：** 已派发+attestation 拒绝；副作用+指纹未变拒绝；可信未派发可关；具体文本后置可关；无法验证保留屏障。
+
+**证据：** `test_unknown_write_reconciliation` 10/10；`test_action_status` 2/2；`test_recovery` 5/5；`test_runtime` 25/25。
+
+**通过判定：** **T02 通过**。
+
+**下一动作：** T03 最短业务链与验收判据。
 
 ## T03 — 最短业务链与可信验收（P0）
 
