@@ -200,11 +200,10 @@ class ReconciliationTests(unittest.TestCase):
         # Device applied the write; UI fingerprint may look the same afterwards.
         self.apply_first = True
         request_id = self.unknown_direct_write(expected={"text": "这个文本不会出现"})
-        before_row = self.runtime.journal.db.execute(
-            "SELECT before_fingerprint, dispatch_started FROM recovery_conditions "
-            "JOIN actions USING(request_id) WHERE request_id=?",
+        mark = self.runtime.journal.db.execute(
+            "SELECT 1 FROM dispatch_marks WHERE request_id=?",
             (request_id,)).fetchone()
-        self.assertEqual(before_row[1], 1)
+        self.assertIsNotNone(mark, "dispatch mark missing after device.dispatch")
         observation = self.runtime.observe(self.owner, self.session_id, mode="FAST")
         with self.assertRaises(RuntimeFault) as fault:
             self.runtime.session(self.owner, "reconcile", session_id=self.session_id,

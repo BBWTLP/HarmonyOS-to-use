@@ -721,6 +721,25 @@ def find_node(observation: dict[str, Any], *, text: str | None = None,
     return matches[0]
 
 
+def clickable_node(observation: dict[str, Any], node: dict[str, Any]) -> dict[str, Any]:
+    """The node to tap: the node itself when clickable, else its clickable parent.
+
+    Bottom tab labels on the acceptance device are non-clickable Text nodes
+    inside a clickable Column. Tapping the label's action_id can miss or hit an
+    overlay; the parent is the stable interaction target.
+    """
+    if node.get("clickable"):
+        return node
+    parent_id = node.get("parent_action_id")
+    if parent_id:
+        parent = next((item for item in observation.get("catalog") or []
+                       if item.get("action_id") == parent_id and item.get("clickable")),
+                      None)
+        if parent is not None:
+            return parent
+    return node
+
+
 #: Weibo-specific structure, taken from the existing regression adapter. The
 #: search entry is a top-of-page Flex container, not a labelled button, so it is
 #: identified by structure rather than by localised text.
@@ -744,10 +763,17 @@ def is_search_editor(observation: dict[str, Any]) -> bool:
     return len(inputs) == 1 and bool(lists)
 
 
+def _is_input_type(value: Any) -> bool:
+    """True for editable field node types used on this device build."""
+    text = str(value or "").lower()
+    return any(token in text for token in
+               ("input", "editor", "textfield", "edittext", "searchfield"))
+
+
 def focused_input(observation: dict[str, Any]) -> dict[str, Any] | None:
     inputs = [item for item in observation.get("catalog", [])
               if item.get("enabled") and item.get("focused")
-              and "input" in str(item.get("type", "")).lower()]
+              and _is_input_type(item.get("type"))]
     return inputs[0] if len(inputs) == 1 else None
 
 
@@ -757,7 +783,7 @@ def editor_input(observation: dict[str, Any]) -> dict[str, Any] | None:
     Structure first: one text field in the top band plus a results list below.
     """
     inputs = [item for item in observation.get("catalog", [])
-              if "input" in str(item.get("type", "")).lower()
+              if _is_input_type(item.get("type"))
               and (item.get("bounds") or [0, 9999, 0, 0])[1] < 400]
     lists = [item for item in observation.get("catalog", [])
              if item.get("type") == "List"]
@@ -785,8 +811,10 @@ SURFACE_DISCOVER = "discover"
 SURFACE_SEARCH = "search_surface"
 SURFACE_EDITOR = "search_editor"
 SURFACE_UNKNOWN = "unknown"
+SURFACE_COMPOSE = "compose_dialog"
+SURFACE_DETAIL = "feed_detail"
 SURFACE_STATES = (SURFACE_FOREIGN, SURFACE_TABS, SURFACE_DISCOVER, SURFACE_SEARCH,
-                  SURFACE_EDITOR, SURFACE_UNKNOWN)
+                  SURFACE_EDITOR, SURFACE_COMPOSE, SURFACE_DETAIL, SURFACE_UNKNOWN)
 
 BOTTOM_TABS = ("首页", "发现", "消息", "我")
 TOP_BAND_MAX_TOP = 400
@@ -795,8 +823,33 @@ SEARCH_BAR_MAX_TOP = 300
 
 def top_band_inputs(observation: dict[str, Any]) -> list[dict[str, Any]]:
     return [item for item in observation.get("catalog") or []
-            if "input" in str(item.get("type", "")).lower()
+            if _is_input_type(item.get("type"))
             and (item.get("bounds") or [0, 9999, 0, 0])[1] < TOP_BAND_MAX_TOP]
+
+
+def is_compose_dialog(observation: dict[str, Any]) -> bool:
+    """A share/repost composer with Cancel and Send.
+
+    Setup must dismiss this with Cancel only. Tapping Send would post content
+    and is never part of acceptance.
+    """
+    catalog = observation.get("catalog") or []
+    has_cancel = any((item.get("text") == "取消" and item.get("clickable"))
+                     or item.get("resource_id") == "cancel" for item in catalog)
+    has_send = any(item.get("text") in ("发送", "发微博", "转发") for item in catalog)
+    return bool(has_cancel and has_send)
+
+
+def is_feed_detail(observation: dict[str, Any]) -> bool:
+    """A blog/detail surface whose action bar can cover the tab bar.
+
+    These pages still show bottom tab labels, so a tabs-only classifier sends
+    setup to tap 发现 and the hit lands on a repost/share control instead.
+    """
+    catalog = observation.get("catalog") or []
+    has_blog = any(item.get("resource_id") == "blog_item_view_content" for item in catalog)
+    has_repost = any((item.get("text") or "") == "转发" for item in catalog)
+    return bool(has_blog or has_repost)
 
 
 def search_editor_evidence(observation: dict[str, Any]) -> dict[str, Any]:
@@ -830,6 +883,10 @@ def classify_surface(observation: dict[str, Any]) -> str:
     """
     if not has_weibo_evidence(observation):
         return SURFACE_FOREIGN
+    if is_compose_dialog(observation):
+        return SURFACE_COMPOSE
+    if is_feed_detail(observation):
+        return SURFACE_DETAIL
     evidence = search_editor_evidence(observation)
     if evidence["single_field"] and (evidence["scroll_container"]
                                      or evidence["field_focused"]):

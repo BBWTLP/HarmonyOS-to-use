@@ -25,11 +25,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from agent_harness import (AgentHarness, HarnessError, SURFACE_DISCOVER, SURFACE_EDITOR,
-                           SURFACE_FOREIGN, SURFACE_SEARCH, SURFACE_TABS,
+from agent_harness import (AgentHarness, HarnessError, SURFACE_COMPOSE, SURFACE_DETAIL, SURFACE_DISCOVER,
+                           SURFACE_EDITOR, SURFACE_FOREIGN, SURFACE_SEARCH, SURFACE_TABS,
                            SURFACE_UNKNOWN, SetupBudget, SetupStats, SetupUnavailable,
-                           WEIBO, classify_surface, editor_input, find_node,
-                           find_search_bar, focused_input, has_weibo_evidence,
+                           WEIBO, classify_surface, clickable_node, editor_input,
+                           find_node, find_search_bar, focused_input, has_weibo_evidence,
                            post_observation, search_editor_evidence, setup_act,
                            surface_kind, top_band_inputs)
 
@@ -56,6 +56,8 @@ MAX_SETUP_FAILURES = 5
 SEARCH_EDITOR_FSM = {
     SURFACE_FOREIGN: ("launch_weibo",),
     SURFACE_UNKNOWN: ("back_to_known", "open_discover"),
+    SURFACE_COMPOSE: ("dismiss_compose",),
+    SURFACE_DETAIL: ("back_to_known", "open_home"),
     SURFACE_TABS: ("open_discover",),
     SURFACE_DISCOVER: ("open_search",),
     SURFACE_SEARCH: ("focus_editor",),
@@ -65,6 +67,8 @@ SEARCH_EDITOR_FSM = {
 TABS_FSM = {
     SURFACE_FOREIGN: ("launch_weibo",),
     SURFACE_UNKNOWN: ("back_to_known", "open_home"),
+    SURFACE_COMPOSE: ("dismiss_compose",),
+    SURFACE_DETAIL: ("back_to_known", "open_home"),
     SURFACE_DISCOVER: ("open_home", "back_to_known"),
     SURFACE_SEARCH: ("back_to_known", "open_home"),
     SURFACE_EDITOR: ("back_to_known",),
@@ -76,6 +80,8 @@ TABS_FSM = {
 TRANSITION_TARGETS = {
     "launch_weibo": (SURFACE_TABS, SURFACE_DISCOVER, SURFACE_SEARCH, SURFACE_EDITOR),
     "back_to_known": (SURFACE_TABS, SURFACE_DISCOVER, SURFACE_SEARCH, SURFACE_EDITOR),
+    "dismiss_compose": (SURFACE_TABS, SURFACE_DISCOVER, SURFACE_SEARCH, SURFACE_EDITOR,
+                        SURFACE_UNKNOWN),
     "open_discover": (SURFACE_DISCOVER, SURFACE_SEARCH, SURFACE_EDITOR, SURFACE_TABS),
     "open_home": (SURFACE_TABS, SURFACE_DISCOVER),
     "open_search": (SURFACE_SEARCH, SURFACE_EDITOR, SURFACE_DISCOVER, SURFACE_TABS),
@@ -243,6 +249,13 @@ class PrimitiveRunner:
         try:
             if transition == "launch_weibo":
                 post = await self._launch_and_settle()
+            elif transition == "dismiss_compose":
+                # Cancel only: Send would post content and is never acceptance.
+                _, post = await self._setup_step(
+                    selector="dismiss_compose",
+                    locate=lambda obs: find_node(obs, text="取消"),
+                    action_for=lambda node: {"kind": "tap", "target": {"text": "取消"}},
+                    expected={"changed": True})
             elif transition == "back_to_known":
                 _, post = await self._setup_step(selector="back_to_known",
                                                  locate=lambda obs: {"back": True},
@@ -250,13 +263,17 @@ class PrimitiveRunner:
             elif transition == "open_discover":
                 _, post = await self._setup_step(
                     selector="open_discover",
-                    locate=lambda obs: find_node(obs, text=DISCOVER_TAB),
-                    action_for=lambda node: {"kind": "tap", "target": {"text": DISCOVER_TAB}})
+                    locate=lambda obs: (lambda n: None if n is None else clickable_node(obs, n))(
+                        find_node(obs, text=DISCOVER_TAB)),
+                    action_for=lambda node: {"kind": "tap",
+                                             "target": {"action_id": node["action_id"]}})
             elif transition == "open_home":
                 _, post = await self._setup_step(
                     selector="open_home",
-                    locate=lambda obs: find_node(obs, text=TAB_A),
-                    action_for=lambda node: {"kind": "tap", "target": {"text": TAB_A}})
+                    locate=lambda obs: (lambda n: None if n is None else clickable_node(obs, n))(
+                        find_node(obs, text=TAB_A)),
+                    action_for=lambda node: {"kind": "tap",
+                                             "target": {"action_id": node["action_id"]}})
             elif transition == "open_search":
                 _, post = await self._setup_step(
                     selector="open_search", locate=find_search_bar,
@@ -280,6 +297,8 @@ class PrimitiveRunner:
         """Is the locator for this transition present in this observation?"""
         if transition in ("launch_weibo", "back_to_known"):
             return True
+        if transition == "dismiss_compose":
+            return find_node(observation, text="取消") is not None
         if transition == "open_discover":
             return find_node(observation, text=DISCOVER_TAB) is not None
         if transition == "open_home":
@@ -296,6 +315,8 @@ class PrimitiveRunner:
         preferred = {
             SURFACE_FOREIGN: ("launch_weibo",),
             SURFACE_UNKNOWN: ("back_to_known", "open_discover"),
+            SURFACE_COMPOSE: ("dismiss_compose",),
+            SURFACE_DETAIL: ("back_to_known", "open_home"),
             SURFACE_TABS: ("open_discover",),
             SURFACE_DISCOVER: ("open_search",),
             SURFACE_SEARCH: ("focus_editor",),

@@ -508,13 +508,36 @@ async def main(args) -> int:
         "blocked": sum(1 for item in runs if item["status"] == "blocked"),
         "dispatches": sum(item["dispatches"] for item in runs),
     }
-    report["threshold"] = {"required_successes": 27, "total": 30}
+    planned = len(tasks) * args.runs
+    attempted = len(runs)
+    unattempted = max(0, planned - attempted)
+    report["totals"]["planned"] = planned
+    report["totals"]["attempted"] = attempted
+    report["totals"]["unattempted"] = unattempted
     report["false_success_claims"] = errored
     report["device_failures"] = sum(1 for item in runs if item.get("device_failure"))
     report["duration_seconds"] = round(time.time() - started, 3)
-    report["status"] = ("ok" if (report["totals"]["runs"] == 30 and succeeded >= 27
-                                 and not report["session"]["unresolved_actions"])
-                        else "not_ready")
+    # Smoke validates the chain on a short planned set; it must not pretend to
+    # be the formal 10x3 gate. Formal mode keeps the fixed 27/30 bar.
+    if args.mode == "smoke":
+        report["threshold"] = {
+            "mode": "smoke",
+            "required_successes": attempted,
+            "total": attempted,
+            "note": "smoke: every attempted run must succeed; not the formal 27/30 gate",
+        }
+        report["status"] = (
+            "ok" if (attempted == planned and attempted > 0 and succeeded == attempted
+                     and not report["session"]["unresolved_actions"])
+            else "not_ready"
+        )
+    else:
+        report["threshold"] = {"mode": "formal", "required_successes": 27, "total": 30}
+        report["status"] = (
+            "ok" if (planned == 30 and attempted == 30 and succeeded >= 27
+                     and not report["session"]["unresolved_actions"])
+            else "not_ready"
+        )
     rendered = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True)
     print(rendered)
     if args.report:
@@ -530,6 +553,9 @@ def parse_args(argv=None):
     parser.add_argument("--only", nargs="*")
     parser.add_argument("--device-id")
     parser.add_argument("--transport", choices=("stdio", "service"), default="service")
+    parser.add_argument("--mode", choices=("smoke", "formal"), default="smoke",
+                        help="smoke: short planned set, every attempted run must succeed; "
+                             "formal: fixed 10x3 gate with >=27/30")
     parser.add_argument("--report")
     parser.add_argument("--execute", action="store_true",
                         help="Acknowledge that this run dispatches real device actions")

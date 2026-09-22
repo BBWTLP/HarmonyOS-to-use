@@ -48,20 +48,32 @@ def surface_observation(surface: str) -> dict:
     if surface == "unknown":
         catalog = [entry(type="Column", bounds=[0, 0, 100, 100])]
     elif surface == "tabs":
-        catalog = [entry(action_id="n0", type="Text", text="首页",
+        # Tab labels are non-clickable Text nodes inside clickable Columns,
+        # matching the acceptance device.
+        catalog = [entry(action_id="c0", type="Column", bounds=[0, 2592, 264, 2754],
+                         clickable=True, hierarchy="ROOT0,0,1"),
+                   entry(action_id="n0", type="Text", text="首页", parent_action_id="c0",
                          bounds=[100, 2240, 170, 2300], hierarchy="ROOT0,0,1"),
-                   entry(action_id="n1", type="Text", text="发现",
+                   entry(action_id="c1", type="Column", bounds=[264, 2592, 528, 2754],
+                         clickable=True, hierarchy="ROOT0,0,2"),
+                   entry(action_id="n1", type="Text", text="发现", parent_action_id="c1",
                          bounds=[270, 2240, 340, 2300], hierarchy="ROOT0,0,2"),
-                   entry(action_id="n2", type="Text", text="消息",
+                   entry(action_id="c2", type="Column", bounds=[528, 2592, 792, 2754],
+                         clickable=True, hierarchy="ROOT0,0,2"),
+                   entry(action_id="n2", type="Text", text="消息", parent_action_id="c2",
                          bounds=[540, 2240, 610, 2300], hierarchy="ROOT0,0,2"),
-                   entry(action_id="n3", type="Text", text="我",
+                   entry(action_id="c3", type="Column", bounds=[792, 2592, 1056, 2754],
+                         clickable=True, hierarchy="ROOT0,0,3"),
+                   entry(action_id="n3", type="Text", text="我", parent_action_id="c3",
                          bounds=[810, 2240, 880, 2300], hierarchy="ROOT0,0,3")]
     elif surface == "discover":
         # The discover page keeps the bottom navigation, so the recovery
         # transition can stay inside the app (`open_home`) instead of leaving it.
         catalog = [entry(action_id="sb", type="Flex", bounds=[47, 154, 1273, 276],
                          clickable=True, hierarchy="ROOT0,0,5"),
-                   entry(action_id="n9", type="Text", text="首页",
+                   entry(action_id="c0", type="Column", bounds=[0, 2592, 264, 2754],
+                         clickable=True, hierarchy="ROOT0,0,1"),
+                   entry(action_id="n9", type="Text", text="首页", parent_action_id="c0",
                          bounds=[100, 2240, 170, 2300], hierarchy="ROOT0,0,1")]
     elif surface == "search_surface":
         catalog = [entry(action_id="in", type="TextInput", clickable=True,
@@ -141,7 +153,7 @@ class SetupStateMachineTests(unittest.TestCase):
     def test_normal_path_foreign_tabs_discover_search_editor(self):
         result = drive("foreign", {
             "launch": "tabs",
-            "tap_text:发现": "discover",
+            "tap_id:tabs:c1": "discover",
             "tap_id:discover:sb": "search_surface",
             "tap_id:search_surface:in": "editor",
         })
@@ -193,7 +205,7 @@ class SetupStateMachineTests(unittest.TestCase):
     def test_an_unknown_surface_recovers_with_one_back(self):
         result = drive("unknown", {
             "back": "tabs",
-            "tap_text:发现": "discover",
+            "tap_id:tabs:c1": "discover",
             "tap_id:discover:sb": "editor",
         })
         self.assertEqual(result["outcome"], "ok")
@@ -211,7 +223,7 @@ class SetupStateMachineTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "setup_app_not_stable")
 
     def test_oscillating_states_terminate_with_a_loop_failure(self):
-        result = drive("tabs", {"tap_text:发现": "discover",
+        result = drive("tabs", {"tap_id:tabs:c1": "discover",
                                 "tap_id:discover:sb": "tabs"})
         self.assertEqual(result["outcome"], "setup_state_loop")
         transitions = [step["transition"] for step in result["runner"].setup.trace]
@@ -243,7 +255,7 @@ class SetupStateMachineTests(unittest.TestCase):
         so the machine reported `setup_locator_missing` with zero actions. That
         is what made `swipe`/`tap` fail instantly on the device.
         """
-        result = drive("discover", {"tap_text:首页": "tabs"}, target=TABS_FSM)
+        result = drive("discover", {"tap_id:discover:c0": "tabs"}, target=TABS_FSM)
         self.assertEqual(result["outcome"], "ok")
         self.assertEqual(result["runner"].setup.trace[0]["transition"], "open_home")
         self.assertEqual(result["runner"].setup.attempts, 1)
@@ -278,7 +290,7 @@ class SetupStateMachineTests(unittest.TestCase):
             "tap_id:discover:sb": ["discover", "discover", "discover", "discover",
                                    "editor"],
             "back": "tabs",
-            "tap_text:发现": "discover",
+            "tap_id:tabs:c1": "discover",
         })
         self.assertEqual(result["outcome"], "ok")
         recoveries = [step for step in result["runner"].setup.trace
@@ -293,7 +305,7 @@ class SetupStateMachineTests(unittest.TestCase):
         result = drive("discover", {
             "tap_id:discover:sb": "discover",
             "back": "tabs",
-            "tap_text:发现": "discover",
+            "tap_id:tabs:c1": "discover",
         })
         self.assertIn(result["outcome"],
                       ("setup_no_progress", "setup_budget_exhausted"))
