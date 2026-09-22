@@ -58,6 +58,51 @@ class RecoveryTests(unittest.TestCase):
                 with self.assertRaises(RuntimeFault): journal.require_reconciled('any-device')
             finally: journal.close()
 
+    def test_screen_recovery_invalidates_pre_sleep_handles(self):
+        class SleepyDevice(FakeDevice):
+            def __init__(self, serial):
+                super().__init__(serial)
+                self.asleep = False
+                self.wake_calls = 0
+            def screen_state(self):
+                if self.asleep:
+                    return {"screen_on": False, "screen_locked": False}
+                return {"screen_on": True, "screen_locked": False}
+            def screen_on(self):
+                self.wake_calls += 1
+                self.asleep = False
+            def wake_up_display(self):
+                self.asleep = False
+            def unlock(self):
+                self.asleep = False
+
+        with tempfile.TemporaryDirectory() as root:
+            device = SleepyDevice('first')
+            runtime = Runtime(root, factory=lambda serial: device, discover=lambda: ['first'])
+            try:
+                sid = runtime.session('owner', 'open')['session_id']
+                pre = runtime.observe('owner', sid)
+                pre_id = pre['observation_id']
+                device.asleep = True
+                # Recovery observe must wake/unlock and issue a fresh handle.
+                post = runtime.observe('owner', sid)
+                self.assertNotEqual(post['observation_id'], pre_id)
+                self.assertGreaterEqual(device.wake_calls, 1)
+                self.assertEqual(post['screen_state'], {"screen_on": True, "screen_locked": False})
+                # The pre-sleep handle must not authorize a write.
+                with self.assertRaises(RuntimeFault) as ctx:
+                    runtime.act('owner', dict(
+                        session_id=sid,
+                        request_id='after-sleep',
+                        observation_id=pre_id,
+                        action={'kind': 'back'},
+                        expected={'changed': True},
+                    ))
+                self.assertIn(ctx.exception.code, ('stale_observation', 'stale_controller_epoch'))
+                self.assertEqual(device.writes, 0)
+            finally:
+                runtime.close()
+
     def test_completed_execution_does_not_leave_unknown_barrier(self):
         with tempfile.TemporaryDirectory() as root:
             journal = Journal(Path(root)/'journal.sqlite3')

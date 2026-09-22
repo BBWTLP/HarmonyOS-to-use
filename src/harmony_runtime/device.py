@@ -28,6 +28,24 @@ def parse_screen_state(power_output, lock_output):
     }
 
 
+def screen_sleep_confirmed(state):
+    """True only when the display is explicitly off.
+
+    On a credential-free device the lock flag may be true or false after sleep;
+    it is never required and never invented here. Unknown is not asleep.
+    """
+    return isinstance(state, dict) and state.get("screen_on") is False
+
+
+def screen_ready_confirmed(state):
+    """True only for a confirmed awake, unlocked screen."""
+    return (
+        isinstance(state, dict)
+        and state.get("screen_on") is True
+        and state.get("screen_locked") is False
+    )
+
+
 def parse_diagnostic_sections(raw, marker, count):
     """Reject truncated, duplicated, reordered or failed diagnostic commands."""
     if not isinstance(raw, str):

@@ -198,6 +198,9 @@ class AgentHarness:
         self.agent_tools = agent_tools
         self.session_id: str | None = None
         self.calls: list[ToolCall] = []
+        #: One entry per recover attempt: duration, before/after status and
+        #: whether the original call continued after the refresh.
+        self.recovery_log: list[dict[str, Any]] = []
         self._client: ClientSession | None = None
         self._streams = None
         self._context = None
@@ -320,12 +323,33 @@ class AgentHarness:
                 or getattr(self, "_recovering", False)):
             raise error
         self._recovering = True
+        started = time.perf_counter()
+        entry = {
+            "reason": error.code,
+            "before": "device_quarantined",
+            "started_ms": round(started * 1000, 3),
+        }
         try:
-            await self._call_tool("mobile_session", operation="recover",
-                                  session_id=self.session_id, record=False)
+            recovered = await self._call_tool("mobile_session", operation="recover",
+                                              session_id=self.session_id, record=False)
+            entry["recover_ms"] = round((time.perf_counter() - started) * 1000, 3)
+            entry["after"] = (recovered or {}).get("status") or (recovered or {}).get("device_state") or "recovered"
+            entry["continuation"] = "retrying"
+            self.recovery_log.append(entry)
+        except Exception as recover_error:
+            entry["recover_ms"] = round((time.perf_counter() - started) * 1000, 3)
+            entry["after"] = "recover_failed"
+            entry["continuation"] = "abandoned"
+            entry["error"] = getattr(recover_error, "code", type(recover_error).__name__)
+            self.recovery_log.append(entry)
+            self._recovering = False
+            raise
         finally:
             self._recovering = False
-        return await retry()
+        result = await retry()
+        if self.recovery_log:
+            self.recovery_log[-1]["continuation"] = "completed" if result is not None else "retry_returned_none"
+        return result
 
     async def _call_tool(self, tool: str, *, record: bool = True,
                          read_timeout_seconds: float = 180.0, **arguments) -> dict[str, Any]:
@@ -505,6 +529,7 @@ class ServiceClientHarness:
         self.tools = ["mobile_session", "mobile_observe", "mobile_act", "mobile_wait",
                       "mobile_burst", "mobile_history"]
         self.connected = False
+        self.recovery_log: list[dict[str, Any]] = []
 
     async def __aenter__(self) -> "ServiceClientHarness":
         # The client performs the authenticated handshake lazily on first use;
@@ -535,12 +560,33 @@ class ServiceClientHarness:
                 or getattr(self, "_recovering", False)):
             raise error
         self._recovering = True
+        started = time.perf_counter()
+        entry = {
+            "reason": error.code,
+            "before": "device_quarantined",
+            "started_ms": round(started * 1000, 3),
+        }
         try:
-            await self._call_tool("mobile_session", operation="recover",
-                                  session_id=self.session_id, record=False)
+            recovered = await self._call_tool("mobile_session", operation="recover",
+                                              session_id=self.session_id, record=False)
+            entry["recover_ms"] = round((time.perf_counter() - started) * 1000, 3)
+            entry["after"] = (recovered or {}).get("status") or (recovered or {}).get("device_state") or "recovered"
+            entry["continuation"] = "retrying"
+            self.recovery_log.append(entry)
+        except Exception as recover_error:
+            entry["recover_ms"] = round((time.perf_counter() - started) * 1000, 3)
+            entry["after"] = "recover_failed"
+            entry["continuation"] = "abandoned"
+            entry["error"] = getattr(recover_error, "code", type(recover_error).__name__)
+            self.recovery_log.append(entry)
+            self._recovering = False
+            raise
         finally:
             self._recovering = False
-        return await retry()
+        result = await retry()
+        if self.recovery_log:
+            self.recovery_log[-1]["continuation"] = "completed" if result is not None else "retry_returned_none"
+        return result
 
     async def _call_tool(self, tool: str, *, record: bool = True, **arguments):
         routes = {

@@ -60,7 +60,19 @@
 
 ## T01 — 自动唤醒、无凭据解锁与任务续跑（P0）
 
-**状态：** 未开始
+**状态：** `verified_device`
+
+**改动：**
+- `device.py`：新增 `screen_sleep_confirmed` / `screen_ready_confirmed`（明确 off 即算睡眠；锁标志如实记录不写死）
+- `scripts/accept_wake_unlock.py`：去掉 `off+locked` 硬编码；新增 `--natural-idle-seconds`；恢复指标；旧句柄拒绝；低风险 continuation；长静置后租约过期则重开会话
+- `scripts/agent_harness.py`：两个 transport 的 `recovery_log`
+- `tests/test_device_state.py`、`tests/test_recovery.py`：睡眠前置三态、旧句柄失效
+
+**本轮证据：** 受控 5/5 `wake-unlock.json` passed；自然息屏 `wake-unlock-natural.json` passed（650.015s，session_reopened）；continuation 至少 1 次 verified；离线 test_device_state 4/4、test_recovery 5/5、test_snapshot_provider 44/44
+
+**通过判定：** **T01 通过**。
+
+**下一动作：** T02 未知写入对账收紧。
 
 ## T02 — 未知写入对账收紧（P0）
 
