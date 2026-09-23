@@ -105,7 +105,15 @@ def navigation_tree(tree):
             value = attributes.get(field)
             progress = (attributes.get("type") in ("Slider", "Progress") and isinstance(value, str)
                         and re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", value) is not None)
-            if field in attributes and (status_text or progress):
+            # Search-entry placeholders carry rotating trending queries
+            # ("猜你想搜：...") and must not move the page identity, or every
+            # re-ground of the search bar is refused as a different page.
+            # Pure counters (hot ranks, badges) are the same class of chrome.
+            search_hint = isinstance(value, str) and (
+                value.startswith("猜你想搜")
+                or bool(re.fullmatch(r"(?:演出|剧集|直播|视频)?\s*\d+", value))
+            )
+            if field in attributes and (status_text or progress or search_hint):
                 attributes[field] = "<volatile-navigation-text>"
         # Feed and video surfaces can continuously animate decorative image
         # bounds while the page and its actionable controls remain unchanged.

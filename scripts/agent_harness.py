@@ -747,11 +747,60 @@ SEARCH_BAR_MAX_TOP = 300
 
 
 def find_search_bar(observation: dict[str, Any]) -> dict[str, Any] | None:
-    nodes = [item for item in observation.get("catalog", [])
-             if item.get("enabled") and item.get("clickable")
-             and item.get("type") == "Flex"
-             and (item.get("bounds") or [0, 9999, 0, 0])[1] < SEARCH_BAR_MAX_TOP]
-    return nodes[0] if len(nodes) == 1 else None
+    """The discover search entry: a wide top-band control near 猜你想搜/搜索.
+
+    The acceptance device shows a long Flex/Row with a rotating "猜你想搜：..."
+    hint. Small top-right glyphs (publish, redPacket, refresh) must never match.
+    """
+    catalog = observation.get("catalog") or []
+    banned = ("publish", "redpacket", "login", "cancel")
+    by_id = {item.get("action_id"): item for item in catalog if item.get("action_id")}
+
+    def width(item):
+        b = item.get("bounds") or [0, 0, 0, 0]
+        return int(b[2]) - int(b[0])
+
+    def label_blob(item):
+        return " ".join(str(item.get(k) or "") for k in ("text", "description", "hint", "resource_id"))
+
+    # 1) clickable ancestor of a 猜你想搜 / 搜索 hint in the top band
+    for item in catalog:
+        text = str(item.get("text") or "")
+        # Only the rotating search hint, not a small 搜索 icon button.
+        if not text.startswith("猜你想搜"):
+            continue
+        bounds = item.get("bounds") or [0, 9999, 0, 0]
+        if bounds[1] >= SEARCH_BAR_MAX_TOP:
+            continue
+        node = clickable_node(observation, item)
+        if node.get("clickable") and node.get("enabled"):
+            return node
+
+    # 2) a unique wide clickable top-band container (not an icon glyph)
+    nodes = []
+    for item in catalog:
+        if not item.get("enabled") or not item.get("clickable"):
+            continue
+        rid = str(item.get("resource_id") or "").lower()
+        if any(token in rid for token in banned):
+            continue
+        bounds = item.get("bounds") or [0, 9999, 0, 0]
+        if bounds[1] >= SEARCH_BAR_MAX_TOP:
+            continue
+        if width(item) < 400:
+            continue
+        blob = label_blob(item).lower()
+        type_name = str(item.get("type") or "")
+        looks_search = ("search" in blob or "搜索" in blob or "猜你想搜" in blob
+                        or type_name in ("Flex", "SearchField", "Search", "Row"))
+        if looks_search:
+            nodes.append(item)
+    if len(nodes) == 1:
+        return nodes[0]
+    if nodes:
+        nodes.sort(key=width, reverse=True)
+        return nodes[0]
+    return None
 
 
 def is_search_editor(observation: dict[str, Any]) -> bool:
@@ -767,7 +816,8 @@ def _is_input_type(value: Any) -> bool:
     """True for editable field node types used on this device build."""
     text = str(value or "").lower()
     return any(token in text for token in
-               ("input", "editor", "textfield", "edittext", "searchfield"))
+               ("input", "editor", "textfield", "edittext", "searchfield",
+                "textarea", "searcharea", "richtext"))
 
 
 def focused_input(observation: dict[str, Any]) -> dict[str, Any] | None:
@@ -813,8 +863,10 @@ SURFACE_EDITOR = "search_editor"
 SURFACE_UNKNOWN = "unknown"
 SURFACE_COMPOSE = "compose_dialog"
 SURFACE_DETAIL = "feed_detail"
+SURFACE_HOT_SEARCH = "hot_search"
 SURFACE_STATES = (SURFACE_FOREIGN, SURFACE_TABS, SURFACE_DISCOVER, SURFACE_SEARCH,
-                  SURFACE_EDITOR, SURFACE_COMPOSE, SURFACE_DETAIL, SURFACE_UNKNOWN)
+                  SURFACE_EDITOR, SURFACE_COMPOSE, SURFACE_DETAIL, SURFACE_HOT_SEARCH,
+                  SURFACE_UNKNOWN)
 
 BOTTOM_TABS = ("首页", "发现", "消息", "我")
 TOP_BAND_MAX_TOP = 400
@@ -841,15 +893,26 @@ def is_compose_dialog(observation: dict[str, Any]) -> bool:
 
 
 def is_feed_detail(observation: dict[str, Any]) -> bool:
-    """A blog/detail surface whose action bar can cover the tab bar.
+    """A surface where content intercepts tab taps or a lone blog action bar is up.
 
-    These pages still show bottom tab labels, so a tabs-only classifier sends
-    setup to tap 发现 and the hit lands on a repost/share control instead.
+    Ordinary feeds also contain ``blog_item_view_content`` cards and 转发
+    labels; those are not detail pages. What breaks setup is (a) a top action
+    bar on a focused blog item, or (b) clickable content that covers the tab
+    bar so 首页/发现 cannot be hit-test selected.
     """
     catalog = observation.get("catalog") or []
-    has_blog = any(item.get("resource_id") == "blog_item_view_content" for item in catalog)
-    has_repost = any((item.get("text") or "") == "转发" for item in catalog)
-    return bool(has_blog or has_repost)
+    # Isolated blog action bar near the top only. Ordinary feeds also contain
+    # blog cards and 转发 labels lower down; those stay tabs/discover.
+    return any((item.get("text") or "") == "转发"
+               and (item.get("bounds") or [0, 9999, 0, 0])[1] < 450 for item in catalog)
+
+
+def is_hot_search(observation: dict[str, Any]) -> bool:
+    """微博热搜列表：标题在场且有返回，不是底部 tab 页。"""
+    catalog = observation.get("catalog") or []
+    title = any((item.get("text") or "") == "微博热搜" for item in catalog)
+    back = any((item.get("text") or "") == "返回" for item in catalog)
+    return bool(title and back)
 
 
 def search_editor_evidence(observation: dict[str, Any]) -> dict[str, Any]:
@@ -877,25 +940,27 @@ def search_editor_evidence(observation: dict[str, Any]) -> dict[str, Any]:
 def classify_surface(observation: dict[str, Any]) -> str:
     """One of the explicit surface states, from several evidence sources.
 
-    Order matters: an editor is not a discover page even though both live under
-    Weibo, and the discover page still shows the bottom navigation - so the
-    discover check must run before the tabs check.
+    Order matters: an editor is not a discover page. A page with the bottom
+    tab labels and without a wide search bar is tabs (home feed); discover is
+    identified by its wide search entry after tabs are ruled out.
     """
     if not has_weibo_evidence(observation):
         return SURFACE_FOREIGN
     if is_compose_dialog(observation):
         return SURFACE_COMPOSE
+    if is_hot_search(observation):
+        return SURFACE_HOT_SEARCH
     if is_feed_detail(observation):
         return SURFACE_DETAIL
     evidence = search_editor_evidence(observation)
     if evidence["single_field"] and (evidence["scroll_container"]
                                      or evidence["field_focused"]):
         return SURFACE_EDITOR
-    if find_search_bar(observation) is not None:
-        return SURFACE_DISCOVER
     if sum(1 for label in BOTTOM_TABS
            if find_node(observation, text=label) is not None) >= 2:
         return SURFACE_TABS
+    if find_search_bar(observation) is not None:
+        return SURFACE_DISCOVER
     if evidence["field_present"] or evidence["search_role"]:
         return SURFACE_SEARCH
     return SURFACE_UNKNOWN

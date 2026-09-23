@@ -15,7 +15,7 @@ from .observation import canonical, matches, resolve, snapshot, input_value_matc
 from .snapshot import (ProviderState, capture_after_readiness, capture_snapshot,
                        provider_choice, readiness_probe)
 from .target_identity import AMBIGUOUS, StableTargetMatcher
-from .risk import is_sensitive, label_of, scan
+from .risk import is_sensitive, label_of, control_label_of, scan
 from .visual import encode_image, mark_targets
 from .timing import Timings
 
@@ -612,6 +612,13 @@ class Runtime:
         # The term list is shared with the agent layer (`harmony_runtime.risk`),
         # so a candidate classification can never be more permissive than this.
         label = label_of(target)
+        type_name = str((target or {}).get("type") or "").lower()
+        editable = any(token in type_name for token in
+                       ("input", "editor", "textarea", "textfield", "edittext", "searchfield"))
+        # An editable field's current value is content, not a control caption:
+        # searching for "小米发布会" must not look like tapping 发布.
+        risk_label = control_label_of(target) if (
+            editable or action.kind in ("input_text", "replace_text")) else label
         if target and target.get("visual_source"):
             # A visual region is a proposed point, not an observed widget: it can
             # only carry the spatial gestures, and it can never receive input.
@@ -619,7 +626,7 @@ class Runtime:
                 raise RuntimeFault("unsupported_capability",
                                    "Visual regions support tap and long_press only; "
                                    "input requires an observed text field")
-        if action.kind in ("tap","long_press","input_text","replace_text") and is_sensitive(label):
+        if action.kind in ("tap", "long_press", "input_text", "replace_text") and is_sensitive(risk_label):
             raise RuntimeFault("approval_required", "Sensitive target blocked. Trusted approval flow is not implemented in this build.")
         if action.kind in ("input_text", "replace_text") and not target.get("focused"):
             raise RuntimeFault("focus_required", "Tap the field and observe its focus before input")
@@ -723,15 +730,10 @@ class Runtime:
             projection = before.get("navigation_fingerprint")
             same_page = bool(projection) and projection == current.get("navigation_fingerprint")
             allowed = req.action.kind in ("back", "home", "swipe", "tap", "long_press", "input_text", "replace_text", "launch")
-            if not same_page or not allowed:
+            if not allowed or not same_page:
                 raise RuntimeFault("stale_observation", "Page changed since the referenced observation")
             if req.action.target is not None:
                 previous_target = resolve(before, req.action.target)
-                # Re-identify the control by its own evidence. The catalog is
-                # rebuilt every read, so `action_id`/`parent_action_id` are
-                # observation-local handles, the device may report a volatile
-                # accessibilityId, and the subtree hash moves with any animated
-                # descendant - none of those decide identity (RC4-A).
                 match = self.matcher.match(previous_target, current.get("catalog") or [])
                 self._record_match(s, match)
                 target_match_note = match.as_dict()

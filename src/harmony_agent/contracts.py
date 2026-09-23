@@ -53,6 +53,7 @@ PREDICATE_TYPES = (
     "element_absent",
     "foreground_is",
     "page_changed",
+    "surface_is",
     "page_assertion",
     "all_of",
 )
@@ -66,6 +67,7 @@ PROGRAMMATIC_PREDICATES = (
     "element_absent",
     "foreground_is",
     "page_changed",
+    "surface_is",
 )
 
 LEDGER_STATES = (

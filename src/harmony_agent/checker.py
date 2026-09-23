@@ -95,6 +95,7 @@ def evaluate(predicate: Predicate, observation: dict[str, Any], *,
              arguments: dict[str, str] | None = None,
              baseline: dict[str, Any] | None = None,
              assertion_evaluator: Callable[[str, dict[str, Any]], tuple[str, str]] | None = None,
+             surface_classifier: Callable[[dict[str, Any]], str] | None = None,
              evidence_refs: Iterable[str] = ()) -> ConditionVerdict:
     arguments = arguments or {}
     obs_ref = f"obs:{observation.get('observation_id')}"
@@ -102,7 +103,8 @@ def evaluate(predicate: Predicate, observation: dict[str, Any], *,
 
     if predicate.type == "all_of":
         verdicts = [evaluate(child, observation, arguments=arguments, baseline=baseline,
-                             assertion_evaluator=assertion_evaluator, evidence_refs=evidence_refs)
+                             assertion_evaluator=assertion_evaluator,
+                             surface_classifier=surface_classifier, evidence_refs=evidence_refs)
                     for child in predicate.predicates or []]
         if any(item.verdict == FAIL for item in verdicts):
             verdict = FAIL
@@ -159,6 +161,17 @@ def evaluate(predicate: Predicate, observation: dict[str, Any], *,
         return ConditionVerdict(predicate.id, PASS if changed else FAIL, refs,
                                 "fingerprint comparison")
 
+    if predicate.type == "surface_is":
+        # Page identity: which named surface is actually up. Stronger than
+        # page_changed, which only proves the fingerprint moved.
+        value = resolve_value(predicate, arguments)
+        if surface_classifier is None:
+            return ConditionVerdict(predicate.id, INCONCLUSIVE, refs,
+                                    "no surface classifier configured")
+        actual = surface_classifier(observation)
+        return ConditionVerdict(predicate.id, PASS if actual == value else FAIL, refs,
+                                f"surface={actual}")
+
     if predicate.type == "page_assertion":
         if assertion_evaluator is None:
             return ConditionVerdict(predicate.id, INCONCLUSIVE, refs,
@@ -173,9 +186,11 @@ def check(criteria: list[Predicate], observation: dict[str, Any], *,
           arguments: dict[str, str] | None = None,
           baseline: dict[str, Any] | None = None,
           assertion_evaluator: Callable[[str, dict[str, Any]], tuple[str, str]] | None = None,
+          surface_classifier: Callable[[dict[str, Any]], str] | None = None,
           incident_free: bool = True) -> CheckReport:
     verdicts = [evaluate(item, observation, arguments=arguments, baseline=baseline,
-                         assertion_evaluator=assertion_evaluator) for item in criteria]
+                         assertion_evaluator=assertion_evaluator,
+                         surface_classifier=surface_classifier) for item in criteria]
     unobserved = [item.id for item in verdicts if item.verdict == INCONCLUSIVE]
     limitations = []
     if unobserved:
@@ -196,11 +211,14 @@ def check(criteria: list[Predicate], observation: dict[str, Any], *,
 class ReadOnlyChecker:
     """Adapter that refuses any write capability handed to it."""
 
-    def __init__(self, *, assertion_evaluator: Callable[[str, dict[str, Any]], tuple[str, str]] | None = None):
+    def __init__(self, *, assertion_evaluator: Callable[[str, dict[str, Any]], tuple[str, str]] | None = None,
+                 surface_classifier: Callable[[dict[str, Any]], str] | None = None):
         self.assertion_evaluator = assertion_evaluator
+        self.surface_classifier = surface_classifier
 
     def check(self, criteria: list[Predicate], observation: dict[str, Any], **kwargs) -> CheckReport:
-        return check(criteria, observation, assertion_evaluator=self.assertion_evaluator, **kwargs)
+        return check(criteria, observation, assertion_evaluator=self.assertion_evaluator,
+                     surface_classifier=self.surface_classifier, **kwargs)
 
     def dispatch(self, *args, **kwargs):  # pragma: no cover - guard rail
         raise CheckerDenied("Checker must not call device write tools")

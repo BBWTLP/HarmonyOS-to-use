@@ -59,12 +59,15 @@
     },
     {
       "id": "m1_05_submit_search",
-      "goal": "提交搜索并确认结果页的综合标签出现",
+      "goal": "提交搜索并确认结果页身份与查询词",
       "entry": "editor",
       "arguments": {"query": "鸿蒙"},
       "steps": ["tap_focused_input", "replace_text:鸿蒙", "tap_first_suggestion"],
       "success_criteria": [
-        {"id": "tab", "type": "text_equals", "value": "综合"},
+        {"id": "tab", "type": "text_equals", "value": "综合",
+         "description": "结果页综合标签"},
+        {"id": "query_on_page", "type": "text_equals", "value_ref": "query",
+         "description": "查询词出现在结果页，不能只看 page_changed"},
         {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low"
@@ -75,8 +78,10 @@
       "entry": "editor",
       "steps": ["back"],
       "success_criteria": [
-        {"id": "left_editor", "type": "page_changed",
-         "description": "返回后页面相对基线发生变化"},
+        {"id": "on_discover", "type": "surface_is", "value": "discover",
+         "description": "必须回到发现页身份，不能只凭 page_changed"},
+        {"id": "left_editor", "type": "element_absent", "target_key": "type:TextInput",
+         "description": "搜索输入框已不在前台"},
         {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low"
@@ -87,7 +92,9 @@
       "entry": "any",
       "steps": ["tap:首页"],
       "success_criteria": [
-        {"id": "feed", "type": "element_present", "target_key": "id:common_flow_list"}
+        {"id": "on_tabs", "type": "surface_is", "value": "tabs",
+         "description": "首页 tab 页身份"},
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low"
     },
@@ -119,7 +126,9 @@
       "entry": "tabs",
       "steps": ["tap:发现", "tap:首页"],
       "success_criteria": [
-        {"id": "feed", "type": "element_present", "target_key": "id:common_flow_list"}
+        {"id": "on_home_tabs", "type": "surface_is", "value": "tabs",
+         "description": "最终停在首页 tab 身份，不能只看列表控件"},
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low"
     }

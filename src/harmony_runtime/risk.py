@@ -43,11 +43,13 @@ def normalize_label(label: str | None) -> str:
     """Lower-case the label and treat identifier separators as word breaks.
 
     `account_avatar` and `delete-all` therefore contain the standalone words
-    "account" and "delete". That is deliberately conservative: a false positive
-    costs one refused action, a false negative costs an unintended write, and the
+    "account" and "delete". CamelCase is split too so `passwordInput` matches
+    "password". That is deliberately conservative: a false positive costs one
+    refused action, a false negative costs an unintended write, and the
     trusted approval flow that would resolve the ambiguity is not implemented.
     """
-    text = " ".join(str(label or "").split()).lower()
+    text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", str(label or ""))
+    text = " ".join(text.split()).lower()
     return re.sub(r"[_./\\-]+", " ", text)
 
 
@@ -99,4 +101,18 @@ def label_of(target: dict | None, *,
     """
     if not target:
         return ""
-    return " ".join(str(target.get(key, "")) for key in keys).lower()
+    # Keep original case so normalize_label can split camelCase identifiers
+    # (passwordInput) before lower-casing.
+    return " ".join(str(target.get(key, "")) for key in keys)
+
+
+def control_label_of(target: dict | None) -> str:
+    """Label used to judge *control* risk for input actions.
+
+    Uses the control's identity (resource id, type, independent visual
+    evidence), not its current value or placeholder. A search box showing
+    "小米18pro系列今日发布" is not a publish control; a field whose id is
+    ``passwordInput`` or ``pinSix`` still is.
+    """
+    return label_of(target, keys=("resource_id", "type", "visual_evidence"))
+

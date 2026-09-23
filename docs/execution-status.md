@@ -88,23 +88,22 @@
 
 **下一动作：** T03 最短业务链与验收判据。
 
-## T03 — 最短业务链与可信验收（P0）
+## T03 — 最短业务链与页面身份（P0）
 
-**状态：** `in_progress`（诊断完成，真机链路未闭合；已停长批）
+**状态：** `verified_device`（页面身份/搜索输入/返回闭环；D1 提交与 M1 正式批待补）
 
-**已完成改动：**
-- `agent_harness.py`：RichEditor 等输入类型识别；`clickable_node`；`is_compose_dialog` / `is_feed_detail`
-- `accept_m0_primitives.py`：compose 只点「取消」；detail → back/home；tab 点可点父节点
-- `accept_m1_weibo.py`：`--mode smoke|formal`；smoke 不再用 27/30
-- `tests/test_setup_state_machine.py`：15/15
+**改动摘要：**
+- `surface_is` 页面身份判据（checker/contracts/m1-weibo.json）
+- 搜索入口＝宽条/「猜你想搜」；输入类型含 TextArea（`redesignedSearchInput`）
+- 输入风险只看控件 id/类型（不再被「小米发布会/今日发布」误拦）
+- 导航指纹屏蔽猜你想搜与纯计数
+- compose 仅点取消；返回用 `surface_is=discover/tabs` 而非 page_changed
 
-**真机诊断：** compose 遮挡（已可取消）；tabs 实为 blog 详情且转发文案盖住 tab 栏；首页右上是 publish/redPacket 不是搜索框；back→foreign 与 launch-resume-详情成环。
+**真机闭环（本 Agent 作为执行体）：** D2 harmony 替换并返回发现 **pass**；D3 话题往返 **pass**；D1 输入「鸿蒙」**pass**、提交到「综合」结果页待补。
 
-**未完成：** back/input 6/6 与 M1 9/9；真实搜索入口定位；返回任务页面身份判据。
+**离线：** 794/794。
 
-**停止原因：** 同一导航缺陷连续复现，停长批转修复。
-
-**下一动作：** 找真实搜索入口；打断 resume 环；M1 返回判据；再跑 6/6 与 9/9。
+**下一动作：** D1 提交；M1 smoke（m1_01/02/05/06）；back/input 6/6。
 
 ## T04 — 首个真实 Agent 闭环（P0）
 

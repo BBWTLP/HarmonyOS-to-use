@@ -373,7 +373,7 @@ def judge(criteria: list[dict], observation: dict, arguments: dict[str, str],
           baseline: dict | None, incident_free: bool) -> dict:
     predicates = [Predicate.model_validate(item) for item in criteria]
     report = check(predicates, observation, arguments=arguments, baseline=baseline,
-                   incident_free=incident_free)
+                   surface_classifier=surface_kind, incident_free=incident_free)
     return report.to_dict()
 
 
