@@ -1,0 +1,171 @@
+{
+  "client_type": "mimo_agent_as_tool",
+  "runs": [
+    {
+      "task": "D2",
+      "surface_after": "discover",
+      "verdict": {
+        "verdict": "pass",
+        "conditions": [
+          {
+            "id": "app",
+            "verdict": "pass",
+            "evidence_refs": [
+              "obs:96f0bb7627e24dc2a67aeae887de40a3"
+            ],
+            "detail": "foreground=com.sina.weibo.stage",
+            "decided_by": "code"
+          },
+          {
+            "id": "home_id",
+            "verdict": "pass",
+            "evidence_refs": [
+              "obs:96f0bb7627e24dc2a67aeae887de40a3"
+            ],
+            "detail": "surface=discover",
+            "decided_by": "code"
+          }
+        ],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "evidence_refs": [
+          "obs:96f0bb7627e24dc2a67aeae887de40a3",
+          "obs:96f0bb7627e24dc2a67aeae887de40a3"
+        ],
+        "limitations": [],
+        "mid_query": {
+          "verdict": "pass",
+          "conditions": [
+            {
+              "id": "q",
+              "verdict": "pass",
+              "evidence_refs": [
+                "obs:b1cac52bc1b84f1299d47ac53e9bc70e"
+              ],
+              "detail": "exact text match",
+              "decided_by": "code"
+            }
+          ],
+          "unobserved": [],
+          "user_intervention_required": false,
+          "evidence_refs": [
+            "obs:b1cac52bc1b84f1299d47ac53e9bc70e"
+          ],
+          "limitations": []
+        },
+        "returned": true
+      },
+      "sec": 24.33
+    },
+    {
+      "task": "D3",
+      "surface_before": "discover",
+      "surface_after": "foreign",
+      "verdict": {
+        "verdict": "fail",
+        "conditions": [
+          {
+            "id": "app",
+            "verdict": "inconclusive",
+            "evidence_refs": [
+              "obs:0af860be5e4d463b9e8755ecadd0cc3a"
+            ],
+            "detail": "foreground identity is not observable",
+            "decided_by": "code"
+          }
+        ],
+        "unobserved": [
+          "app"
+        ],
+        "user_intervention_required": false,
+        "evidence_refs": [
+          "obs:0af860be5e4d463b9e8755ecadd0cc3a"
+        ],
+        "limitations": [
+          "some conditions could not be observed; they are not counted as success"
+        ],
+        "returned": false
+      },
+      "sec": 11.63
+    },
+    {
+      "task": "D1",
+      "surface_after": "search_editor",
+      "verdict": {
+        "verdict": "pass",
+        "conditions": [
+          {
+            "id": "app",
+            "verdict": "pass",
+            "evidence_refs": [
+              "obs:d602c47ddf6e417da7ffa2b5bbda90c0"
+            ],
+            "detail": "foreground=com.sina.weibo.stage",
+            "decided_by": "code"
+          },
+          {
+            "id": "query",
+            "verdict": "pass",
+            "evidence_refs": [
+              "obs:d602c47ddf6e417da7ffa2b5bbda90c0"
+            ],
+            "detail": "exact text match",
+            "decided_by": "code"
+          }
+        ],
+        "unobserved": [],
+        "user_intervention_required": false,
+        "evidence_refs": [
+          "obs:d602c47ddf6e417da7ffa2b5bbda90c0",
+          "obs:d602c47ddf6e417da7ffa2b5bbda90c0"
+        ],
+        "limitations": [],
+        "mid_typed": {
+          "verdict": "pass",
+          "conditions": [
+            {
+              "id": "typed",
+              "verdict": "pass",
+              "evidence_refs": [
+                "obs:9d177411aa0d4a27a1bb87b3e8d26bd0"
+              ],
+              "detail": "exact text match",
+              "decided_by": "code"
+            }
+          ],
+          "unobserved": [],
+          "user_intervention_required": false,
+          "evidence_refs": [
+            "obs:9d177411aa0d4a27a1bb87b3e8d26bd0"
+          ],
+          "limitations": []
+        },
+        "results_tab": {
+          "verdict": "fail",
+          "conditions": [
+            {
+              "id": "r",
+              "verdict": "fail",
+              "evidence_refs": [
+                "obs:d602c47ddf6e417da7ffa2b5bbda90c0"
+              ],
+              "detail": "text not present",
+              "decided_by": "code"
+            }
+          ],
+          "unobserved": [],
+          "user_intervention_required": false,
+          "evidence_refs": [
+            "obs:d602c47ddf6e417da7ffa2b5bbda90c0"
+          ],
+          "limitations": []
+        }
+      },
+      "sec": 42.34
+    }
+  ],
+  "totals": {
+    "passed": 2,
+    "attempted": 3
+  }
+}

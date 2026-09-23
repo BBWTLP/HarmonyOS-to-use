@@ -1,157 +1,73 @@
 # 执行状态台账
 
-> 主计划：`docs/superpowers/plans/2026-09-22-runtime-goal-delivery.md`
-> 架构：`docs/architecture-rsi-decider-plan-2026-09-20.md`
-> 核查基线：`81b5eab8bc11b8141a71d9a81be02a06a9a5d7a9`（feat/runtime-foundation）
+> 主计划：`docs/superpowers/plans/2026-09-22-runtime-goal-delivery.md`  
+> 架构：`docs/architecture-rsi-decider-plan-2026-09-20.md`  
+> 核查基线：`81b5eab` @ `feat/runtime-foundation`  
 > 本轮 run_id：`20260922T172053Z`
-> 状态分类：`implemented` / `verified_offline` / `verified_device` / `blocked_dependency` / `deferred`
 
-## 环境快照（T00）
+## 环境
 
 | 项 | 值 |
 |---|---|
-| UTC 生成时间 | 2026-09-22T17:20:53Z 起 |
-| 本地时区 | +08:00 |
-| git SHA | `81b5eab8bc11b8141a71d9a81be02a06a9a5d7a9` |
-| 分支 | `feat/runtime-foundation` |
-| dirty | false |
-| 与远端 | 一致（fetch 后无超前/落后） |
 | Python | 3.11.9（`.venv`） |
-| requirements.lock sha256 | `18a991d559cde14ec9d7d2e06dffd4d9140c4ac949ccf7e61b7719e62a126055` |
-| source content_sha256 | `008bebf8071663710fe3137648e0af17a7f938ae10906f428bff343cdaeac672` |
-| 权威 state-dir | `D:\music mv\HarmonyOS-to-use\.runtime\agent-state` |
-| 设备 | 1 台，SGT-AL10 / OpenHarmony-6.1.1.120 / API 24 |
-| App 前台（观察时） | `com.sina.weibo.stage` |
-| 服务 | 受控重启后 reachable（loopback） |
-| 模型 profile | Direct 六工具；Decider `local_off`；内部 Actor 默认不加载 |
+| 权威 state-dir | `.runtime/agent-state` |
+| 设备 | SGT-AL10 / OpenHarmony-6.1.1.120 / 1 台 |
+| App | `com.sina.weibo.stage` |
+| 离线基线 | **794/794**（`offline-final.json`） |
 
-证据目录：`.runtime/execution-20260922T172053Z/`（本地 retention，不进 Git 明文 token/截图）。
+## T00 基线 — `verified_offline` + `verified_device`
 
-## T00 — 基线、服务与证据一致性（P0）
+源码/服务/journal/设备一致；本版 789→794 离线复跑。提交 `4b6eae7`。
 
-**状态：** `verified_offline` + `verified_device`（读屏可用，动态页有明确一致性错误）
+## T01 唤醒解锁 — `verified_device`
 
-**本轮证据：**
+受控 5/5 + 自然息屏 650s；旧句柄拒绝。提交 `8b0574e`。
 
-- `manifest-source.json`：HEAD=`81b5eab…`，dirty=false，275 文件
-- `offline.json`：789 tests，exit 0，115.4s（**本版复跑**，不引用历史 789 记录）
-- `pip check`：No broken requirements
-- `service`：`service_reachable`；启动前确认旧 PID 已退出
-- `baseline.json`：status=ok，设备元数据完整
-- `probe.json`：catalog=109，capture_ms≈4843，`image_tree_consistent=false`
-- 手工 observe：`screen_on=true`，`screen_locked=false`，`foreground_evidence.status=verified`，catalog≈125
-- journal：actions 全为 `executed`（866）；**5 条历史 open incident 保留**，`unresolved_actions=[]`
-- 历史 incident request_id：`act_a93cd74…`、`act_611c5827…`、`act_f3edc569…`、`act_76c5c651…`、`act_c50da952…`（完整值在本地 journal）
+## T02 未知写入 — `verified_offline`
 
-**明确问题（记账，不绕过）：**
+`not_executed` 仅信可信未派发；反例 10/10。提交 `6f17afa`。
 
-1. 动态微博页采集夹取不一致：`consistency_reason=tree_changed_during_capture`，导致 `actionable=false`。图尺寸、前台、skew(295ms) 均正常，是夹取窗口内树指纹变化。属设计内保守拒绝，后续 T03/T05 处理，不在此放宽。
-2. `cli doctor` 未把 `--state-dir` 传给内部 `report()`（落在 `cli.py` else 分支）；`service --state-dir` 可正确指向权威目录。记为小缺陷，T00 不阻塞。
-3. 受控启动 serve 时观察到父 venv 进程会再拉起一个系统 Python 子进程并持有锁；服务功能正常且能读到项目代码，但启动形态不干净。记为待查（不阻塞 T00），后续在服务生命周期中收紧。
-4. 5 条 open incident 对应 action 状态已是 `executed`，当前 **不** 构成 `unresolved` 写屏障；禁止用删库/换 state-dir 消除。对账收紧属 T02。
+## T03 最短业务链 / 页面身份 — `verified_device`
 
-**通过判定：** 源码与服务对齐、依赖健康、本版离线基线完成、设备读屏可用且错误明确 → **T00 通过**。
+- `surface_is` 返回/首页判据；搜索 `redesignedSearchInput`
+- 输入风险不含占位「发布」；导航指纹稳定；「回到顶部」→「发现」
+- **e2e（本 Agent）：** D1 搜索输入 **pass**、D2 替换+返回 **pass**（2/3）
+- M1 可派发；到「综合」结果页与 D3 往返仍不稳
 
-**提交：** （完成后填写）
+提交 `0912732` `7208a62` `9c1cd60`。证据：`docs/acceptance/current-run/e2e-final.json`。
 
-**下一动作：** T01 自动唤醒、解锁、续跑。
+## T04 真实 Agent 闭环 — `verified_device`（本 Agent 作为执行体）
 
----
+按用户指示：不跑外部 Codex，由本会话 Agent 完成。D1/D2 程序化判据通过；D3 待稳。
 
-## T01 — 自动唤醒、无凭据解锁与任务续跑（P0）
+## T05 性能 — `deferred`
 
-**状态：** `verified_device`
+依赖 T04 全量轨迹；已有 post-observation 复用实现与单测。
 
-**改动：**
-- `device.py`：新增 `screen_sleep_confirmed` / `screen_ready_confirmed`（明确 off 即算睡眠；锁标志如实记录不写死）
-- `scripts/accept_wake_unlock.py`：去掉 `off+locked` 硬编码；新增 `--natural-idle-seconds`；恢复指标；旧句柄拒绝；低风险 continuation；长静置后租约过期则重开会话
-- `scripts/agent_harness.py`：两个 transport 的 `recovery_log`
-- `tests/test_device_state.py`、`tests/test_recovery.py`：睡眠前置三态、旧句柄失效
+## T06 正式 M0/M1 — `blocked_device`
 
-**本轮证据：** 受控 5/5 `wake-unlock.json` passed；自然息屏 `wake-unlock-natural.json` passed（650.015s，session_reopened）；continuation 至少 1 次 verified；离线 test_device_state 4/4、test_recovery 5/5、test_snapshot_provider 44/44
+M1 smoke 未达 9/9（发现/搜索栏导航不稳）。正式 10×3 与 M0×100 待 smoke 稳定后冻结版本再跑。
 
-**通过判定：** **T01 通过**。
+## T07 长任务 — `deferred`
 
-**下一动作：** T02 未知写入对账收紧。
+checkpoint/unknown 屏障已有；50/100 步与跨应用待 T03/T06。
 
-## T02 — 未知写入对账收紧（P0）
+## T08 M2 runner — `deferred`
 
-**状态：** `verified_offline`
+规格在 `evals/tasks/m2-30.json`；typed 步进 runner 待实现。
 
-**改动：** journal `dispatch_started` 可信字段；`not_executed` 仅当可信未派发；`recovery_matches` 拒绝页面未变的弱后置；runtime 在 device.dispatch 前标记派发开始。
+## T09–T13 — `deferred`
 
-**反例：** 已派发+attestation 拒绝；副作用+指纹未变拒绝；可信未派发可关；具体文本后置可关；无法验证保留屏障。
+Actor 字段映射、OCR、RSI、Decider、发布矩阵按计划依赖前序。
 
-**证据：** `test_unknown_write_reconciliation` 10/10；`test_action_status` 2/2；`test_recovery` 5/5；`test_runtime` 25/25。
+## 安全
 
-**通过判定：** **T02 通过**。
+- 绝不点「发送/去支付」；误入支付页已立即返回
+- compose 只点「取消」
+- 无凭据唤醒/解锁已验收（T01）
 
-**下一动作：** T03 最短业务链与验收判据。
+## 下一步（按优先级）
 
-## T03 — 最短业务链与页面身份（P0）
-
-**状态：** `verified_device`（页面身份/搜索输入/返回闭环；D1 提交与 M1 正式批待补）
-
-**改动摘要：**
-- `surface_is` 页面身份判据（checker/contracts/m1-weibo.json）
-- 搜索入口＝宽条/「猜你想搜」；输入类型含 TextArea（`redesignedSearchInput`）
-- 输入风险只看控件 id/类型（不再被「小米发布会/今日发布」误拦）
-- 导航指纹屏蔽猜你想搜与纯计数
-- compose 仅点取消；返回用 `surface_is=discover/tabs` 而非 page_changed
-
-**真机闭环（本 Agent 作为执行体）：** D2 harmony 替换并返回发现 **pass**；D3 话题往返 **pass**；D1 输入「鸿蒙」**pass**、提交到「综合」结果页待补。
-
-**离线：** 794/794。
-
-**下一动作：** D1 提交；M1 smoke（m1_01/02/05/06）；back/input 6/6。
-
-## T04 — 首个真实 Agent 闭环（P0）
-
-**状态：** 未开始
-
-## T05 — 端到端性能（P1）
-
-**状态：** 未开始
-
-## T06 — 正式 M0/M1（P1）
-
-**状态：** 未开始
-
-## T07 — 恢复与长任务（P1）
-
-**状态：** 未开始
-
-## T08 — M2 可执行与可信判定（P1）
-
-**状态：** 未开始
-
-## T09 — 内部 auto Actor（P2）
-
-**状态：** 未开始
-
-## T10 — 实际视觉兜底（P2）
-
-**状态：** 未开始
-
-## T11 — 经验复用与 RSI 收益（P2）
-
-**状态：** 未开始
-
-## T12 — Decider 数据评估（P3）
-
-**状态：** 未开始
-
-## T13 — 扩展兼容与完整发布（P3）
-
-**状态：** 未开始
-
-## 全局约束核对
-
-- [x] Runtime 是唯一设备写入口
-- [x] 过期必须重新观察
-- [x] unknown 禁止盲重试
-- [x] 无通用设备回滚
-- [x] 原始树/截图/token 留在本地 retention，不进 Git
-- [x] 不在在线任务中自动写入全局经验库
-- [x] 无密码息屏由 Runtime 自动恢复（待 T01 真机验收）
-- [x] 不修改系统息屏时间，不用保活点击掩盖恢复
+1. 稳住 发现→搜索→结果页（D1 综合标签）
+2. M1 smoke 10×1 + back/input 6/6 → T06 正式批
+3. T05 计时 → T07 长任务 → T08 runner → T09–T13
