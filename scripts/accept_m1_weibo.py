@@ -20,8 +20,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from agent_harness import (AgentHarness, HarnessError, ServiceClientHarness, WEIBO,
-                           editor_input, find_node, find_search_bar, focused_input,
-                           post_observation, surface_kind)
+                           clickable_node, editor_input, find_node, find_search_bar,
+                           focused_input, post_observation, surface_kind)
 from harmony_agent.checker import check
 from harmony_agent.contracts import Predicate
 
@@ -30,6 +30,7 @@ DEFAULT_TASKS = REPO_ROOT / "evals" / "tasks" / "m1-weibo.json"
 
 DISCOVER_TAB = "发现"
 HOME_TAB = "首页"
+SCROLL_TOP_TAB = "回到顶部"
 SETTLE_SECONDS = 0.4
 MAX_STEP_REOBSERVES = 2
 MAX_INNER_ATTEMPTS = 4
@@ -85,6 +86,22 @@ async def settle() -> None:
 
 # -- entry states ------------------------------------------------------------
 
+async def restore_discover_label(harness: AgentHarness, observation: dict) -> dict:
+    """The middle bottom tab flips to 回到顶部 after scroll; tap it to restore 发现."""
+    if find_node(observation, text=DISCOVER_TAB) is not None:
+        return observation
+    scroll_top = find_node(observation, text=SCROLL_TOP_TAB)
+    if scroll_top is None:
+        return observation
+    node = clickable_node(observation, scroll_top)
+    await settle()
+    result = await harness.act(
+        observation_id=observation["observation_id"],
+        action={"kind": "tap", "target": {"action_id": node["action_id"]}},
+        expected={"changed": True}, timeout_ms=10000)
+    return post_observation(result) or await harness.observe(mode="FAST")
+
+
 async def goto_tabs(harness: AgentHarness) -> dict:
     """Reset helper: return to a page showing the bottom navigation."""
     last: dict | None = None
@@ -103,7 +120,7 @@ async def goto_tabs(harness: AgentHarness) -> dict:
             continue
         kind = surface_kind(observation)
         if kind == "tabs":
-            return observation
+            return await restore_discover_label(harness, observation)
         node = find_node(observation, text=HOME_TAB)
         try:
             if node is not None:
@@ -194,12 +211,36 @@ async def run_step(harness: AgentHarness, step: str,
         observation = observable
         if surface_kind(observation) != "tabs":
             observation = await goto_tabs(harness)
-        if find_node(observation, text=payload) is None:
-            raise TaskBlocked("target_missing", f"{payload} is not uniquely observable")
+        if payload == DISCOVER_TAB:
+            observation = await restore_discover_label(harness, observation)
+        labels = [n for n in observation.get("catalog") or [] if n.get("text") == payload]
+        bottom = [n for n in labels if (n.get("bounds") or [0, 0, 0, 0])[1] > 2400]
+        if len(bottom) == 1:
+            node = clickable_node(observation, bottom[0])
+        elif len(labels) == 1:
+            node = clickable_node(observation, labels[0])
+        elif len(bottom) > 1:
+            # Tightest clickable container among duplicate tab labels.
+            by_id = {n["action_id"]: n for n in observation.get("catalog") or [] if n.get("action_id")}
+            parents = []
+            for item in bottom:
+                parent = clickable_node(observation, item)
+                if parent.get("action_id"):
+                    parents.append(parent)
+            uniq = {p["action_id"]: p for p in parents}
+            if uniq:
+                node = min(uniq.values(), key=lambda n: (
+                    (n.get("bounds") or [0, 0, 0, 0])[2] - (n.get("bounds") or [0, 0, 0, 0])[0]))
+            else:
+                raise TaskBlocked("target_missing",
+                                  f"{payload} is not uniquely observable ({len(labels)} labels)")
+        else:
+            raise TaskBlocked("target_missing",
+                              f"{payload} is not uniquely observable ({len(labels)} labels)")
         await settle()
         result = await harness.act(
             observation_id=observation["observation_id"],
-            action={"kind": "tap", "target": {"text": payload}},
+            action={"kind": "tap", "target": {"action_id": node["action_id"]}},
             expected={"changed": True}, timeout_ms=10000)
     elif kind == "action_id":
         # The Discover page animates (autoplaying video), so the search entry is
@@ -233,8 +274,13 @@ async def run_step(harness: AgentHarness, step: str,
             try:
                 # The Discover page autoplays a video; give the layout time to
                 # settle before sampling so the guard accepts the view.
-                await asyncio.sleep(2.0)
+                await asyncio.sleep(1.2)
                 observation = await harness.observe(mode="FAST")
+                node = find_search_bar(observation)
+                if node is None:
+                    observable = observation
+                    continue
+                node = clickable_node(observation, node)
                 result = await harness.act(
                     observation_id=observation["observation_id"],
                     action={"kind": "tap", "target": {"action_id": node["action_id"]}},

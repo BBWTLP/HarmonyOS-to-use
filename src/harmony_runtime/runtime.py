@@ -11,7 +11,8 @@ from .device import HarmonyDevice
 from .device_queue import DeviceQueue
 from .device_worker import ProcessDevice
 from .journal import Journal
-from .observation import canonical, matches, resolve, snapshot, input_value_matches
+from .observation import (canonical, matches, resolve, snapshot, input_value_matches,
+                          actionable_chrome)
 from .snapshot import (ProviderState, capture_after_readiness, capture_snapshot,
                        provider_choice, readiness_probe)
 from .target_identity import AMBIGUOUS, StableTargetMatcher
@@ -728,7 +729,9 @@ class Runtime:
             target = resolve(current, req.action.target)
         if current["fingerprint"] != before["fingerprint"]:
             projection = before.get("navigation_fingerprint")
-            same_page = bool(projection) and projection == current.get("navigation_fingerprint")
+            nav_same = bool(projection) and projection == current.get("navigation_fingerprint")
+            chrome_same = actionable_chrome(before) == actionable_chrome(current)
+            same_page = nav_same or chrome_same
             allowed = req.action.kind in ("back", "home", "swipe", "tap", "long_press", "input_text", "replace_text", "launch")
             if not allowed or not same_page:
                 raise RuntimeFault("stale_observation", "Page changed since the referenced observation")

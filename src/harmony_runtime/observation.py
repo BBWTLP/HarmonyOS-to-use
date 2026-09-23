@@ -89,6 +89,32 @@ def input_value_matches(items, target, value):
             and candidates[0].get("text") == value)
 
 
+def actionable_chrome(observation) -> tuple:
+    """Page chrome for same-page checks: clickable controls + stable labels.
+
+    Feed headlines and rotating search hints are excluded; short labels and
+    top/bottom chrome stay, so a retitled page is still a different page.
+    Bundle is included so the same tree in another app is a different page.
+    """
+    controls = []
+    labels = []
+    for item in observation.get("catalog") or []:
+        bounds = item.get("bounds") or [0, 0, 0, 0]
+        width = int(bounds[2]) - int(bounds[0])
+        # Only top-band and tab-bar clickables are page chrome. Mid-page
+        # interactive feed items (关注/转发) move with the list.
+        if item.get("clickable") and item.get("enabled") and (bounds[1] < 350 or bounds[1] > 2590):
+            controls.append((item.get("type"), item.get("resource_id"),
+                             tuple(bounds), True, True))
+        text = item.get("text")
+        if not text or str(text).startswith("猜你想搜"):
+            continue
+        if bounds[1] < 400 or bounds[1] > 2500 or width < 300:
+            labels.append((str(text), tuple(bounds), item.get("type")))
+    return (observation.get("foreground_bundle"),
+            tuple(sorted(controls)), tuple(sorted(labels)))
+
+
 def navigation_tree(tree):
     """Normalize clock/battery text, numeric progress and decorative image bounds.
 
@@ -96,11 +122,18 @@ def navigation_tree(tree):
     Targeted actions also require an unchanged target subtree. This projection
     is never used for change/wait verification. It is not a general semantic page identity.
     """
-    def visit(node, status_text=False):
+    def visit(node, status_text=False, in_feed=False):
         result = dict(node)
         attributes = dict(node.get("attributes", {}))
-        status_text = status_text or attributes.get("id") in (
+        node_id = str(attributes.get("id") or "")
+        node_type = str(attributes.get("type") or "")
+        status_text = status_text or node_id in (
             "ClockStatusView", "BatteryComponent-batteryIcon_Text_batterySoc")
+        # List/WaterFlow/blog cards are rotating content. Their copy is not page
+        # chrome: masking it keeps same_page true while the feed updates, so a
+        # stable search bar or tab can still be dispatched.
+        if node_type in ("List", "Grid", "WaterFlow") or "blog_item" in node_id or "blog_view" in node_id:
+            in_feed = True
         for field in ("text", "originalText"):
             value = attributes.get(field)
             progress = (attributes.get("type") in ("Slider", "Progress") and isinstance(value, str)
@@ -113,8 +146,22 @@ def navigation_tree(tree):
                 value.startswith("猜你想搜")
                 or bool(re.fullmatch(r"(?:演出|剧集|直播|视频)?\s*\d+", value))
             )
-            if field in attributes and (status_text or progress or search_hint):
+            # Long copy in the content band is feed/headline text, not chrome.
+            bounds = attributes.get("bounds") or attributes.get("origBounds") or ""
+            content_copy = False
+            if isinstance(value, str) and len(value) >= 6 and isinstance(bounds, str):
+                match = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
+                if match:
+                    x1, y1, x2, y2 = map(int, match.groups())
+                    if 350 <= y1 <= 2800 and (x2 - x1) >= 300:
+                        content_copy = True
+            if field in attributes and (status_text or progress or search_hint or in_feed or content_copy):
                 attributes[field] = "<volatile-navigation-text>"
+            # Rotating search hints also change their width with the query.
+            if search_hint:
+                for field in ("bounds", "origBounds"):
+                    if field in attributes:
+                        attributes[field] = "<volatile-visual-bounds>"
         # Feed and video surfaces can continuously animate decorative image
         # bounds while the page and its actionable controls remain unchanged.
         # Keep target geometry in the full fingerprint, but exclude bounds of
@@ -128,9 +175,36 @@ def navigation_tree(tree):
             for field in ("bounds", "origBounds"):
                 if field in attributes:
                     attributes[field] = "<volatile-visual-bounds>"
+        # Unlabelled, non-clickable layout wrappers resize with their children
+        # (the search-hint Row). They are not page identity.
+        wrapper = (
+            not attributes.get("id")
+            and attributes.get("clickable") not in (True, "true")
+            and attributes.get("longClickable") not in (True, "true")
+            and str(attributes.get("type") or "") in ("Row", "Column", "Flex", "Stack", "__Common__", "Swiper")
+            and not any(attributes.get(k) for k in ("text", "description", "hint"))
+        )
+        if wrapper:
+            for field in ("bounds", "origBounds"):
+                if field in attributes:
+                    attributes[field] = "<volatile-visual-bounds>"
+        # Auto-increment accessibility ids are observation-local handles, not
+        # page identity (see target_identity.LOCAL_HANDLES).
+        for field in ("accessibilityId", "accessibility_id", "authId"):
+            if field in attributes:
+                attributes[field] = "<volatile-local-handle>"
         result["attributes"] = attributes
-        if "children" in node:
-            result["children"] = [visit(child, status_text) for child in node["children"]]
+        children = []
+        for child in node.get("children") or []:
+            projected = visit(child, status_text, in_feed)
+            if projected is not None:
+                children.append(projected)
+        # Drop optional content leaves entirely so their appearance/disappearance
+        # does not move page identity. Chrome nodes and structure stay.
+        if content_copy and not children and str(attributes.get("type") or "") in ("Text", "Span"):
+            return None
+        if children or "children" not in node:
+            result["children"] = children
         return result
     return visit(tree)
 

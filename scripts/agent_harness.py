@@ -793,7 +793,7 @@ def find_search_bar(observation: dict[str, Any]) -> dict[str, Any] | None:
         type_name = str(item.get("type") or "")
         looks_search = ("search" in blob or "搜索" in blob or "猜你想搜" in blob
                         or type_name in ("Flex", "SearchField", "Search", "Row"))
-        if looks_search:
+        if looks_search or (width(item) >= 500 and type_name in ("Flex", "Row", "SearchField", "Search")):
             nodes.append(item)
     if len(nodes) == 1:
         return nodes[0]
@@ -956,11 +956,11 @@ def classify_surface(observation: dict[str, Any]) -> str:
     if evidence["single_field"] and (evidence["scroll_container"]
                                      or evidence["field_focused"]):
         return SURFACE_EDITOR
+    if find_search_bar(observation) is not None:
+        return SURFACE_DISCOVER
     if sum(1 for label in BOTTOM_TABS
            if find_node(observation, text=label) is not None) >= 2:
         return SURFACE_TABS
-    if find_search_bar(observation) is not None:
-        return SURFACE_DISCOVER
     if evidence["field_present"] or evidence["search_role"]:
         return SURFACE_SEARCH
     return SURFACE_UNKNOWN
