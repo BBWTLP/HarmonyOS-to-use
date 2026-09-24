@@ -109,9 +109,28 @@ succeeded 4 / failed 10 / unsupported 16（burst、ocr 能力门控；旧 id 已
 - Direct 六工具不依赖 Actor
 - 测试 8/8（含字段契约与 factory）
 
-## T10–T13 — `deferred`
+## T10 OCR — `implemented` + `verified_offline`
 
-OCR 实接、RSI 真机收益、Decider 评估、完整发布矩阵按计划依赖前序设备批。
+`harmony_runtime/ocr.py`：tesseract/easyocr 探测；无引擎时 boxes=[]，不造假框。真机视觉闭环 `blocked_dependency`（无 OCR 引擎）。
+
+## T11 经验检索 — `implemented` + `verified_offline`
+
+`experience_retrieval.py`：App/build/goal/过期过滤；无匹配合法。单测 4/4。
+
+## T12 Decider — `verified_offline` 结论 **keep_shadow_only**
+
+`evaluate_decider.py --rules-only`：样本 0 → `keep_shadow_only`（insufficient_holdout / calibration missing）。**不进 canary。**
+
+## T13 文档与发布 — `implemented`（核心交付）
+
+- `docs/agent-quickstart.md`
+- `docs/runbook-rollback.md`（已有）
+- 当轮验收 README 已更新
+- M2 300 次正式批：`deferred`（需更长设备窗口）
+
+## 最终验收
+
+**核心交付完成；增强层完成离线验证。** 离线 809/809。详见 `docs/acceptance/current-run/README.md`。
 
 ## 安全
 

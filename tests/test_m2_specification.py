@@ -14,7 +14,7 @@ SPEC = REPO_ROOT / "evals" / "tasks" / "m2-30.json"
 
 #: Predicate types the checker can decide without a model.
 PROGRAMMATIC = {"foreground_is", "text_equals", "element_present", "element_absent",
-                "input_equals", "selected_is", "page_changed", "all_of"}
+                "input_equals", "selected_is", "page_changed", "surface_is", "all_of"}
 
 
 class M2SpecificationTests(unittest.TestCase):

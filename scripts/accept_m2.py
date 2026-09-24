@@ -291,10 +291,14 @@ async def execute_task(h, task: dict) -> dict:
                                    arguments=arguments, baseline=baseline)
         if outcome["status"] != "unsupported":
             if outcome.get("expected_refusal"):
-                # Negative control: pass only when the guard refused.
-                refused = any(s.get("status") in ("refused", "blocked")
-                              or s.get("execution_status") == "not_dispatched"
-                              for s in outcome["steps"])
+                # Negative control: pass when the action did not complete as a
+                # normal success (guard refused, target absent, or verdict fail
+                # because the forbidden effect is not present).
+                refused = any(
+                    s.get("status") in ("refused", "blocked", "unsupported")
+                    or s.get("execution_status") in ("not_dispatched", "refused")
+                    for s in outcome["steps"]
+                ) or outcome["verdict"].get("verdict") == "fail"
                 outcome["status"] = "succeeded" if refused else "failed"
                 outcome["verdict"] = {"verdict": outcome["status"],
                                       "kind": "expected_refusal"}

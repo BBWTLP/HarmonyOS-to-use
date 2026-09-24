@@ -145,12 +145,20 @@ def evaluate(predicate: Predicate, observation: dict[str, Any], *,
             return ConditionVerdict(predicate.id, INCONCLUSIVE, refs, "target not observed")
         value = resolve_value(predicate, arguments)
         if predicate.type == "input_equals":
-            field = [n for n in nodes if n.get("type", "").lower().find("input") >= 0 or n.get("text_observed")]
+            field = [n for n in nodes if n.get("type", "").lower().find("input") >= 0
+                     or "editor" in str(n.get("type") or "").lower()
+                     or n.get("text_observed")]
             if not field:
                 return ConditionVerdict(predicate.id, INCONCLUSIVE, refs, "no input field observed")
             ok = all(n.get("text") == value for n in field)
         else:
-            ok = all(n.get("selected") == value for n in nodes)
+            # Device reports selected as "true"/"false" strings.
+            def as_flag(item):
+                raw = item.get("selected")
+                if isinstance(raw, bool):
+                    return "true" if raw else "false"
+                return str(raw).lower()
+            ok = all(as_flag(n) == str(value).lower() for n in nodes)
         return ConditionVerdict(predicate.id, PASS if ok else FAIL, refs,
                                 f"{len(nodes)} node(s) compared")
 

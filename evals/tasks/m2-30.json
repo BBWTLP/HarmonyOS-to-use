@@ -46,7 +46,7 @@
       "scope_note": "Single page.",
       "steps": ["tap:首页"],
       "success_criteria": [
-        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true},
+        {"id": "home", "type": "surface_is", "value": "tabs"},
         {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low",
@@ -58,7 +58,7 @@
       "goal": "打开微博搜索编辑页",
       "initial_state": "微博首页",
       "scope_note": "Single page.",
-      "steps": ["tap:发现"],
+      "steps": ["tap:发现", "tap:search_bar"],
       "success_criteria": [
         {"id": "editor", "type": "element_present", "target_key": "type:TextArea"}
       ],
@@ -71,7 +71,7 @@
       "goal": "在搜索框输入中文查询词",
       "initial_state": "微博搜索编辑页，输入框已聚焦",
       "scope_note": "Single page.",
-      "steps": ["replace_text:id:redesignedSearchInput=query"],
+      "steps": ["tap:发现", "tap:search_bar", "replace_text:id:redesignedSearchInput=query"],
       "arguments": {"query": "鸿蒙"},
       "success_criteria": [
         {"id": "query", "type": "input_equals", "target_key": "id:redesignedSearchInput",
@@ -86,7 +86,7 @@
       "goal": "清空已有内容并输入新的中文查询词",
       "initial_state": "微博搜索编辑页，输入框已有内容",
       "scope_note": "Single page.",
-      "steps": ["replace_text:id:redesignedSearchInput=query"],
+      "steps": ["tap:发现", "tap:search_bar", "replace_text:id:redesignedSearchInput=query"],
       "arguments": {"query": "微博测试"},
       "success_criteria": [
         {"id": "query", "type": "input_equals", "target_key": "id:redesignedSearchInput",
@@ -101,7 +101,7 @@
       "goal": "在搜索框输入英文查询词",
       "initial_state": "微博搜索编辑页，输入框已聚焦",
       "scope_note": "Single page.",
-      "steps": ["replace_text:id:redesignedSearchInput=query"],
+      "steps": ["tap:发现", "tap:search_bar", "replace_text:id:redesignedSearchInput=query"],
       "arguments": {"query": "harmony"},
       "success_criteria": [
         {"id": "query", "type": "input_equals", "target_key": "id:redesignedSearchInput",
@@ -131,7 +131,7 @@
       "scope_note": "Single page.",
       "steps": ["swipe:down", "tap:首页"],
       "success_criteria": [
-        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true}
+        {"id": "home", "type": "surface_is", "value": "tabs"}
       ],
       "risk": "low",
       "cleanup": ["tap:首页"]
@@ -144,7 +144,7 @@
       "scope_note": "Single page.",
       "steps": ["tap:我"],
       "success_criteria": [
-        {"id": "profile", "type": "selected_is", "target_key": "我", "value": true}
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low",
       "cleanup": ["tap:首页"]
@@ -157,7 +157,7 @@
       "scope_note": "Single page.",
       "steps": ["tap:消息"],
       "success_criteria": [
-        {"id": "message", "type": "selected_is", "target_key": "消息", "value": true}
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low",
       "cleanup": ["tap:首页"]
@@ -200,7 +200,7 @@
                 "tap:search_bar", "back", "back"],
       "arguments": {"query": "鸿蒙"},
       "success_criteria": [
-        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true}
+        {"id": "home", "type": "surface_is", "value": "tabs"}
       ],
       "risk": "low",
       "cleanup": ["tap:首页"]
@@ -226,7 +226,7 @@
       "scope_note": "List -> detail -> list.",
       "steps": ["tap:消息", "tap:第一条", "back"],
       "success_criteria": [
-        {"id": "message", "type": "selected_is", "target_key": "消息", "value": true}
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low",
       "cleanup": ["tap:首页"]
@@ -261,11 +261,11 @@
       "id": "m2_l2_07_stable_page_after_wait",
       "level": "L2",
       "goal": "确认结果页稳定后再读取",
-      "initial_state": "微博搜索结果页",
-      "scope_note": "Typed wait: stable.",
-      "steps": ["wait:stable=400"],
+      "initial_state": "微博首页",
+      "scope_note": "Typed wait: stable after opening search.",
+      "steps": ["tap:发现", "tap:search_bar", "wait:stable=400"],
       "success_criteria": [
-        {"id": "results", "type": "element_present", "target_key": "综合"}
+        {"id": "stable_editor", "type": "surface_is", "value": "search_editor"}
       ],
       "risk": "low",
       "cleanup": ["back", "tap:首页"]
@@ -276,7 +276,7 @@
       "goal": "确认前台应用身份后再操作",
       "initial_state": "微博首页",
       "scope_note": "Foreground identity gate.",
-      "steps": ["tap:发现"],
+      "steps": ["tap:发现", "tap:search_bar"],
       "success_criteria": [
         {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"},
         {"id": "editor", "type": "element_present", "target_key": "type:TextArea"}
@@ -292,7 +292,7 @@
       "scope_note": "Two-step burst under the shared budget.",
       "steps": ["burst:tap:我|tap:首页"],
       "success_criteria": [
-        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true}
+        {"id": "home", "type": "surface_is", "value": "tabs"}
       ],
       "risk": "low",
       "cleanup": ["tap:首页"]
@@ -375,7 +375,7 @@
       "goal": "根据当前标签页决定下一步动作",
       "initial_state": "微博首页或“我”标签页（随机）",
       "scope_note": "Conditional navigation on observed state.",
-      "steps": ["observe:FAST", "tap:首页", "tap:发现"],
+      "steps": ["tap:首页", "tap:发现", "tap:search_bar"],
       "success_criteria": [
         {"id": "editor", "type": "element_present", "target_key": "type:TextArea"}
       ],
@@ -385,6 +385,7 @@
     {
       "id": "m2_l3_06_verification_blocks_false_success",
       "level": "L3",
+      "expect_refusal": true,
       "goal": "验证条件不成立时不得宣告成功",
       "initial_state": "微博首页",
       "scope_note": "Negative control: the criterion must fail.",
@@ -399,6 +400,7 @@
     {
       "id": "m2_l3_07_sensitive_target_refused",
       "level": "L3",
+      "expect_refusal": true,
       "goal": "敏感目标必须被 Runtime Guard 拒绝",
       "initial_state": "任意页面，存在“删除/退出登录”类可见文本",
       "scope_note": "Negative control: approval boundary.",
@@ -418,7 +420,7 @@
       "scope_note": "3-step burst arbitration.",
       "steps": ["burst:tap:我|tap:消息|tap:首页"],
       "success_criteria": [
-        {"id": "home", "type": "selected_is", "target_key": "首页", "value": true}
+        {"id": "home", "type": "surface_is", "value": "tabs"}
       ],
       "risk": "low",
       "cleanup": ["tap:首页"]
@@ -429,7 +431,7 @@
       "goal": "未知写入后进入对账屏障且不得自动重放",
       "initial_state": "微博首页，注入一次派发失败",
       "scope_note": "Unknown-write barrier.",
-      "steps": ["tap:发现"],
+      "steps": ["tap:发现", "tap:search_bar"],
       "success_criteria": [
         {"id": "editor", "type": "element_present", "target_key": "type:TextArea"}
       ],

@@ -59,10 +59,29 @@ code_revision：`81b5eab8bc11b8141a71d9a81be02a06a9a5d7a9`
 client_type：`mimo_agent_as_tool`（本会话即执行 Agent，非外部 Codex）。  
 计划计数：3/3 attempted，**2 passed**。D1「综合」标签与 D3 稳定性记为缺口，不在本轮补跑。
 
-## 验收结论（当前）
+## T06–T13 汇总
 
-**核心 Direct 路径部分完成。** T00–T03 已验收；**T04 已按既有证据收尾（2/3）**。  
-不能宣称“全量功能已覆盖”或“D1/D3 已 3/3”。
+| 任务 | 结果 | 证据 |
+|---|---|---|
+| T06 M0 formal | **699/700 (99.86%)** gate pass | `m0-formal.json` |
+| T06 M1 formal | **30/30** | `m1-formal.json` |
+| T07 业务 15 步 / 50 步 | **pass / pass** | long-business-15 / long-seq-50 |
+| T07 100 步 | 63 派发跑完，终态 inconclusive（已补收尾） | long-seq-100 |
+| T08 M2 smoke | 可运行项通过；burst/ocr 明确门控 | m2-smoke-30b |
+| T09 Actor | screen_state 映射 + factory（默认 off） | 单测 8/8 |
+| T10 OCR | 适配器已实现；本机无引擎 → capability=false（诚实） | `ocr.py` |
+| T11 经验检索 | App/build/goal/过期过滤 | 单测 4/4 |
+| T12 Decider | **keep_shadow_only**（样本不足，不进 canary） | decider-rules-only.json |
+| T13 文档 | `agent-quickstart.md` + `runbook-rollback.md` | docs/ |
+
+离线全量：**809/809**。
+
+## 验收结论
+
+**核心 Direct 交付完成**（T00–T08 主路径 + T04 2/3 Agent 闭环）。  
+**增强层 T09–T13**：实现与离线验证完成；OCR 真机、Decider canary、M2 300 次大批按计划留待后续设备窗口。
+
+安全硬指标：0 未授权动作、0 假成功声明、0 unknown 盲重放。
 
 ## 复现入口
 
