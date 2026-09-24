@@ -127,15 +127,28 @@ class DeterministicActor:
     name = "deterministic_planner"
     revision = "planner:1"
 
-    def __init__(self, task: TaskSubmit, plan: Plan | None = None):
+    def __init__(self, task: TaskSubmit | None = None, plan: Plan | None = None):
         self.task = task
-        self.plan = plan or plan_from_task(task)
+        self.plan = plan
         self._served: set[str] = set()
+        self._by_task: dict[str, TaskSubmit] = {}
+        if task is not None:
+            self._by_task[task.request_id] = task
 
     def reset(self) -> None:
         self._served.clear()
 
+    def bind_task(self, task: TaskSubmit, plan: Plan | None = None) -> None:
+        self.task = task
+        self.plan = plan or plan_from_task(task)
+        self._by_task[task.request_id] = task
+
     async def propose(self, request: ActorRequest) -> ActorProposal:
+        if self.plan is None:
+            task = self._by_task.get(request.request_id) or self.task
+            if task is None:
+                return ControlProposal(control="escalate", reason_code="no_bound_task")
+            self.plan = plan_from_task(task)
         for subgoal in self.plan.subgoals:
             if subgoal.subgoal_id in self._served:
                 continue
@@ -146,6 +159,24 @@ class DeterministicActor:
         if self._served:
             return ControlProposal(control="stop", reason_code="plan_exhausted")
         return ControlProposal(control="escalate", reason_code="empty_plan")
+
+
+def actor_from_env(task: TaskSubmit | None = None):
+    """Optional Actor factory (T09). Default off: Direct six tools need no actor.
+
+    ``HARMONY_AGENT_ACTOR``:
+      unset / off / none  → None (Direct path unchanged)
+      deterministic       → DeterministicActor
+      anything else       → None (no hardcoded commercial API)
+    """
+    import os
+    name = (os.environ.get("HARMONY_AGENT_ACTOR") or "").strip().lower()
+    if name in ("", "off", "none", "0", "false"):
+        return None
+    if name in ("deterministic", "planner", "local_planner"):
+        return DeterministicActor(task=task)
+    # Unknown provider: do not invent a network client. Direct remains available.
+    return None
 
 
 def intent_id_for(subgoal_id: str) -> str:

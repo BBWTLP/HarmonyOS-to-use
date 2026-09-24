@@ -84,9 +84,16 @@
 - `accept_c03_burst`：`burst_usable=false` 时进程退出非 0（max_supported_steps=0 是真实裁决）
 - 30 项真机各 1 次：待设备
 
-## T09–T13 — `deferred`
+## T09 内部 auto Actor — `implemented` + `verified_offline`
 
-Actor 字段映射、OCR、RSI、Decider、发布矩阵按计划依赖前序。
+- 修正 `screen_state` → Actor 观察字段映射（原先读 `screen` 恒空）
+- `actor_from_env()`：默认 off；`deterministic` 可选；未知 provider 不造客户端
+- Direct 六工具不依赖 Actor
+- 测试 8/8（含字段契约与 factory）
+
+## T10–T13 — `deferred`
+
+OCR 实接、RSI 真机收益、Decider 评估、完整发布矩阵按计划依赖前序设备批。
 
 ## 安全
 

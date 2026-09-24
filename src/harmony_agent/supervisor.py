@@ -773,7 +773,10 @@ class TaskRunner:
                 controller_epoch=int(run.context.controller_epoch or 0),
                 foreground_bundle=observation.get("foreground_bundle"),
                 fingerprint=observation.get("fingerprint"),
-                screen=dict(observation.get("screen") or {}),
+                # Runtime reports `screen_state`; keep `screen` as a fallback
+                # for older observation shapes. Never invent lock/on values.
+                screen=dict(observation.get("screen_state")
+                            or observation.get("screen") or {}),
                 facts=list(run.memory.context_facts())[:16],
                 recent_outcomes=[failed.description, failed.status],
                 blocking_dialog=(observation.get("blocking_dialog") or {}).get("source")

@@ -323,11 +323,14 @@ def host_from_env(runtime, root: str | Path, repo_root: str | Path) -> AgentHost
     if os.environ.get("HARMONY_AGENT_TOOLS") not in ("1", "true", "yes"):
         return None
     profile = os.environ.get("HARMONY_AGENT_PROFILE", DEFAULT_PROFILE)
+    from .actor import actor_from_env
+    actor = actor_from_env()
     return AgentHost(runtime, root, profile=profile,
                      calibration_version=os.environ.get("HARMONY_AGENT_CALIBRATION") or None,
                      confidence_threshold=float(os.environ.get("HARMONY_AGENT_MIN_CONFIDENCE", "0")),
                      certainty_threshold=float(os.environ.get("HARMONY_AGENT_MIN_CERTAINTY", "0")),
-                     repo_root=repo_root)
+                     repo_root=repo_root,
+                     actor=actor)
 
 
 def _placeholder_predicate(observation: dict[str, Any]) -> Predicate:

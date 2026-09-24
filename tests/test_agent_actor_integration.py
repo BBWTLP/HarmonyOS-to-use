@@ -242,5 +242,47 @@ class ActorIntegrationTests(unittest.TestCase):
         self.assertNotIn("actor_control", [item["type"] for item in events])
 
 
+class ActorFieldContractTests(unittest.TestCase):
+    """Runtime uses `screen_state`; the actor request must see those values."""
+
+    def test_screen_state_is_forwarded_to_actor_observation(self):
+        from harmony_agent.actor import ActorObservation
+        observation = {
+            "observation_id": "obs1",
+            "foreground_bundle": WEIBO,
+            "fingerprint": "f" * 64,
+            "screen_state": {"screen_on": True, "screen_locked": False},
+        }
+        screen = dict(observation.get("screen_state") or observation.get("screen") or {})
+        model = ActorObservation(
+            observation_id=observation["observation_id"],
+            controller_epoch=1,
+            foreground_bundle=observation.get("foreground_bundle"),
+            fingerprint=observation.get("fingerprint"),
+            screen=screen,
+        )
+        self.assertEqual(model.screen, {"screen_on": True, "screen_locked": False})
+
+    def test_actor_from_env_defaults_off_and_rejects_unknown_providers(self):
+        import os
+        from harmony_agent.actor import actor_from_env
+        old = os.environ.pop("HARMONY_AGENT_ACTOR", None)
+        try:
+            self.assertIsNone(actor_from_env())
+            os.environ["HARMONY_AGENT_ACTOR"] = "off"
+            self.assertIsNone(actor_from_env())
+            os.environ["HARMONY_AGENT_ACTOR"] = "some-vendor-api"
+            self.assertIsNone(actor_from_env())
+            os.environ["HARMONY_AGENT_ACTOR"] = "deterministic"
+            actor = actor_from_env()
+            self.assertIsNotNone(actor)
+            self.assertEqual(actor.name, "deterministic_planner")
+        finally:
+            if old is None:
+                os.environ.pop("HARMONY_AGENT_ACTOR", None)
+            else:
+                os.environ["HARMONY_AGENT_ACTOR"] = old
+
+
 if __name__ == "__main__":
     unittest.main()
