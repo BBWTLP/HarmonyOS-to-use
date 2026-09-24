@@ -36,11 +36,22 @@
 
 提交 `0912732` `7208a62` `9c1cd60`。证据：`docs/acceptance/current-run/e2e-final.json`。
 
-## T04 真实 Agent 闭环 — `verified_device`（本 Agent 作为执行体）
+## T04 真实 Agent 闭环 — `verified_device`（本 Agent 作为执行体）**已收尾**
 
-按用户指示：不跑外部 Codex，由本会话 Agent 完成。D1/D2 程序化判据通过；D3 待稳。
+按用户指示：不跑外部 Codex，由本会话 Agent 完成；本条**不再追加真机复验**，以既有 e2e 证据收尾。
 
-## T05 性能 — `deferred`
+| 编号 | 目标 | 结果 | 判据 |
+|---|---|---|---|
+| D1 | 搜索「鸿蒙」 | **pass** | `text_equals=鸿蒙` + `foreground_is`（`mid_typed` pass） |
+| D2 | 替换 harmony 并返回发现 | **pass** | `text_equals=harmony` + `surface_is=discover` |
+| D3 | 公开话题往返 | fail | 返回后 `foreground` 不可观察 / surface≠起点 |
+
+- 计划计数：planned 3 / attempted 3 / **passed 2** / failed 1  
+- 证据：`docs/acceptance/current-run/e2e-final.json`  
+- 备注：D1 的「综合」结果页标签未稳定出现，查询词与 App 身份已独立验证；D3 不阻塞 Direct 核心路径收尾。  
+- **T04 收尾结论：** 核心 Direct 闭环（观察→输入→语义返回）已由真实 Agent 路径证明；缺口如实保留，不宣称 3/3。
+
+## T05 性能 — `in_progress`（T04 收尾后启动）
 
 依赖 T04 全量轨迹；已有 post-observation 复用实现与单测。
 

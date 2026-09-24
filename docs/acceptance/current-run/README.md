@@ -27,9 +27,12 @@ code_revision：`81b5eab8bc11b8141a71d9a81be02a06a9a5d7a9`
 
 | 层级 | planned | attempted | passed | failed | blocked | unknown | 说明 |
 |---|---:|---:|---:|---:|---:|---:|---|
-| 离线单测 | 789 | 789 | 789 | 0 | 0 | 0 | 本版复跑 |
-| T00 设备读屏 | 1 | 1 | 1* | 0 | 0 | 0 | *catalog/前台可用；动态页 image_tree_consistent=false 记问题不记假成功 |
-| 历史 unknown incident | 5 | 5 | 0 | 0 | 5 | 5 | 保留 open，待 T02 对账；不盲重放 |
+| 离线单测 | 794 | 794 | 794 | 0 | 0 | 0 | 本版复跑 `offline-final.json` |
+| T00 设备读屏 | 1 | 1 | 1* | 0 | 0 | 0 | *catalog/前台可用 |
+| T01 唤醒 | 6 | 6 | 6 | 0 | 0 | 0 | 5 受控 + 1 自然 650s |
+| T02 对账反例 | 10 | 10 | 10 | 0 | 0 | 0 | 含 not_executed 收紧 |
+| T04 Agent 闭环 | 3 | 3 | 2 | 1 | 0 | 0 | D1/D2 pass，D3 fail |
+| 历史 unknown incident | 5 | 5 | 0 | 0 | 5 | 5 | 保留 open，不盲重放 |
 
 `planned = attempted + unattempted` 在后续正式批强制。
 
@@ -45,10 +48,21 @@ code_revision：`81b5eab8bc11b8141a71d9a81be02a06a9a5d7a9`
 | 未知写入屏障 | 保留；5 条 open incident 未关闭 |
 | 服务受控重启 | 已验证：旧 PID 退出 → 保留 journal → 新服务 reachable |
 
+## T04 Agent 闭环（已收尾，无追加真机）
+
+| 任务 | 结果 | 证据 |
+|---|---|---|
+| D1 搜索「鸿蒙」 | pass | 查询词 + App 身份（e2e-final.json） |
+| D2 替换 harmony → 返回发现 | pass | `surface_is=discover` |
+| D3 话题往返 | fail | 返回后身份不可观察 |
+
+client_type：`mimo_agent_as_tool`（本会话即执行 Agent，非外部 Codex）。  
+计划计数：3/3 attempted，**2 passed**。D1「综合」标签与 D3 稳定性记为缺口，不在本轮补跑。
+
 ## 验收结论（当前）
 
-**部分完成。** T00 基线通过；P0 业务闭环（T01–T04）进行中。  
-不能宣称“通用 Agent 已验收”或“全量功能已覆盖”。
+**核心 Direct 路径部分完成。** T00–T03 已验收；**T04 已按既有证据收尾（2/3）**。  
+不能宣称“全量功能已覆盖”或“D1/D3 已 3/3”。
 
 ## 复现入口
 
