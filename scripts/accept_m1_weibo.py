@@ -324,9 +324,25 @@ async def run_step(harness: AgentHarness, step: str,
         if surface_kind(observation) != "search_editor":
             observation = await goto_editor(harness)
         await settle()
-        result = await harness.act(
-            observation_id=observation["observation_id"],
-            action={"kind": "back"}, expected={"changed": True}, timeout_ms=10000)
+        # Prefer the search editor's cancel so we land on discover, not a
+        # half-cleared editor. Fall back to back; repeat once if still editing.
+        result = None
+        for _ in range(2):
+            cancel = find_node(observation, text="取消")
+            if cancel is not None:
+                node = clickable_node(observation, cancel)
+                result = await harness.act(
+                    observation_id=observation["observation_id"],
+                    action={"kind": "tap", "target": {"action_id": node["action_id"]}},
+                    expected={"changed": True}, timeout_ms=10000)
+            else:
+                result = await harness.act(
+                    observation_id=observation["observation_id"],
+                    action={"kind": "back"}, expected={"changed": True}, timeout_ms=10000)
+            fresh = post_observation(result) or await harness.observe(mode="FAST")
+            observation = fresh
+            if surface_kind(observation) != "search_editor":
+                break
     elif kind == "submit_search":
         # The editor's submit control is the rightmost labelled, clickable node in
         # the top band; the field itself is excluded and the text is not unique.

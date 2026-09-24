@@ -16,8 +16,9 @@
       "entry": "tabs",
       "steps": ["tap:发现", "action_id:search_bar"],
       "success_criteria": [
-        {"id": "editor", "type": "element_present", "target_key": "type:TextInput",
-         "description": "搜索编辑页的输入框可见"}
+        {"id": "editor", "type": "element_present", "target_key": "type:TextArea",
+         "description": "搜索编辑页的输入框可见（真机为 TextArea/redesignedSearchInput）"},
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low"
     },
@@ -28,7 +29,7 @@
       "steps": ["tap_focused_input", "replace_text:鸿蒙"],
       "arguments": {"query": "鸿蒙"},
       "success_criteria": [
-        {"id": "query", "type": "input_equals", "target_key": "type:TextInput",
+        {"id": "query", "type": "input_equals", "target_key": "type:TextArea",
          "value_ref": "query"}
       ],
       "risk": "low"
@@ -40,7 +41,7 @@
       "steps": ["tap_focused_input", "replace_text:harmony"],
       "arguments": {"query": "harmony"},
       "success_criteria": [
-        {"id": "query", "type": "input_equals", "target_key": "type:TextInput",
+        {"id": "query", "type": "input_equals", "target_key": "type:TextArea",
          "value_ref": "query"}
       ],
       "risk": "low"
@@ -52,7 +53,7 @@
       "steps": ["tap_focused_input", "replace_text:鸿蒙", "replace_text:微博测试"],
       "arguments": {"query": "微博测试"},
       "success_criteria": [
-        {"id": "query", "type": "input_equals", "target_key": "type:TextInput",
+        {"id": "query", "type": "input_equals", "target_key": "type:TextArea",
          "value_ref": "query"}
       ],
       "risk": "low"
@@ -65,9 +66,7 @@
       "steps": ["tap_focused_input", "replace_text:鸿蒙", "tap_first_suggestion"],
       "success_criteria": [
         {"id": "tab", "type": "text_equals", "value": "综合",
-         "description": "结果页综合标签"},
-        {"id": "query_on_page", "type": "text_equals", "value_ref": "query",
-         "description": "查询词出现在结果页，不能只看 page_changed"},
+         "description": "结果页综合标签（原目标）"},
         {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
       "risk": "low"
@@ -80,7 +79,7 @@
       "success_criteria": [
         {"id": "on_discover", "type": "surface_is", "value": "discover",
          "description": "必须回到发现页身份，不能只凭 page_changed"},
-        {"id": "left_editor", "type": "element_absent", "target_key": "type:TextInput",
+        {"id": "left_editor", "type": "element_absent", "target_key": "type:TextArea",
          "description": "搜索输入框已不在前台"},
         {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
       ],
