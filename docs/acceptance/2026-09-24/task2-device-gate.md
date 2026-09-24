@@ -19,13 +19,14 @@ code_revision：`24330ee24c26f8028b9d5f77f7fd33d6731c8aac`
 
 | 步骤 | 状态 | 原因 |
 |---|---|---|
-| C03 burst 1/2/3 步 | failed | 设备发现为空 / 租约残留 |
-| wake/unlock ×3 | failed | 同上 |
-| M1 formal 10×3 | failed | 同上 |
-| C01 20 样本 ×3 模式 | failed | 同上 |
-| M0 formal 7×100 | failed | 同上 |
+| C03 burst 1/2/3 步 | **inconclusive** | 1 步：`editor_unavailable`×3（未进入 burst 计时）；2/3 步：`device_unavailable`×3（断连）。`burst_usable=false` 是诚实裁决，**不是** 3000ms 超时证明 |
+| wake/unlock ×3 | failed | `device_selection_required` |
+| M1 formal 10×3 | failed | 设备发现为空 |
+| C01 20 样本 ×3 模式 | failed / not_ready | 三模式均 not_ready；`cold_baseline=not_produced`（脚本诚实声明无受控冷启动流程） |
+| M0 formal 7×100 | failed | 设备发现为空 |
 
-**不**把上述失败记为能力否定；它们是 `blocked_device`（连接丢失），不是原语失败。
+**不**把上述失败记为能力否定；它们是 `blocked_device` / `inconclusive`（连接丢失或 setup 未达），
+不是原语失败。C03 的 `max_supported_steps=0` 仅表示「本轮没有可声明的受支持步数」。
 
 ## 真实断连事件（Task 6 故障矩阵证据）
 
