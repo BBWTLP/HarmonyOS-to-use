@@ -1,0 +1,91 @@
+{
+  "application_actions_issued": false,
+  "attempted_samples": 0,
+  "error_code": "mcp_error",
+  "error_counts": {},
+  "failed_samples": 0,
+  "include_image": true,
+  "metrics": {
+    "all_attempts": {
+      "capture": {
+        "count": 0,
+        "max_ms": null,
+        "min_ms": null,
+        "p50_ms": null,
+        "p95_ms": null
+      },
+      "client": {
+        "count": 0,
+        "max_ms": null,
+        "min_ms": null,
+        "p50_ms": null,
+        "p95_ms": null
+      },
+      "phases": {}
+    },
+    "first_attempt": {
+      "capture": {
+        "count": 0,
+        "max_ms": null,
+        "min_ms": null,
+        "p50_ms": null,
+        "p95_ms": null
+      },
+      "client": {
+        "count": 0,
+        "max_ms": null,
+        "min_ms": null,
+        "p50_ms": null,
+        "p95_ms": null
+      },
+      "phases": {}
+    },
+    "subsequent_attempts": {
+      "capture": {
+        "count": 0,
+        "max_ms": null,
+        "min_ms": null,
+        "p50_ms": null,
+        "p95_ms": null
+      },
+      "client": {
+        "count": 0,
+        "max_ms": null,
+        "min_ms": null,
+        "p50_ms": null,
+        "p95_ms": null
+      },
+      "phases": {}
+    },
+    "successful": {
+      "capture": {
+        "count": 0,
+        "max_ms": null,
+        "min_ms": null,
+        "p50_ms": null,
+        "p95_ms": null
+      },
+      "client": {
+        "count": 0,
+        "max_ms": null,
+        "min_ms": null,
+        "p50_ms": null,
+        "p95_ms": null
+      },
+      "phases": {}
+    }
+  },
+  "mode": "FAST",
+  "percentile_method": "nearest_rank",
+  "requested_samples": 20,
+  "samples": [],
+  "schema_version": 1,
+  "screen_recovery_possible": true,
+  "service_startup_included": false,
+  "session_setup_included": false,
+  "status": "not_ready",
+  "successful_samples": 0,
+  "thermal_state": "uncontrolled",
+  "transport": "stdio_mcp",
+  "unattempted_samples": 20
+}

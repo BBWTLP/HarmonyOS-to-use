@@ -66,7 +66,7 @@ The evidence layer itself needs repair before another release decision. `docs/ac
 
 **Interfaces:** Consume the six Direct MCP tools and the existing `.runtime/agent-state`; produce formal M0/M1, C01, C03, and readiness reports with attempted/failed/blocked/unattempted denominators.
 
-- [ ] Verify `doctor`, service health, read-only probe, device baseline, foreground identity, and unresolved journal state before dispatching any business action.
+- [x] Verify `doctor`, service health, read-only probe, device baseline, foreground identity, and unresolved journal state before dispatching any business action. (done 2026-09-24: probe `phone_observation_verified=true`; baseline bound to `24330ee`; open incidents=33 left open; unresolved action rows=0)
 - [ ] Keep the existing M0 result as evidence only if its source hash is verified; otherwise rerun 100 valid samples per primitive with the ≥99% per-primitive gate and zero unresolved actions.
 - [ ] Run one uninterrupted M1 formal batch of 10 tasks × 3 runs, requiring at least 27/30 and zero error completions; record setup failures separately.
 - [ ] Run controlled cold/warm C01 samples for FAST, FAST+image, and FULL. Report P50/P95 by phase and do not compare them to the old uncontrolled sample set.
@@ -112,11 +112,11 @@ The evidence layer itself needs repair before another release decision. `docs/ac
 
 **Interfaces:** Provider output remains regions only; Runtime revalidates observation, rotation, crop digest, risk, and freshness before dispatch.
 
-- [ ] Choose and pin one permitted OCR backend and one optional VLM backend, including credentials/configuration ownership and a bounded timeout.
-- [ ] Run Chinese small-text, rotation, icon-only, Canvas/WebView, malformed-output, timeout, and unavailable-engine cases.
-- [ ] Run the full `ground → revalidate → guard → dispatch → verify` path on low-risk visual targets only.
-- [ ] If no backend is approved, publish a tree-only release profile with `capability=false`; do not count M2 visual tasks as successful.
-- [ ] Gate: no provider can create an action or raw coordinate, and all visual failures are explicit capability/grounding outcomes.
+- [x] Choose and pin one permitted OCR backend and one optional VLM backend, including credentials/configuration ownership and a bounded timeout. (**decision:** no approved backend on this host; `detect_engine()=None`; do not install without approval — see `docs/acceptance/2026-09-24/visual-scope-decision.md`)
+- [ ] Run Chinese small-text, rotation, icon-only, Canvas/WebView, malformed-output, timeout, and unavailable-engine cases. (offline contracts covered in `tests/test_visual_providers.py` 36/36; real-engine cases `blocked_dependency`)
+- [ ] Run the full `ground → revalidate → guard → dispatch → verify` path on low-risk visual targets only. (`blocked_dependency`)
+- [x] If no backend is approved, publish a tree-only release profile with `capability=false`; do not count M2 visual tasks as successful.
+- [x] Gate: no provider can create an action or raw coordinate, and all visual failures are explicit capability/grounding outcomes.
 
 ### Task 6: Close safety, retention, and operational release gaps (P1)
 
@@ -126,11 +126,11 @@ The evidence layer itself needs repair before another release decision. `docs/ac
 
 **Interfaces:** Consume journal incidents and artifact retention policies; produce auditable reconciliation, redacted history, quota behavior, and rollback evidence.
 
-- [ ] Reconcile or explicitly leave open each existing unknown incident with evidence strength and next action; never close it with arbitrary attestation.
-- [ ] Define the trusted approval boundary for R2/R3 actions or keep those actions disabled in the release profile; lexical risk blocking alone is not a complete approval workflow.
-- [ ] Migrate or quarantine legacy plaintext recovery conditions and document retention/redaction limits.
-- [ ] Exercise USB/HDC disconnect, worker hang, service restart, storage pressure, and artifact quota faults; verify no duplicate dispatch and no false success.
-- [ ] Gate: the release checklist has zero unresolved release-blocking incidents, or clearly declares the profile blocked and explains why.
+- [x] Reconcile or explicitly leave open each existing unknown incident with evidence strength and next action; never close it with arbitrary attestation. (**33 open**, all left open — `docs/acceptance/2026-09-24/unknown-incidents.json` + `safety-retention-ops.md`)
+- [x] Define the trusted approval boundary for R2/R3 actions or keep those actions disabled in the release profile; lexical risk blocking alone is not a complete approval workflow. (**disabled**: `approval_required` / trusted approval not implemented)
+- [x] Migrate or quarantine legacy plaintext recovery conditions and document retention/redaction limits. (legacy remains readable and is quarantined from auto-close; digest path preferred — `safety-retention-ops.md` §3)
+- [ ] Exercise USB/HDC disconnect, worker hang, service restart, storage pressure, and artifact quota faults; verify no duplicate dispatch and no false success. (offline storage/privacy/reconcile 55/55; service restart done; USB/HDC/worker hang/storage pressure on device still open)
+- [x] Gate: the release checklist has zero unresolved release-blocking incidents, or clearly declares the profile blocked and explains why. (no fabricated closures; tree-only profile + open incidents documented)
 
 ### Task 7: Validate installability and client compatibility (P1/P2)
 

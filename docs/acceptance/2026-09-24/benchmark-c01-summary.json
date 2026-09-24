@@ -1,0 +1,47 @@
+{
+  "cold_baseline": "not_produced",
+  "cold_reason": "no controlled cold-start procedure exists in this project; first-sample ordering is not a cold start",
+  "duration_seconds": 7.154,
+  "reports": [
+    {
+      "attempted": null,
+      "exit_code": 1,
+      "failed": null,
+      "include_image": false,
+      "mode": "FAST",
+      "p50_ms": null,
+      "p95_ms": null,
+      "report": "D:\\music mv\\HarmonyOS-to-use\\docs\\acceptance\\2026-09-24\\benchmark-c01-fast.json",
+      "status": "not_ready",
+      "succeeded": null
+    },
+    {
+      "attempted": null,
+      "exit_code": 1,
+      "failed": null,
+      "include_image": true,
+      "mode": "FAST",
+      "p50_ms": null,
+      "p95_ms": null,
+      "report": "D:\\music mv\\HarmonyOS-to-use\\docs\\acceptance\\2026-09-24\\benchmark-c01-fast-image.json",
+      "status": "not_ready",
+      "succeeded": null
+    },
+    {
+      "attempted": null,
+      "exit_code": 1,
+      "failed": null,
+      "include_image": false,
+      "mode": "FULL",
+      "p50_ms": null,
+      "p95_ms": null,
+      "report": "D:\\music mv\\HarmonyOS-to-use\\docs\\acceptance\\2026-09-24\\benchmark-c01-full.json",
+      "status": "not_ready",
+      "succeeded": null
+    }
+  ],
+  "samples_per_mode": 20,
+  "schema_version": 1,
+  "status": "not_ready",
+  "task": "C01 hot baseline"
+}

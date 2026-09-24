@@ -1,0 +1,42 @@
+{
+  "run_id": "20260924T160500Z",
+  "finished_at": "2026-09-25T00:08:07+0800",
+  "status": "done_with_failures",
+  "steps": [
+    {
+      "id": "c03",
+      "started_at": "2026-09-25T00:06:10+0800",
+      "status": "failed",
+      "exit_code": 1,
+      "finished_at": "2026-09-25T00:07:46+0800"
+    },
+    {
+      "id": "wake",
+      "started_at": "2026-09-25T00:07:48+0800",
+      "status": "failed",
+      "exit_code": 1,
+      "finished_at": "2026-09-25T00:07:49+0800"
+    },
+    {
+      "id": "m1",
+      "started_at": "2026-09-25T00:07:51+0800",
+      "status": "failed",
+      "exit_code": 1,
+      "finished_at": "2026-09-25T00:07:52+0800"
+    },
+    {
+      "id": "c01",
+      "started_at": "2026-09-25T00:07:54+0800",
+      "status": "failed",
+      "exit_code": 1,
+      "finished_at": "2026-09-25T00:08:01+0800"
+    },
+    {
+      "id": "m0",
+      "started_at": "2026-09-25T00:08:03+0800",
+      "status": "failed",
+      "exit_code": 1,
+      "finished_at": "2026-09-25T00:08:05+0800"
+    }
+  ]
+}

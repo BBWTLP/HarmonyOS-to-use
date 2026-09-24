@@ -1,0 +1,105 @@
+{
+  "burst_usable": false,
+  "capability_matrix": {
+    "max_supported_steps": 0,
+    "note": "Only shapes that completed in at least 95% of rounds AND stayed within the 3000 ms contract in every completed round are declared supported; anything else stays disabled.",
+    "supported_burst_lengths_within_3000ms": []
+  },
+  "rounds_per_shape": 3,
+  "schema_version": 1,
+  "session": {
+    "device_state": "ready",
+    "unresolved_actions": 0
+  },
+  "shapes": {
+    "1": {
+      "completed": 0,
+      "completion_rate": 0.0,
+      "errors": [
+        "editor_unavailable"
+      ],
+      "p50_client_ms": 0.0,
+      "p95_client_ms": 0.0,
+      "rounds": 3,
+      "rows": [
+        {
+          "error": "editor_unavailable",
+          "status": "error",
+          "steps": 1
+        },
+        {
+          "error": "editor_unavailable",
+          "status": "error",
+          "steps": 1
+        },
+        {
+          "error": "editor_unavailable",
+          "status": "error",
+          "steps": 1
+        }
+      ],
+      "stop_reasons": [],
+      "within_budget": 0
+    },
+    "2": {
+      "completed": 0,
+      "completion_rate": 0.0,
+      "errors": [
+        "device_unavailable"
+      ],
+      "p50_client_ms": 0.0,
+      "p95_client_ms": 0.0,
+      "rounds": 3,
+      "rows": [
+        {
+          "error": "device_unavailable",
+          "status": "error",
+          "steps": 2
+        },
+        {
+          "error": "device_unavailable",
+          "status": "error",
+          "steps": 2
+        },
+        {
+          "error": "device_unavailable",
+          "status": "error",
+          "steps": 2
+        }
+      ],
+      "stop_reasons": [],
+      "within_budget": 0
+    },
+    "3": {
+      "completed": 0,
+      "completion_rate": 0.0,
+      "errors": [
+        "device_unavailable"
+      ],
+      "p50_client_ms": 0.0,
+      "p95_client_ms": 0.0,
+      "rounds": 3,
+      "rows": [
+        {
+          "error": "device_unavailable",
+          "status": "error",
+          "steps": 3
+        },
+        {
+          "error": "device_unavailable",
+          "status": "error",
+          "steps": 3
+        },
+        {
+          "error": "device_unavailable",
+          "status": "error",
+          "steps": 3
+        }
+      ],
+      "stop_reasons": [],
+      "within_budget": 0
+    }
+  },
+  "status": "ok",
+  "task": "C03 burst arbitration"
+}

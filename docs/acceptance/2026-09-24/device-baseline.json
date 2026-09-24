@@ -1,0 +1,130 @@
+﻿{
+  "schema_version": 1,
+  "status": "ok",
+  "scope": "device_and_host_core_metadata",
+  "started_at": "2026-09-24T23:31:14.828442+08:00",
+  "finished_at": "2026-09-24T23:31:16.566160+08:00",
+  "device": {
+    "status": "ok",
+    "device_count": 1,
+    "fields": {
+      "model": {
+        "status": "ok",
+        "value": "SGT-AL10"
+      },
+      "software_version": {
+        "status": "ok",
+        "value": "SGT-AL10 6.1.0.135(SP8C00E120R3P11)"
+      },
+      "os_full_name": {
+        "status": "ok",
+        "value": "OpenHarmony-6.1.1.120"
+      },
+      "incremental_version": {
+        "status": "ok",
+        "value": "6.1.1.120"
+      },
+      "api_version": {
+        "status": "ok",
+        "value": "24"
+      },
+      "security_patch": {
+        "status": "ok",
+        "value": "2026/07/01"
+      },
+      "abi_list": {
+        "status": "ok",
+        "value": "arm64-v8a"
+      }
+    },
+    "phone_operation_verified": false,
+    "protocol_negotiated": false,
+    "connection_transport": "not_measured",
+    "uitest": {
+      "status": "ok",
+      "version": "6.0.2.3",
+      "driver_predicted_protocol": 2
+    },
+    "hdc": {
+      "status": "ok",
+      "version": "Ver: 3.2.0f"
+    },
+    "duration_ms": 1406.0
+  },
+  "host": {
+    "python": "3.11.9",
+    "python_design_target": "3.12",
+    "python_design_target_met": false,
+    "packages": {
+      "devhelmkit": {
+        "status": "ok",
+        "version": "0.6.0"
+      },
+      "mcp": {
+        "status": "ok",
+        "version": "2.2.0"
+      },
+      "pydantic": {
+        "status": "ok",
+        "version": "2.13.5"
+      },
+      "pillow": {
+        "status": "ok",
+        "version": "12.3.0"
+      }
+    },
+    "hdc_binary": {
+      "status": "ok",
+      "sha256": "c80a541410fe216d83cee81712dee2103d590d19a1d1cb658347c2259145b26e"
+    },
+    "local_agent_assets": [
+      {
+        "abi": "arm64-v8a",
+        "name": "agent_v1.so",
+        "status": "ok",
+        "sha256": "1c9286456fb003ee15d86fef04e8c93f004027349e6dd2ef972c792e0a6d4bf8"
+      },
+      {
+        "abi": "arm64-v8a",
+        "name": "agent_v2.so",
+        "status": "ok",
+        "sha256": "0fee80fcc748ed6a76978771bc196d8e1c96a8e7025d238b720bf83731ab2403"
+      },
+      {
+        "abi": "x86_64",
+        "name": "agent.so",
+        "status": "ok",
+        "sha256": "24a14a7841ec376dad4e1fa741de8f9f218c652a7e6d0100077798006367b274"
+      }
+    ],
+    "agent_asset_scope": "local packaged bytes only; not deployed/loaded device verification",
+    "requirements_lock": {
+      "status": "ok",
+      "sha256": "18a991d559cde14ec9d7d2e06dffd4d9140c4ac949ccf7e61b7719e62a126055"
+    },
+    "source": {
+      "status": "ok",
+      "content_sha256": "4575795db38e17aa477076855601d7f02c9d22edda58d62d7b4dac3552c0add8",
+      "file_count": 154,
+      "scope": "src/tests/scripts Python files + pyproject.toml + requirements.lock",
+      "git": {
+        "status": "ok",
+        "commit": "24330ee24c26f8028b9d5f77f7fd33d6731c8aac",
+        "dirty": false
+      }
+    }
+  },
+  "phone_operation_verified": false,
+  "acceptance_verified": false,
+  "not_measured": [
+    "display_and_scaling",
+    "app_versions",
+    "foreground_and_authentication",
+    "connection_transport",
+    "negotiated_protocol",
+    "loaded_agent_hash",
+    "task_success_rate",
+    "controlled_cold_warm_latency"
+  ],
+  "baseline_id": "fea69e5aa6495d05e0e31c7773949d79e9a5d536d7250411a5b72c9ebc071421"
+}

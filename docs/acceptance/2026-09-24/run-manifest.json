@@ -2,6 +2,7 @@
   "schema_version": 1,
   "run_id": "20260924T152342Z",
   "kind": "evidence-refreeze",
+  "device_gate_run_id": "20260924T160500Z",
   "code_revision": "6b78c76c19a9517b975fe3c80227d49170eee348",
   "branch": "feat/runtime-foundation",
   "origin_aligned": true,

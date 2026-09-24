@@ -1,0 +1,11 @@
+{
+  "tested_at": "2026-09-24T16:07:48.909452+00:00",
+  "runner_sha256": "d7e5f50efd4cb8d53cf8a78f9f951e548fbf063c879f9bbaba595fbf929ccd23",
+  "transport": "authenticated_resident_service",
+  "requested_rounds": 3,
+  "natural_idle_seconds": 0,
+  "mode": "controlled_suspend",
+  "rounds": [],
+  "status": "failed",
+  "error_code": "device_selection_required"
+}

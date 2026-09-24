@@ -18,6 +18,12 @@
 | 离线基线 | **809/809**（`docs/acceptance/2026-09-24/offline.json`，绑定 `6b78c76`） |
 | open unknown incident | **33**（见 `docs/acceptance/2026-09-24/unknown-incidents.json`） |
 
+## Task 2 Direct v1 设备门禁 — `blocked_device`（USB 断连）
+
+设备在线时已完成 probe/baseline/service/doctor（见 `task2-device-gate.md`）。  
+C03/唤醒/M1/C01/M0 因 **USB/HDC 断连**（`hdc list targets`=`[Empty]`）未能跑完；
+记 `blocked_device`，不记能力失败。恢复后按 `task2-device-gate.md` 重跑。
+
 ## Task 1 证据重冻结（2026-09-24 计划）— `verified_offline` **完成**
 
 - run_id `20260924T152342Z` @ `6b78c76` = origin
@@ -25,6 +31,16 @@
 - open incident 实测 33（旧「5 条」过时）；权威 state-dir 保留
 - M0/M1/e2e formal 标 `historical`（无 revision 绑定）
 - 权威清单：`docs/acceptance/2026-09-24/run-manifest.json`
+
+## Task 5 视觉范围 — `verified_offline` **tree-only**
+
+无批准 OCR/VLM 引擎（`detect_engine()=None`）。发布画像 `ocr/vlm capability=false`；
+M2 视觉任务不计成功。见 `docs/acceptance/2026-09-24/visual-scope-decision.md`。
+
+## Task 6 安全/留存/运维 — `verified_offline`（真机故障矩阵部分 open）
+
+33 条 unknown incident 全部 leave open；R2/R3 `approval_required` 保持 disabled；
+legacy 明文恢复条件 quarantine。离线 55/55。见 `docs/acceptance/2026-09-24/safety-retention-ops.md`。
 
 ## T00 基线 — `verified_offline` + `verified_device`
 
