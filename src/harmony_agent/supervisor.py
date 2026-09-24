@@ -158,7 +158,6 @@ def post_observation(result: dict[str, Any] | None) -> dict[str, Any] | None:
     if result.get("execution_status") not in ("executed", None):
         return None
     return observation
-    return type(error).__name__
 
 
 class TaskStore:
@@ -579,7 +578,6 @@ class TaskRunner:
         run = self.run
         run.memory.add_subgoal(subgoal.subgoal_id, subgoal.description)
         reobserve_budget = 2
-        post = self._take_post_observation()
         for attempt in range(1, 4):
             if run.cancel.is_set():
                 return "cancel"
@@ -593,11 +591,16 @@ class TaskRunner:
                 run.event("budget_exhausted", {"subgoal_id": subgoal.subgoal_id, **remaining})
                 return "stop"
             subgoal.attempts = attempt
-            # The runtime already captured the device to verify the previous
-            # action. Reuse that capture as this step's input; only ask for a
-            # new capture when there is none or it is not actionable.
-            observation = post or run.facade.observe(mode="FULL" if attempt == 1 else "FAST")
-            post = None
+            # Reuse the runtime verification capture (or the one early_progress
+            # just sampled). Prefer FAST; FULL only when a visual target needs it.
+            observation = self._take_post_observation()
+            needs_image = False
+            for step in getattr(subgoal, "steps", None) or []:
+                target = getattr(step, "target", None)
+                if getattr(target, "visual", None) is not None:
+                    needs_image = True
+            if observation is None:
+                observation = run.facade.observe(mode="FULL" if needs_image else "FAST")
             run.observations += 1
             run.memory.record_state(observation)
             self._compress_context_if_needed()
@@ -841,6 +844,9 @@ class TaskRunner:
                             "evidence": report.evidence_refs[:4]})
             self.run.context.note_evidence(report.evidence_refs)
             return True
+        # Hand the same capture to the attempt below: a failed skip-check must
+        # not buy a second read of the unchanged page.
+        self.run.context.post_observation = observation
         return False
 
     def _take_post_observation(self) -> dict[str, Any] | None:

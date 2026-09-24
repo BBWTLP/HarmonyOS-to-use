@@ -51,7 +51,15 @@
 - 备注：D1 的「综合」结果页标签未稳定出现，查询词与 App 身份已独立验证；D3 不阻塞 Direct 核心路径收尾。  
 - **T04 收尾结论：** 核心 Direct 闭环（观察→输入→语义返回）已由真实 Agent 路径证明；缺口如实保留，不宣称 3/3。
 
-## T05 性能 — `in_progress`（T04 收尾后启动）
+## T05 性能 — `verified_offline`（本版）
+
+- `_early_progress` 失败的 skip-check 观察回灌 `post_observation`，避免同页二次读屏
+- `_run_subgoal` 优先复用 post；默认 **FAST**，仅 visual 目标用 FULL
+- 删除 `post_observation()` 死代码
+- 新增 `tests/test_observe_reuse.py`：短任务 facade observe ≤3 且无 FULL
+- 离线 **796/796**（`offline-t05.json`）
+
+正式延迟对照批（`accept_p05_benchmark`）待真机空闲时跑；不阻塞功能主线。
 
 依赖 T04 全量轨迹；已有 post-observation 复用实现与单测。
 
