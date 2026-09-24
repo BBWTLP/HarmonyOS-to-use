@@ -63,9 +63,16 @@
 
 依赖 T04 全量轨迹；已有 post-observation 复用实现与单测。
 
-## T06 正式 M0/M1 — `blocked_device`
+## T06 正式 M0/M1 — `verified_device` **通过**
 
-正式 10×3 / M0×100 待设备窗口冻结版本后跑。入口已就绪（`--mode formal` / `--per-primitive 100`）。
+| 批次 | 结果 | 门槛 | 证据 |
+|---|---|---|---|
+| **M1 formal** | **30/30** | ≥27/30 | `docs/acceptance/current-run/m1-formal.json` |
+| **M0 formal** | **699/700 (99.86%)** | 每原语 ≥99% | `docs/acceptance/current-run/m0-formal.json` |
+
+M0 分项：launch/tree/swipe/tap/back/input **100/100**；screenshot **99/100**（1 次 `screenshot_inconsistent`）。  
+`gate.passed=true`，`primitive_success_rate_ok=true`，unresolved_actions=0，false_success_claims=0。  
+M1 覆盖输入/搜索/返回/滑动/跨 tab；判据含 `surface_is` 页面身份。
 
 ## T07 长任务 — `implemented` + `verified_offline`
 
