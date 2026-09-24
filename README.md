@@ -258,15 +258,23 @@ Set-Location ..\..
 
 ## 交付现状与后续计划
 
-本轮实现范围、真机验收结果、剩余开发计划与验收顺序见
-[v3.1 交付现状、剩余开发计划与验收计划](docs/v3.1-progress-and-plan.md)，
-逐任务状态见 [任务状态台账](docs/agent-status.md)，证据索引见
-[2026-09-20 验收目录](docs/acceptance/2026-09-20/README.md)。
+**权威 current run：** [`docs/acceptance/2026-09-24/`](docs/acceptance/2026-09-24/README.md)
+（`run_id=20260924T152342Z`，`code_revision=6b78c76`，离线 809/809）。
+
+状态词汇：`verified_offline` / `verified_device`（须绑定 revision、task-set、设备构建、
+run_id）/ `historical`（旧 revision 或未绑定证据，不进入 current 数字）/ `blocked_device`
+/ `deferred`。`planned = attempted + unattempted`。
+
+实现范围与剩余计划见
+[v3.1 交付现状、剩余开发计划与验收计划](docs/v3.1-progress-and-plan.md)、
+[2026-09-24 发布收口与能力扩展计划](docs/superpowers/plans/2026-09-24-project-next-steps-assessment.md)，
+逐任务状态见 [任务状态台账](docs/agent-status.md) 与 [执行状态台账](docs/execution-status.md)。
 
 v3.2 的离线收敛进度见 [v3.2 进度台账](docs/v3.2/progress.md)、
 [离线基线](docs/v3.2/baseline-offline.md) 与
-[真机待办](docs/v3.2/blocked-device.md)。当前环境没有可用真机，因此所有设备结论
-保持 `blocked_device`，离线证据只标记 `verified_offline`。
+[真机待办](docs/v3.2/blocked-device.md)。2026-09-22 设备窗口曾取得 M0/M1 formal 与
+长任务/M2 smoke，但 formal 未绑定 revision，记为 `historical`；current 真机门禁仍按
+2026-09-24 计划 Task 2–4 执行。
 
 v3.2 离线阶段的具体结论：
 

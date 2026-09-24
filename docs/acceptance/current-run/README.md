@@ -1,4 +1,10 @@
-# 当轮验收（current-run）
+# 历史验收（current-run → 已降级为 historical）
+
+> **状态：`historical`。** 本目录汇总 `81b5eab` / `20260922T172053Z` 时代的记录，  
+> **不进入 current 数字**。当前权威 run 见  
+> [`docs/acceptance/2026-09-24/`](../2026-09-24/README.md)（`run_id=20260924T152342Z`，`code_revision=6b78c76`）。  
+> 本文件不再改写历史数字；其中的 M0/M1/e2e formal 产物内无 revision 绑定，按  
+> `2026-09-24/run-manifest.json` 标为 `historical_device_evidence_unbound`。
 
 run_id：`20260922T172053Z`  
 code_revision：`81b5eab8bc11b8141a71d9a81be02a06a9a5d7a9`  

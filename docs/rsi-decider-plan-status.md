@@ -15,8 +15,9 @@ verified_device    真机证据通过
 deferred           明确推迟
 ```
 
-本轮证据目录：`docs/acceptance/2026-09-20/`。本轮时间：2026-09-20。
-代码基线见 `docs/acceptance/2026-09-20/baseline-freeze.json`。
+本轮证据目录：`docs/acceptance/2026-09-24/`（run `20260924T152342Z` @ `6b78c76`）。
+历史批次见 `docs/acceptance/2026-09-20/`。代码基线见
+`docs/acceptance/2026-09-24/run-manifest.json`。
 
 ## 0. 阶段总览
 
@@ -120,8 +121,9 @@ Phase 1 的 100/30/300 次真机分母。
    `postcondition_verified` 关闭；中间步骤仍保持 "page changed" 语义，未达成的目标不会
    触发重复派发。离线用例见 `tests/test_unknown_write_reconciliation.py`（8 项）与
    `tests/test_agent_planner.py`（3 项）。
-2. **Phase 1 真机长批未完成**：M0 100/原语、M1 30 次、Burst/Wait 真机语义、300 次正式
-   验收都需要连续真机窗口。
+2. **Phase 1 真机长批 — 部分历史证据、current 未绑定**：M0 formal 699/700 与 M1
+   formal 30/30 已有真机产物，但缺 revision 绑定（见 `2026-09-24/run-manifest.json`）。
+   Burst/Wait 真机语义、C01 受控性能、300 次正式验收仍待设备窗口。
 3. **Phase 5 数据不足**：45 条真实状态不能作为准入样本；分组切分必须按任务轨迹。
 4. **mock wave 不是设备证据**：`tools/rsi` 与 `fake_device` 的结论只能算离线验证。
 5. **stdio 前端依赖常驻服务；异常退出会留下孤儿 stdio 子进程**（**已修复**）：
@@ -134,10 +136,9 @@ Phase 1 的 100/30/300 次真机分母。
    为空、只有自增 `accessibilityId`、且不总是自动聚焦，旧查找（focused 或
    `resource_id=search_input`）必然落空。现按 focused → resource_id → 结构解析，未聚焦
    时用一次有界 setup tap 聚焦；聚焦失败记 setup 失败，不进入原语分母。复测 3/3。
-7. **长批量需要设备保持解锁**：2026-09-21 凌晨 M1 批次在手机密码锁屏后中止
-   （`screen_locked`）。Runtime 依策略不读取、不输入锁屏凭据，`power-shell wakeup`
-   只能点亮屏幕。M0 100/原语与 M1 30 次都必须在人工解锁的连续窗口内运行；
-   脚本侧已改为"记 blocked + 连续 3 次后干净收尾并写报告"。
+7. ~~长批量需要设备保持解锁~~（**条件已变**）：系统锁屏密码已取消，Runtime 已验收
+   无凭据唤醒/解锁（T01）。旧「必须人工保持解锁窗口」不再适用；脚本仍保留
+   blocked + 连续 3 次干净收尾。unknown 写入屏障未变（当前 open incident=33）。
 
 ## 9. 与计划 §6 目录骨架的差异（有意保留）
 

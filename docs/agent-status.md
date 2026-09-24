@@ -4,24 +4,27 @@
 证据位置和已知限制。状态含义与开发计划一致：`planned`、`in_progress`、`implemented`
 （代码存在）、`verified`（相应证据通过）、`blocked`、`deferred`。
 
-本轮证据目录：`docs/acceptance/2026-09-20/`。测试入口：`scripts/reproduce.py`。
+本轮证据目录：`docs/acceptance/2026-09-24/`（权威 current run `20260924T152342Z` @ `6b78c76`）。
+测试入口：`scripts/reproduce.py`。历史批次见 `docs/acceptance/2026-09-20/` 与
+`docs/acceptance/current-run/`（已标 historical）。
 
-**总览与后续排期见 [v3.1 交付现状、剩余开发计划与验收计划](v3.1-progress-and-plan.md)。**
+**总览与后续排期见 [v3.1 交付现状、剩余开发计划与验收计划](v3.1-progress-and-plan.md)
+与 [2026-09-24 发布收口与能力扩展计划](superpowers/plans/2026-09-24-project-next-steps-assessment.md)。**
 
 **v3.2 台账见 [v3.2 进度台账](v3.2/progress.md)、[离线基线](v3.2/baseline-offline.md)、
-[真机待办](v3.2/blocked-device.md)。** 本表记录 v3.1 任务编号，v3.2 的
-Phase 0/1/2 已在该台账中标记为 `verified_offline`。
+[真机待办](v3.2/blocked-device.md)。** 本表记录 v3.1 任务编号。状态词汇含
+`historical`（旧 revision / 未绑定证据，不进入 current 数字）。
 
 | 任务 | 状态 | 证据 / 说明 |
 |---|---|---|
 | A01 工作树与验收证据索引 | verified | `scripts/evidence_manifest.py`、`docs/acceptance/2026-09-20/baseline-manifest.json`；按文件哈希冻结含未提交变更的工作树 |
 | A02 v1 兼容与 v2 契约定义 | verified | `src/harmony_agent/contracts.py`、`docs/agent-layer.md`；`tests/test_agent_contracts.py` 与 `test_agent_planner.McpToolVisibilityTests` 证明 v1 六工具不变、v2 契约可校验 |
-| A03 可复现测试入口 | verified | `scripts/reproduce.py`；`python -m unittest discover -s tests` 于 2026-09-20 第三轮 RC 冻结后实测 **643** 项通过（346 → 562 → 607 → 618 → 643）；已在 **fresh clone** 上用 Python 3.11.16 与 3.13.14 双版本验证，数量随代码变化，以 `.runtime/tests-current.json` 为准 |
+| A03 可复现测试入口 | verified | `scripts/reproduce.py`；`python -m unittest discover -s tests` 于 `6b78c76` / run `20260924T152342Z` 实测 **809** 项通过；历史数量随代码变化，以当轮 `docs/acceptance/<date>/offline.json` 为准 |
 | A04 RC blocker 闭环 | verified | OFFLINE-2 终态与 result 原子可见（`TaskStore.finalize_task()`）；OFFLINE-1 单测与机器本地 token 解耦（`agent_fakes.make_decider_provider()`）。详见 `docs/v3.2/pre-device-gate.md` 第 9 节 |
 | A05 M0 setup 会计与动态页面 | verified | setup 失败不再计入原语分母（`SetupUnavailable` / `valid_attempts` / `evaluate_gate()`）；`setup_act()` 拒绝后重新 observe + 重新定位；`has_weibo_evidence()` 阻止桌面被当作微博页面。详见 `docs/v3.2/pre-device-gate.md` 第 10 节 |
 | B01 首个真实 Agent 客户端接入 | implemented | `scripts/agent_harness.py`（真实 MCP stdio 客户端）、`scripts/check_agent_link.py`；真实调用记录见 `docs/acceptance/2026-09-20/agent-client.json`（生成命令见同目录 README） |
 | B02 十个低风险任务与独立判定器 | implemented | `evals/tasks/m1-weibo.json`（10 任务，含中文输入、同名/缺树、返回、应用内跳转）、`scripts/accept_m1_weibo.py` 的程序化判定器 |
-| B03 M1 三十次自主任务验收 | implemented（待单批复跑） | 修复后 batch2 + batch2b 覆盖 30 个 (任务,运行) 组合且 **30/30 成功**、无错误完成声明；因中途一次 worker 隔离分两批完成，单批连续 30 次仍建议复跑 |
+| B03 M1 三十次自主任务验收 | historical（formal 30/30，revision 未绑定） | `docs/acceptance/current-run/m1-formal.json`；产物无 code_revision。Task 2 绑定或重跑前不计入 current |
 | C01 受控分段性能基准 | implemented | 既有 `scripts/accept_m0_primitives.py` 计时口径与观察阶段耗时；本轮 FAST/FULL 实测见 `agent-client.json` |
 | C02 减少设备往返与观察复用 | in_progress | 观察缓存与失效规则沿用既有实现；本轮修复「设备发现持有运行时锁」的阻塞缺陷（`runtime.session`） |
 | C03 burst 与动态控件能力裁决 | planned | 既有 burst 语义与回归保持；3 秒 burst 边界未在本轮真机专项验证 |
@@ -47,7 +50,7 @@ Phase 0/1/2 已在该台账中标记为 `verified_offline`。
 | G05 多客户端与低风险 canary | planned | 仅实现一个真实 MCP 客户端 harness；未做三客户端对照 |
 | G06 一百步与资源稳定性 | planned | 未执行 |
 | H01 证据保留配额与隐私出口 | implemented | `artifacts.py`：TTL、配额、路径防护、脱敏导出、未决记录不回收 |
-| H02 M2 三百次正式任务验收 | planned | 未执行 |
+| H02 M2 三百次正式任务验收 | planned | smoke 已跑 30 项×1（4/10/16）；300 次正式批待设备窗口（2026-09-24 Task 4） |
 | H03 安装迁移与回滚 | planned | 未执行 |
 | H04 CLI 任务查看与证据回放 | verified | `src/harmony_agent/cli.py` + `harmony-runtime agent tasks/task/artifacts/replay`；只读、分页有界、缺失工件显式标记、不开放公网（`tests/test_agent_cli.py` 9 项） |
 | H05 发布前集中缺陷修复 | in_progress | 本轮修复设备发现持有运行时锁、工件存储跨线程、MCP 客户端无超时三处缺陷 |

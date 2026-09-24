@@ -1,9 +1,11 @@
 # 执行状态台账
 
 > 主计划：`docs/superpowers/plans/2026-09-22-runtime-goal-delivery.md`  
+> 后续计划：`docs/superpowers/plans/2026-09-24-project-next-steps-assessment.md`  
 > 架构：`docs/architecture-rsi-decider-plan-2026-09-20.md`  
-> 核查基线：`81b5eab` @ `feat/runtime-foundation`  
-> 本轮 run_id：`20260922T172053Z`
+> 核查基线：`6b78c76` @ `feat/runtime-foundation`  
+> 本轮 run_id：`20260924T152342Z`（证据重冻结）  
+> 历史 run：`20260922T172053Z`（`81b5eab`，已标 historical）
 
 ## 环境
 
@@ -13,7 +15,16 @@
 | 权威 state-dir | `.runtime/agent-state` |
 | 设备 | SGT-AL10 / OpenHarmony-6.1.1.120 / 1 台 |
 | App | `com.sina.weibo.stage` |
-| 离线基线 | **794/794**（`offline-final.json`） |
+| 离线基线 | **809/809**（`docs/acceptance/2026-09-24/offline.json`，绑定 `6b78c76`） |
+| open unknown incident | **33**（见 `docs/acceptance/2026-09-24/unknown-incidents.json`） |
+
+## Task 1 证据重冻结（2026-09-24 计划）— `verified_offline` **完成**
+
+- run_id `20260924T152342Z` @ `6b78c76` = origin
+- 离线 809/809 + pip check + compileall + secret_scan clean + evidence_manifest
+- open incident 实测 33（旧「5 条」过时）；权威 state-dir 保留
+- M0/M1/e2e formal 标 `historical`（无 revision 绑定）
+- 权威清单：`docs/acceptance/2026-09-24/run-manifest.json`
 
 ## T00 基线 — `verified_offline` + `verified_device`
 
@@ -63,12 +74,15 @@
 
 依赖 T04 全量轨迹；已有 post-observation 复用实现与单测。
 
-## T06 正式 M0/M1 — `verified_device` **通过**
+## T06 正式 M0/M1 — `historical`（真机结果保留，revision 未绑定）
 
 | 批次 | 结果 | 门槛 | 证据 |
 |---|---|---|---|
 | **M1 formal** | **30/30** | ≥27/30 | `docs/acceptance/current-run/m1-formal.json` |
 | **M0 formal** | **699/700 (99.86%)** | 每原语 ≥99% | `docs/acceptance/current-run/m0-formal.json` |
+
+产物内无 `code_revision`/task-set 哈希，不能证明等于当前 HEAD `6b78c76`。  
+按 2026-09-24 计划 Task 2：若不能以外部源哈希绑定，则在设备窗口重跑。
 
 M0 分项：launch/tree/swipe/tap/back/input **100/100**；screenshot **99/100**（1 次 `screenshot_inconsistent`）。  
 `gate.passed=true`，`primitive_success_rate_ok=true`，unresolved_actions=0，false_success_claims=0。  
@@ -130,7 +144,9 @@ succeeded 4 / failed 10 / unsupported 16（burst、ocr 能力门控；旧 id 已
 
 ## 最终验收
 
-**核心交付完成；增强层完成离线验证。** 离线 809/809。详见 `docs/acceptance/current-run/README.md`。
+**核心交付完成；增强层完成离线验证。** 本 run 离线 **809/809** 绑定 `6b78c76`。  
+权威清单：`docs/acceptance/2026-09-24/run-manifest.json`。  
+历史设备批次（M0/M1/e2e）见 `docs/acceptance/current-run/`（已标 historical）。
 
 ## 安全
 
@@ -138,8 +154,10 @@ succeeded 4 / failed 10 / unsupported 16（burst、ocr 能力门控；旧 id 已
 - compose 只点「取消」
 - 无凭据唤醒/解锁已验收（T01）
 
-## 下一步（按优先级）
+## 下一步（按 2026-09-24 计划）
 
-1. 稳住 发现→搜索→结果页（D1 综合标签）
-2. M1 smoke 10×1 + back/input 6/6 → T06 正式批
-3. T05 计时 → T07 长任务 → T08 runner → T09–T13
+1. **Task 2** Direct v1 设备门禁：绑定或重跑 M0/M1；C01/C03；唤醒续跑
+2. **Task 3** D3 诊断 + 真 Agent 3×3 + 15/50/100 步 ×3 + 跨应用
+3. **Task 4** M2 30 任务诊断 → 30×10 正式批
+4. **Task 5–7** 视觉范围 / 安全运维 / 安装与客户端
+5. **Task 8** Decider/Actor（最后；`keep_shadow_only`）

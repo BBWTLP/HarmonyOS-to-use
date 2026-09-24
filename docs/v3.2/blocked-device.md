@@ -1,7 +1,11 @@
 # v3.2 真机待办（blocked_device）
 
-以下项目**必须有真机证据**才能声明通过。当前环境没有可用设备，因此全部保持
-`blocked_device`，本文件不记录任何“已完成”结论。
+以下项目**必须有真机证据**才能声明通过。设备（SGT-AL10）在 2026-09-22 窗口曾执行
+M0/M1 formal、长任务与 M2 smoke，但 formal 产物未绑定 revision，按
+`docs/acceptance/2026-09-24/run-manifest.json` 记为 `historical`，**不**在本文件
+记为 `verified_device`。仍缺受控性能、Burst 裁决、M2 300 次、视觉全链路、故障矩阵
+与干净安装的 current 绑定证据。禁止把 mock/fake/fixture 或未绑定 formal 宣称
+`verified_device`。
 
 禁止做法（v3.2 明确禁止）：
 
@@ -112,7 +116,8 @@ ground → revalidate → guard → dispatch → verify 全链路
 
 任务规格已按 Phase 11 定义：`evals/tasks/m2-30.json`（L1/L2/L3 各 10，
 含 3 个反向控制任务），校验见 `tests/test_m2_specification.py`。
-执行留到设备恢复后；规格文件本身不含任何结果。
+smoke 30 项×1 已跑（4 succeeded / 10 failed / 16 unsupported），只作诊断。
+300 次正式批留到设备窗口（2026-09-24 Task 4）；规格文件本身不含正式结果。
 
 ## 7. 100 步稳定性
 

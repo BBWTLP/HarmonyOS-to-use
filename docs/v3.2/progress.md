@@ -11,12 +11,17 @@ in_progress     正在进行
 implemented     代码已存在，未取得离线证据
 verified_offline 离线测试/脚本通过
 blocked_device  必须真机，当前无法执行
-verified_device 真机证据通过（本仓库当前没有任何一项处于此状态）
+verified_device 真机证据通过（须绑定 revision / task-set / device build / run_id）
+historical 旧 revision 或未绑定证据，只作历史记录，不进入 current 数字
 deferred        明确推迟，不阻塞发布
 ```
 
 本轮证据：`docs/v3.2/baseline-offline.md`、`.runtime/tests-current.json`
 （本地，不提交）。真机待办：`docs/v3.2/blocked-device.md`。
+**权威 current run：** `docs/acceptance/2026-09-24/`（`20260924T152342Z` @ `6b78c76`，
+离线 809/809）。2026-09-22 设备窗口曾取得 M0 formal 699/700、M1 formal 30/30、
+长任务与 M2 smoke，但 formal 产物未绑定 revision，状态为 `historical`，
+详见 `docs/acceptance/2026-09-24/run-manifest.json` 与 `docs/acceptance/current-run/`。
 
 ## 1. 阶段总览
 
