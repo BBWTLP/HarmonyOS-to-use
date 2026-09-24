@@ -94,6 +94,19 @@ class LongTaskTests(unittest.TestCase):
         ends = [item for item in checkpoints if item["phase"] == "end"]
         self.assertEqual(len(ends), 2)
         self.assertEqual(ends[-1]["status"], "verified")
+        # T07 resume bundle: budgets and identity survive in every checkpoint.
+        for item in checkpoints:
+            resume = item.get("resume") or {}
+            self.assertEqual(resume.get("task_id"), task_id)
+            self.assertEqual(resume.get("plan_version"), 1)
+            self.assertTrue(resume.get("memory_hash"))
+            self.assertIn("remaining", resume)
+            self.assertIn("verified_subgoals", resume)
+            self.assertIn("last_event_sequence", resume)
+            self.assertIn("device_scope", resume)
+        # Budget is not reset by checkpointing.
+        rem = [item["remaining"]["dispatches"] for item in starts]
+        self.assertGreaterEqual(rem[0], rem[-1])
         # The checkpoint is also visible while the task is running, via status.
         self.assertIsNone(status["current_subgoal"])  # finished: nothing pending
 

@@ -141,13 +141,16 @@ async def main(args) -> int:
                  "within the 3000 ms contract in every completed round are declared "
                  "supported; anything else stays disabled."),
     }
+    # Process success is not "burst works". max_supported_steps=0 is a real
+    # negative capability verdict and must not look like a usable fast path.
+    report["burst_usable"] = report["capability_matrix"]["max_supported_steps"] > 0
     report["status"] = "ok" if report["session"]["unresolved_actions"] == 0 else "not_ready"
     rendered = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True)
     print(rendered)
     if args.report:
         Path(args.report).parent.mkdir(parents=True, exist_ok=True)
         Path(args.report).write_text(rendered + "\n", encoding="utf-8")
-    return 0
+    return 0 if report["status"] == "ok" and report["burst_usable"] else 1
 
 
 def parse_args(argv=None):

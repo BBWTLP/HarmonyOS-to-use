@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "milestone": "T07-long",
+  "app_note": "Public Weibo surfaces plus optional read-only system settings. No private messages.",
+  "defaults": {
+    "budget": {
+      "max_dispatches": 20,
+      "max_seconds": 180,
+      "max_model_calls": 4
+    }
+  },
+  "tasks": [
+    {
+      "id": "long_business_15",
+      "level": "L2",
+      "goal": "15–20 步业务序列：首页→发现→搜索输入→返回→话题→返回",
+      "initial_state": "微博前台，底部导航可见",
+      "steps": [
+        "tap:首页",
+        "tap:发现",
+        "tap:search_bar",
+        "replace_text:query",
+        "back",
+        "tap:发现",
+        "back",
+        "observe",
+        "tap:首页",
+        "swipe:up",
+        "observe",
+        "back",
+        "tap:发现",
+        "back",
+        "tap:首页"
+      ],
+      "arguments": {"query": "鸿蒙"},
+      "success_criteria": [
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"},
+        {"id": "home", "type": "surface_is", "value": "tabs"}
+      ],
+      "cleanup": ["tap:首页"],
+      "budget": {"max_dispatches": 20, "max_seconds": 180, "max_model_calls": 4}
+    },
+    {
+      "id": "long_sequence_50",
+      "level": "L3",
+      "goal": "50 步耐久序列（受控导航+观察，不重复无意义点击凑数）",
+      "initial_state": "微博前台",
+      "steps": [
+        "tap:首页", "observe", "tap:发现", "observe", "back",
+        "tap:首页", "swipe:up", "observe", "back", "observe",
+        "tap:发现", "observe", "back", "tap:首页", "observe",
+        "swipe:up", "observe", "back", "tap:发现", "observe",
+        "back", "tap:首页", "observe", "swipe:up", "back",
+        "tap:发现", "observe", "back", "tap:首页", "observe",
+        "swipe:up", "observe", "back", "tap:发现", "back",
+        "tap:首页", "observe", "swipe:up", "back", "observe",
+        "tap:发现", "back", "tap:首页", "observe", "recover",
+        "observe", "back", "tap:首页", "observe", "history"
+      ],
+      "success_criteria": [
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
+      ],
+      "cleanup": ["tap:首页"],
+      "budget": {"max_dispatches": 80, "max_seconds": 600, "max_model_calls": 8}
+    },
+    {
+      "id": "long_sequence_100",
+      "level": "L3",
+      "goal": "100 步耐久序列（受控导航+观察+恢复）",
+      "initial_state": "微博前台",
+      "steps": [
+        "tap:首页", "observe", "tap:发现", "back", "observe",
+        "tap:首页", "swipe:up", "observe", "back", "history",
+        "tap:发现", "observe", "back", "tap:首页", "observe",
+        "swipe:up", "back", "observe", "tap:发现", "back",
+        "tap:首页", "observe", "recover", "observe", "swipe:up",
+        "back", "tap:发现", "observe", "back", "tap:首页",
+        "observe", "swipe:up", "back", "observe", "tap:发现",
+        "back", "tap:首页", "observe", "swipe:up", "history",
+        "back", "observe", "tap:发现", "back", "tap:首页",
+        "observe", "swipe:up", "back", "observe", "tap:发现",
+        "back", "tap:首页", "recover", "observe", "swipe:up",
+        "back", "observe", "tap:发现", "back", "tap:首页",
+        "observe", "swipe:up", "back", "history", "observe",
+        "tap:发现", "back", "tap:首页", "observe", "swipe:up",
+        "back", "observe", "tap:发现", "back", "tap:首页",
+        "observe", "recover", "swipe:up", "back", "observe",
+        "tap:发现", "back", "tap:首页", "observe", "swipe:up",
+        "back", "observe", "tap:发现", "back", "tap:首页",
+        "observe", "history", "back", "observe", "tap:首页",
+        "observe", "swipe:up", "back", "observe", "history"
+      ],
+      "success_criteria": [
+        {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}
+      ],
+      "cleanup": ["tap:首页"],
+      "budget": {"max_dispatches": 150, "max_seconds": 900, "max_model_calls": 8}
+    }
+  ]
+}

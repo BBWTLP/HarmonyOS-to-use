@@ -85,6 +85,19 @@ class Memory:
         self.summaries: list[dict[str, Any]] = []
         self.retrieval_log: list[dict[str, Any]] = []
 
+    def snapshot_hash(self) -> str:
+        """Stable digest of durable memory for resume checkpoints (T07)."""
+        import hashlib
+        payload = {
+            "goal": self.goal,
+            "constraints": sorted(self.constraints),
+            "facts": sorted(self.facts),
+            "incidents": sorted(i.incident_id for i in self.incidents),
+            "subgoals": [(s.subgoal_id, s.status) for s in self.subgoals],
+        }
+        raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
     # -- writes -------------------------------------------------------------
     def record_state(self, observation: dict[str, Any]) -> None:
         self.states.append({

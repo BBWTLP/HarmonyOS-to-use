@@ -1,5 +1,7 @@
 {
   "schema_version": 1,
+  "task_set_version": "m2-30-v2-t08-criteria",
+  "task_set_note": "v2 strengthens postconditions (query+list identity, surface_is returns, history request_id). Old goals unchanged; no silent lowering.",
   "milestone": "M2",
   "execution": "blocked_device",
   "app": "com.sina.weibo.stage",

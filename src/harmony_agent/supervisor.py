@@ -526,6 +526,7 @@ class TaskRunner:
         run = self.run
         return {
             "phase": phase,
+            "task_id": run.task_id,
             "subgoal_id": subgoal.subgoal_id,
             "description": subgoal.description,
             "action_kind": subgoal.action_kind,
@@ -538,6 +539,22 @@ class TaskRunner:
             "remaining": run.remaining(),
             "dispatches_used": run.dispatches,
             "observations": run.observations,
+            # Resume bundle (T07): enough to continue after restart without
+            # resetting budgets or replaying completed dispatches.
+            "resume": {
+                "task_id": run.task_id,
+                "plan_version": run.plan.version,
+                "memory_hash": run.memory.snapshot_hash(),
+                "device_scope": {
+                    "device_ref": getattr(run.task.scope, "device_ref", None),
+                    "allowed_apps": list(getattr(run.task.scope, "allowed_apps", []) or []),
+                },
+                "verified_subgoals": [s.subgoal_id for s in run.plan.subgoals
+                                      if s.status == "verified"],
+                "pending_request_id": getattr(run.context, "pending_request_id", None),
+                "remaining": run.remaining(),
+                "last_event_sequence": run.events,
+            },
         }
 
     def _compress_context_if_needed(self) -> None:

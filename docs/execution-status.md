@@ -65,15 +65,24 @@
 
 ## T06 正式 M0/M1 — `blocked_device`
 
-M1 smoke 未达 9/9（发现/搜索栏导航不稳）。正式 10×3 与 M0×100 待 smoke 稳定后冻结版本再跑。
+正式 10×3 / M0×100 待设备窗口冻结版本后跑。入口已就绪（`--mode formal` / `--per-primitive 100`）。
 
-## T07 长任务 — `deferred`
+## T07 长任务 — `implemented` + `verified_offline`
 
-checkpoint/unknown 屏障已有；50/100 步与跨应用待 T03/T06。
+- checkpoint **resume bundle**：task_id / plan_version / memory_hash / device_scope / verified_subgoals / pending_request / remaining / last_event_sequence
+- `Memory.snapshot_hash()`
+- `scripts/accept_long_task.py`（合同：`--execute --state-dir --tasks --runs --report` + dry-run）
+- `evals/tasks/long-device.json`（15 步业务 + 50/100 步耐久）
+- 测试：resume 字段与预算不重置；离线 **803/803**
+- 真机 50/100×3 与跨应用：`blocked_device`（待设备批）
 
-## T08 M2 runner — `deferred`
+## T08 M2 runner — `implemented` + `verified_offline`
 
-规格在 `evals/tasks/m2-30.json`；typed 步进 runner 待实现。
+- `scripts/accept_m2.py`：typed 步进（tap/back/swipe/replace_text/wait/observe/recover/history；burst/ocr 能力门控）
+- 不支持/缺前置/不确定分别记账；cleanup 不刷成功；expect_refusal 单列
+- `tests/test_m2_runner.py` 7/7；m2-30 增加 `task_set_version`
+- `accept_c03_burst`：`burst_usable=false` 时进程退出非 0（max_supported_steps=0 是真实裁决）
+- 30 项真机各 1 次：待设备
 
 ## T09–T13 — `deferred`
 
