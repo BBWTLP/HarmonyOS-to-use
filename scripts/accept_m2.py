@@ -27,7 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from agent_harness import (HarnessError, ServiceClientHarness, AgentHarness,
+from agent_harness import (HarnessError, ServiceClientHarness, AgentHarness, WEIBO,
                            classify_surface, clickable_node, editor_input,
                            find_node, find_search_bar, focused_input)
 from harmony_agent.checker import check
@@ -56,6 +56,23 @@ def resolve_target_key(harness_obs: dict, key: str) -> dict | None:
     return find_node(harness_obs, text=key)
 
 
+async def act_with_retry(h, observable, action, expected=None, timeout_ms=12000):
+    """Bounded pre-dispatch stale retry; never replays a dispatched write."""
+    last = None
+    for _ in range(3):
+        try:
+            return await h.act(observation_id=observable["observation_id"],
+                               action=action, expected=expected,
+                               timeout_ms=timeout_ms), observable
+        except HarnessError as error:
+            last = error
+            if error.code not in ("stale_observation", "target_not_found") \
+                    and "Page changed" not in str(error):
+                raise
+            observable = await h.observe(mode="FAST")
+    raise last or RuntimeError("act failed")
+
+
 async def run_typed_step(h, step: str, observable: dict, arguments: dict) -> tuple[dict, dict | None]:
     kind, payload = parse_step(step)
     started = time.perf_counter()
@@ -63,6 +80,28 @@ async def run_typed_step(h, step: str, observable: dict, arguments: dict) -> tup
     post = None
 
     if kind == "tap":
+        surface = classify_surface(observable)
+        # Launcher/desktop: bring Weibo back before tapping its tabs.
+        if surface == "foreign" and payload in ("首页", "发现", "消息", "我"):
+            await h.act(observation_id=observable["observation_id"],
+                        action={"kind": "launch", "bundle": WEIBO},
+                        expected={"changed": True}, timeout_ms=15000)
+            await asyncio.sleep(1.5)
+            observable = await h.observe(mode="FAST")
+            surface = classify_surface(observable)
+        # Editor/compose hide the tab bar: leave first so tab labels exist.
+        if surface in ("search_editor", "compose_dialog", "hot_search") and payload in (
+                "首页", "发现", "消息", "我"):
+            cancel = find_node(observable, text="取消")
+            if cancel is not None:
+                await h.act(observation_id=observable["observation_id"],
+                            action={"kind": "tap", "target": {"text": "取消"}},
+                            expected={"changed": True}, timeout_ms=12000)
+            else:
+                await h.act(observation_id=observable["observation_id"],
+                            action={"kind": "back"}, expected={"changed": True},
+                            timeout_ms=12000)
+            observable = await h.observe(mode="FAST")
         node = resolve_target_key(observable, payload)
         if node is None:
             # Discover search bar is structural, not a fixed id.
@@ -71,31 +110,73 @@ async def run_typed_step(h, step: str, observable: dict, arguments: dict) -> tup
                 node = clickable_node(observable, bar)
             elif payload.startswith("id:"):
                 node = resolve_target_key(observable, payload)
+        if node is None and not payload.startswith("id:"):
+            # Bottom tab labels are non-clickable Text nodes; tap their parent.
+            labels = [n for n in observable.get("catalog") or [] if n.get("text") == payload]
+            bottom = [n for n in labels if (n.get("bounds") or [0, 0, 0, 0])[1] > 2400]
+            pick = bottom[0] if len(bottom) == 1 else (labels[0] if len(labels) == 1 else None)
+            if pick is not None:
+                node = clickable_node(observable, pick)
+        if node is None:
+            # Middle tab flips to 回到顶部 after scroll; restore 发现 first.
+            if payload == "发现":
+                top = find_node(observable, text="回到顶部")
+                if top is not None:
+                    node = clickable_node(observable, top)
         if node is None:
             result.update(status="unsupported", error="target_missing", payload=payload)
             return result, observable
         node = clickable_node(observable, node)
         action = {"kind": "tap", "target": {"action_id": node["action_id"]}}
-        out = await h.act(observation_id=observable["observation_id"], action=action,
-                          expected={"changed": True}, timeout_ms=12000)
+        out = None
+        last_error = None
+        for attempt in range(3):
+            try:
+                out = await h.act(observation_id=observable["observation_id"],
+                                  action=action, expected={"changed": True},
+                                  timeout_ms=12000)
+                break
+            except HarnessError as error:
+                last_error = error
+                if error.code not in ("stale_observation", "target_not_found") \
+                        and "Page changed" not in str(error):
+                    raise
+                observable = await h.observe(mode="FAST")
+                # Re-ground the same semantic label on the fresh catalog.
+                node2 = resolve_target_key(observable, payload)
+                if node2 is None and payload == "发现":
+                    top = find_node(observable, text="回到顶部")
+                    if top is not None:
+                        node2 = clickable_node(observable, top)
+                if node2 is not None:
+                    node = clickable_node(observable, node2)
+                    action = {"kind": "tap", "target": {"action_id": node["action_id"]}}
+        if out is None:
+            result.update(status="blocked", error=last_error.code if last_error else "act_failed")
+            return result, observable
         result.update(status=out.get("status"),
                       execution_status=out.get("execution_status"),
                       verification_status=out.get("verification_status"),
                       request_id=out.get("request_id"))
         post = out.get("observation")
     elif kind == "back":
-        out = await h.act(observation_id=observable["observation_id"],
-                          action={"kind": "back"}, expected={"changed": True},
-                          timeout_ms=12000)
+        # Leaving the search editor: prefer 取消 so we land on discover.
+        if classify_surface(observable) == "search_editor":
+            cancel = find_node(observable, text="取消")
+            action = ({"kind": "tap", "target": {"text": "取消"}} if cancel is not None
+                      else {"kind": "back"})
+        else:
+            action = {"kind": "back"}
+        out, observable = await act_with_retry(h, observable, action, {"changed": True})
         result.update(status=out.get("status"),
                       execution_status=out.get("execution_status"),
                       verification_status=out.get("verification_status"),
                       request_id=out.get("request_id"))
         post = out.get("observation")
     elif kind == "swipe":
-        out = await h.act(observation_id=observable["observation_id"],
-                          action={"kind": "swipe", "direction": payload or "up"},
-                          expected={"changed": True}, timeout_ms=12000)
+        out, observable = await act_with_retry(
+            h, observable, {"kind": "swipe", "direction": payload or "up"},
+            {"changed": True})
         result.update(status=out.get("status"), execution_status=out.get("execution_status"),
                       request_id=out.get("request_id"))
         post = out.get("observation")
@@ -111,9 +192,9 @@ async def run_typed_step(h, step: str, observable: dict, arguments: dict) -> tup
             return result, observable
         rid = field.get("resource_id")
         target = {"resource_id": rid} if rid else {"action_id": field["action_id"]}
-        out = await h.act(observation_id=observable["observation_id"],
-                          action={"kind": "replace_text", "target": target, "text": text},
-                          expected=None, timeout_ms=15000)
+        out, observable = await act_with_retry(
+            h, observable, {"kind": "replace_text", "target": target, "text": text},
+            expected=None, timeout_ms=15000)
         result.update(status=out.get("status"), execution_status=out.get("execution_status"),
                       request_id=out.get("request_id"))
         post = out.get("observation")
@@ -172,7 +253,13 @@ async def run_typed_step(h, step: str, observable: dict, arguments: dict) -> tup
 
 
 def judge(criteria, observation, arguments=None, baseline=None) -> dict:
-    preds = [Predicate.model_validate(item) for item in criteria]
+    normalized = []
+    for item in criteria:
+        item = dict(item)
+        if isinstance(item.get("value"), bool):
+            item["value"] = "true" if item["value"] else "false"
+        normalized.append(item)
+    preds = [Predicate.model_validate(item) for item in normalized]
     return check(preds, observation, arguments=arguments or {}, baseline=baseline,
                  surface_classifier=classify_surface, incident_free=True).to_dict()
 

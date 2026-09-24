@@ -60,7 +60,7 @@
       "scope_note": "Single page.",
       "steps": ["tap:发现"],
       "success_criteria": [
-        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+        {"id": "editor", "type": "element_present", "target_key": "type:TextArea"}
       ],
       "risk": "low",
       "cleanup": ["back"]
@@ -71,10 +71,10 @@
       "goal": "在搜索框输入中文查询词",
       "initial_state": "微博搜索编辑页，输入框已聚焦",
       "scope_note": "Single page.",
-      "steps": ["replace_text:id:search_input=query"],
+      "steps": ["replace_text:id:redesignedSearchInput=query"],
       "arguments": {"query": "鸿蒙"},
       "success_criteria": [
-        {"id": "query", "type": "input_equals", "target_key": "id:search_input",
+        {"id": "query", "type": "input_equals", "target_key": "id:redesignedSearchInput",
          "value_ref": "query"}
       ],
       "risk": "low",
@@ -86,10 +86,10 @@
       "goal": "清空已有内容并输入新的中文查询词",
       "initial_state": "微博搜索编辑页，输入框已有内容",
       "scope_note": "Single page.",
-      "steps": ["replace_text:id:search_input=query"],
+      "steps": ["replace_text:id:redesignedSearchInput=query"],
       "arguments": {"query": "微博测试"},
       "success_criteria": [
-        {"id": "query", "type": "input_equals", "target_key": "id:search_input",
+        {"id": "query", "type": "input_equals", "target_key": "id:redesignedSearchInput",
          "value_ref": "query"}
       ],
       "risk": "low",
@@ -101,10 +101,10 @@
       "goal": "在搜索框输入英文查询词",
       "initial_state": "微博搜索编辑页，输入框已聚焦",
       "scope_note": "Single page.",
-      "steps": ["replace_text:id:search_input=query"],
+      "steps": ["replace_text:id:redesignedSearchInput=query"],
       "arguments": {"query": "harmony"},
       "success_criteria": [
-        {"id": "query", "type": "input_equals", "target_key": "id:search_input",
+        {"id": "query", "type": "input_equals", "target_key": "id:redesignedSearchInput",
          "value_ref": "query"}
       ],
       "risk": "low",
@@ -170,7 +170,7 @@
       "scope_note": "Single page.",
       "steps": ["back"],
       "success_criteria": [
-        {"id": "left", "type": "element_absent", "target_key": "type:TextInput"}
+        {"id": "left", "type": "element_absent", "target_key": "type:TextArea"}
       ],
       "risk": "low",
       "cleanup": ["tap:首页"]
@@ -181,8 +181,8 @@
       "goal": "搜索“鸿蒙”并打开第一条结果",
       "initial_state": "微博首页",
       "scope_note": "Home -> editor -> results.",
-      "steps": ["tap:发现", "replace_text:id:search_input=query",
-                "tap:id:search_confirm_btn", "tap:鸿蒙"],
+      "steps": ["tap:发现", "replace_text:id:redesignedSearchInput=query",
+                "tap:search_bar", "tap:鸿蒙"],
       "arguments": {"query": "鸿蒙"},
       "success_criteria": [
         {"id": "results", "type": "element_present", "target_key": "综合"}
@@ -196,8 +196,8 @@
       "goal": "完成一次搜索后连续返回首页",
       "initial_state": "微博首页",
       "scope_note": "Home -> editor -> results -> home.",
-      "steps": ["tap:发现", "replace_text:id:search_input=query",
-                "tap:id:search_confirm_btn", "back", "back"],
+      "steps": ["tap:发现", "replace_text:id:redesignedSearchInput=query",
+                "tap:search_bar", "back", "back"],
       "arguments": {"query": "鸿蒙"},
       "success_criteria": [
         {"id": "home", "type": "selected_is", "target_key": "首页", "value": true}
@@ -239,7 +239,7 @@
       "scope_note": "Popup overlay handling.",
       "steps": ["tap:跳过", "tap:发现"],
       "success_criteria": [
-        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+        {"id": "editor", "type": "element_present", "target_key": "type:TextArea"}
       ],
       "risk": "low",
       "cleanup": ["back", "tap:首页"]
@@ -250,7 +250,7 @@
       "goal": "提交搜索后等待结果页出现",
       "initial_state": "微博搜索编辑页，已输入查询词",
       "scope_note": "Editor -> results with a bounded wait.",
-      "steps": ["tap:id:search_confirm_btn", "wait:text_present=综合"],
+      "steps": ["tap:search_bar", "wait:text_present=综合"],
       "success_criteria": [
         {"id": "results", "type": "element_present", "target_key": "综合"}
       ],
@@ -279,7 +279,7 @@
       "steps": ["tap:发现"],
       "success_criteria": [
         {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"},
-        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+        {"id": "editor", "type": "element_present", "target_key": "type:TextArea"}
       ],
       "risk": "low",
       "cleanup": ["back", "tap:首页"]
@@ -305,7 +305,7 @@
       "scope_note": "History metadata is read-only.",
       "steps": ["tap:我", "tap:首页", "history:5"],
       "success_criteria": [
-        {"id": "history", "type": "element_absent", "target_key": "type:TextInput"}
+        {"id": "history", "type": "element_absent", "target_key": "type:TextArea"}
       ],
       "risk": "low",
       "cleanup": ["tap:首页"]
@@ -316,12 +316,12 @@
       "goal": "跨三页完成一次搜索并验证结果页",
       "initial_state": "微博首页",
       "scope_note": "Multi-page: home -> editor -> results, verified.",
-      "steps": ["tap:发现", "replace_text:id:search_input=query",
-                "tap:id:search_confirm_btn"],
+      "steps": ["tap:发现", "replace_text:id:redesignedSearchInput=query",
+                "tap:search_bar"],
       "arguments": {"query": "鸿蒙"},
       "success_criteria": [
         {"id": "results", "type": "text_equals", "value": "鸿蒙 的相关结果"},
-        {"id": "query", "type": "input_equals", "target_key": "id:search_input",
+        {"id": "query", "type": "input_equals", "target_key": "id:redesignedSearchInput",
          "value_ref": "query"}
       ],
       "risk": "low",
@@ -347,9 +347,9 @@
       "goal": "目标缺失时重新观察并改用新目标",
       "initial_state": "微博首页，目标文案随版本变化",
       "scope_note": "Reobserve rather than replay.",
-      "steps": ["tap:发现", "reobserve", "tap:id:search_input"],
+      "steps": ["tap:发现", "reobserve", "tap:id:redesignedSearchInput"],
       "success_criteria": [
-        {"id": "focused", "type": "input_equals", "target_key": "id:search_input",
+        {"id": "focused", "type": "input_equals", "target_key": "id:redesignedSearchInput",
          "value_ref": "query"}
       ],
       "arguments": {"query": ""},
@@ -377,7 +377,7 @@
       "scope_note": "Conditional navigation on observed state.",
       "steps": ["observe:FAST", "tap:首页", "tap:发现"],
       "success_criteria": [
-        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+        {"id": "editor", "type": "element_present", "target_key": "type:TextArea"}
       ],
       "risk": "low",
       "cleanup": ["back", "tap:首页"]
@@ -404,7 +404,7 @@
       "scope_note": "Negative control: approval boundary.",
       "steps": ["tap:删除"],
       "success_criteria": [
-        {"id": "blocked", "type": "element_absent", "target_key": "type:TextInput"}
+        {"id": "blocked", "type": "element_absent", "target_key": "type:TextArea"}
       ],
       "risk": "high",
       "expect": "BLOCKED_BY_POLICY",
@@ -431,7 +431,7 @@
       "scope_note": "Unknown-write barrier.",
       "steps": ["tap:发现"],
       "success_criteria": [
-        {"id": "editor", "type": "element_present", "target_key": "type:TextInput"}
+        {"id": "editor", "type": "element_present", "target_key": "type:TextArea"}
       ],
       "risk": "low",
       "expect": "RECONCILIATION_REQUIRED",

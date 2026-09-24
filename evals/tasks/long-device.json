@@ -88,7 +88,7 @@
         "tap:发现", "back", "tap:首页", "observe", "swipe:up",
         "back", "observe", "tap:发现", "back", "tap:首页",
         "observe", "history", "back", "observe", "tap:首页",
-        "observe", "swipe:up", "back", "observe", "history"
+        "observe", "swipe:up", "back", "observe", "history", "tap:首页", "observe"
       ],
       "success_criteria": [
         {"id": "app", "type": "foreground_is", "value": "com.sina.weibo.stage"}

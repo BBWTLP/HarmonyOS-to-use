@@ -74,7 +74,18 @@ M0 分项：launch/tree/swipe/tap/back/input **100/100**；screenshot **99/100**
 `gate.passed=true`，`primitive_success_rate_ok=true`，unresolved_actions=0，false_success_claims=0。  
 M1 覆盖输入/搜索/返回/滑动/跨 tab；判据含 `surface_is` 页面身份。
 
-## T07 长任务 — `implemented` + `verified_offline`
+## T07 长任务 — `verified_device`（业务 15 步 + 50 步通过；100 步 63 派发）
+
+| 序列 | 结果 | 说明 |
+|---|---|---|
+| long_business_15 | **pass** | 13 派发，`surface_is=tabs` |
+| long_sequence_50 | **pass** | 31 派发 + recover + history |
+| long_sequence_100 | 63 派发跑完，终态 inconclusive | 结束落在 foreign；已补 `tap:首页` 收尾 |
+
+## T08 M2 smoke — `verified_device`（30/30 可解释）
+
+succeeded 4 / failed 10 / unsupported 16（burst、ocr 能力门控；旧 id 已对齐 `redesignedSearchInput`/`TextArea`）。  
+负向/缺失能力分开记账，无“空跑成功”。
 
 - checkpoint **resume bundle**：task_id / plan_version / memory_hash / device_scope / verified_subgoals / pending_request / remaining / last_event_sequence
 - `Memory.snapshot_hash()`
